@@ -29,7 +29,7 @@
           <el-form-item label="状态" prop="status">
             <!--            <q-dict-select v-model="dataForm.status" dictType="sys_normal_disable" type="radio" width="340px"-->
             <!--                           placeholder="请选择状态"/>-->
-            <c7-radio dict-type="sys_normal_disable" v-model="dataForm.status" placeholder="请选择状态"></c7-radio>
+            <c7-radio :data-list="sys_normal_disable" v-model="dataForm.status" placeholder="请选择状态"></c7-radio>
           </el-form-item>
         </el-col>
       </el-row>
@@ -68,6 +68,11 @@ import baseService from "@/service/baseService.js";
 
 
 const {proxy} = getCurrentInstance();
+
+
+// 获取字典数据
+const dictData = proxy.useDict("sys_normal_disable");
+const sys_normal_disable = dictData.sys_normal_disable;
 const emit = defineEmits(["refreshDataList"]);
 
 const visibleRef = ref(false);

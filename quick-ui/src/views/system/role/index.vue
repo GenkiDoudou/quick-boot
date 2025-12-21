@@ -11,8 +11,7 @@
       totalKey="data.total"
       @addBtnHandle="handleAdd"
       @editBtnHandle="handleEdit"
-      @deleteBtnHandle="handleDelete"
-      @refreshDataList="refreshData"
+      :exportFunction="exportRole"
     >
       <!-- 操作列插槽 -->
       <template #table-operate="scope">
@@ -30,7 +29,7 @@
             type="danger" 
             link 
             icon="Delete" 
-            @click="handleDelete(scope.row.roleId)"
+            @click="handleDelete(scope.row.id)"
             v-hasPermi="['system:role:remove']"
           >
             删除
@@ -53,7 +52,7 @@
 import { ref, getCurrentInstance, nextTick } from "vue";
 import { ElMessage, ElMessageBox } from 'element-plus';
 import AddOrUpdate from "./add-or-update.vue";
-import { listRole, delRole } from '@/api/system/role.js';
+import { listRole, delRole,exportRole } from '@/api/system/role.js';
 import { C7JsonTable, C7Button, C7ButtonGroup } from '@/components/c7';
 
 // 获取当前实例和字典数据
@@ -153,7 +152,7 @@ const handleDelete = async (roleIdOrRows) => {
   try {
     let ids = [];
     let message = '';
-    
+
     // 判断参数类型
     if (Array.isArray(roleIdOrRows)) {
       // 来自表格组件的批量删除
@@ -164,18 +163,18 @@ const handleDelete = async (roleIdOrRows) => {
       ids = [roleIdOrRows];
       message = `是否确认删除角色编号为"${roleIdOrRows}"的数据项？`;
     }
-    
+
     await ElMessageBox.confirm(message, '系统提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     });
-    
+
     // 批量删除
     for (const id of ids) {
       await delRole(id);
     }
-    
+
     ElMessage.success('删除成功');
     refreshData();
   } catch (error) {
@@ -185,16 +184,4 @@ const handleDelete = async (roleIdOrRows) => {
   }
 };
 
-const refreshData = () => {
-  tableRef.value?.getDataList();
-};
-
-// 处理下拉菜单命令
-const handleDropdownCommand = (command, row) => {
-  switch (command) {
-    case 'delete':
-      handleDelete(row.id);
-      break;
-  }
-};
 </script>

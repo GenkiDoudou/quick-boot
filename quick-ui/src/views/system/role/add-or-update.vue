@@ -18,7 +18,7 @@
                      权限字符
                   </span>
         </template>
-        <el-input v-model="dataForm.roleKey" placeholder="请输入权限字符"/>
+        <el-input v-model="dataForm.roleKey" placeholder="请输入权限字符" :disabled="(dataForm.id)"/>
       </el-form-item>
       <el-form-item label="角色顺序" prop="roleSort">
         <el-input-number v-model="dataForm.roleSort" controls-position="right" :min="0"/>
@@ -66,6 +66,7 @@ const dataForm = ref({
   id: undefined,
   roleName: undefined,
   roleKey: undefined,
+  status:"0",
   dataScope: undefined,
   menuCheckStrictly: true,
   menuIds: [],

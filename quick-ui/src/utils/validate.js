@@ -91,3 +91,71 @@ export function isArray(arg) {
   }
   return Array.isArray(arg)
 }
+
+
+/**
+ * 校验密码 - 等保三级密码强度要求
+ * 要求：8-20位，必须包含大小写字母、数字、特殊字符中的至少三种
+ * 支持的特殊字符包括：!@#$%^&*()_+-=[]{}|;:,.<>? 等除字母数字外的所有字符
+ */
+export function validatePassword(rule, value, callback) {
+  if (!value) {
+    callback(new Error('密码不能为空'))
+    return
+  }
+
+  // 使用单个正则表达式校验长度和复杂度
+  // 必须满足：8-20位长度，且包含至少三种类型（小写字母、大写字母、数字、特殊字符）
+  const regex = /^(?=.{8,20}$)(?:(?=.*[a-z])(?=.*[A-Z])(?=.*\d)|(?=.*[a-z])(?=.*[A-Z])(?=.*[^\w\s])|(?=.*[a-z])(?=.*\d)(?=.*[^\w\s])|(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]))/
+
+  if (!regex.test(value)) {
+    if (value.length < 8 || value.length > 20) {
+      callback(new Error('密码长度必须为8-20位'))
+    } else {
+      callback(new Error('密码必须包含小写字母、大写字母、数字、特殊字符中的至少三种'))
+    }
+    return
+  }
+
+  callback()
+}
+// 校验手机号
+export function validatePhone(rule, value, callback) {
+  if (!value) {
+    callback()
+    return
+  }
+
+  // 中国大陆手机号正则表达式
+  const phoneRegex = /^1[3-9]\d{9}$/
+
+  if (!phoneRegex.test(value)) {
+    callback(new Error('请输入正确的手机号'))
+    return
+  }
+
+  callback()
+}
+
+// 校验邮箱
+/**
+ * 校验邮箱
+ * @param {Object} rule - 验证规则
+ * @param {string} value - 邮箱值
+ * @param {Function} callback - 回调函数
+ */
+export function validateEmail(rule, value, callback) {
+  if (!value) {
+    callback()
+    return
+  }
+
+  // 邮箱正则表达式
+  const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+
+  if (!emailRegex.test(value)) {
+    callback(new Error('请输入正确的邮箱地址'))
+    return
+  }
+  callback()
+}

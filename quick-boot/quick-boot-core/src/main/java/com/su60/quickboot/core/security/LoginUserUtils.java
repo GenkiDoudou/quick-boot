@@ -2,6 +2,9 @@ package com.su60.quickboot.core.security;
 
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.extra.spring.SpringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.Data;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +23,6 @@ import java.util.List;
 public class LoginUserUtils {
 
 
-
 	/**
 	 * 获取当前登录的用户信息
 	 *
@@ -30,10 +32,10 @@ public class LoginUserUtils {
 	public LoginUser getUser() {
 		try {
 			if (StpUtil.isLogin()) {
-				SaSession session = StpUtil.getSession();
-				LoginUser user = session.getModel("user", LoginUser.class);
-				if (null != user) {
-					return user;
+				Object user = StpUtil.getExtra("user");
+				LoginUser loginUser =JSON.parseObject(user.toString(), LoginUser.class);
+				if (null != loginUser) {
+					return loginUser;
 				}
 				// 暂时返回null，避免模块依赖问题
 				// 实际使用时需要从JWT中解析用户信息

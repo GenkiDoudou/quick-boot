@@ -48,12 +48,12 @@ import formLayout from '@/components/form-layout/index.vue'
 // 检查是否包含权限
 import { checkPermission } from './directive/permission/permissionUtils'
 // 全局注入
-
+import * as validate from '@/utils/validate'
 const app = createApp(App)
 
 // 全局方法挂载
 app.config.globalProperties.useDict = useDict
-
+app.config.globalProperties.$validate = validate
 app.config.globalProperties.download = download
 app.config.globalProperties.parseTime = parseTime
 app.config.globalProperties.resetForm = resetForm

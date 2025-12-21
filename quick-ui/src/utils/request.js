@@ -139,6 +139,7 @@ service.interceptors.response.use(res => {
     }
 )
 
+
 // 通用下载方法
 export function download(url, params, filename, config) {
     downloadLoadingInstance = ElLoading.service({text: "正在下载数据，请稍候", background: "rgba(0, 0, 0, 0.7)",})
@@ -170,6 +171,24 @@ export function download(url, params, filename, config) {
         console.error(r)
         ElMessage.error('下载文件出现错误，请联系管理员！')
         downloadLoadingInstance.close();
+    })
+}
+
+/**
+ * 通用下载请求，返回 Promise<Blob>
+ */
+export function downloadRequest(url, params, config) {
+    return service.post(url, params, {
+        transformRequest: [(params) => {
+            // 确保 params 不是 undefined 或 null
+            if (!params) {
+                params = {};
+            }
+            return tansParams(params);
+        }],
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        responseType: 'blob',
+        ...config
     })
 }
 

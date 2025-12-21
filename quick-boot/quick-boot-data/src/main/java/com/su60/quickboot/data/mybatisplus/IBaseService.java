@@ -1,11 +1,11 @@
 package com.su60.quickboot.data.mybatisplus;
 
 import cn.hutool.core.collection.CollectionUtil;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.core.PageRequest;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.github.yulichang.base.MPJBaseService;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import java.util.List;
  * @author luyanan
  * @since 2023/09/13
  **/
-public interface IBaseService<T> extends MPJBaseService<T> {
+public interface IBaseService<T> extends IService<T> {
 
 
     /**

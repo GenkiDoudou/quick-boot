@@ -22,6 +22,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>org.lionsoul</groupId>
+			<artifactId>ip2region</artifactId>
+			<version>3.3.1</version>
+		</dependency>
+		<dependency>
 			<groupId>com.su60.quickboot.common</groupId>
 			<artifactId>quick-boot-common</artifactId>
 		</dependency>
@@ -30,11 +35,14 @@
 			<groupId>cn.dev33</groupId>
 			<artifactId>sa-token-spring-boot3-starter</artifactId>
 		</dependency>
-		
+		<!-- Sa-Token 整合 jwt -->
 		<dependency>
-			<groupId>com.turn</groupId>
-			<artifactId>ttorrent-core</artifactId>
+			<groupId>cn.dev33</groupId>
+			<artifactId>sa-token-jwt</artifactId>
+			<version>1.37.0</version>
 		</dependency>
+
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-aop</artifactId>

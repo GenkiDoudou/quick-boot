@@ -23,19 +23,19 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 		this.strictInsertFill(metaObject, "createTime", Date.class, new Date());
 		this.strictInsertFill(metaObject, "updateTime", Date.class, new Date());
 
-		LoginUser user = LoginUserUtils.getUser();
-		if (null != user) {
-			this.strictInsertFill(metaObject, "createBy", Long.class, user.getId());
-			this.strictInsertFill(metaObject, "updateBy", Long.class, user.getId());
+		Long userId = LoginUserUtils.getUserId();
+		if (null != userId) {
+			this.strictInsertFill(metaObject, "createBy", Long.class, userId);
+			this.strictInsertFill(metaObject, "updateBy", Long.class, userId);
 		}
 	}
 
 	@Override
 	public void updateFill(MetaObject metaObject) {
 		this.strictInsertFill(metaObject, "updateTime", Date.class, new Date());
-		LoginUser user = LoginUserUtils.getUser();
-		if (null != user) {
-			this.strictInsertFill(metaObject, "updateBy", Long.class, user.getId());
+		Long userId = LoginUserUtils.getUserId();
+		if (null != userId) {
+			this.strictInsertFill(metaObject, "updateBy", Long.class,userId);
 		}
 	}
 }

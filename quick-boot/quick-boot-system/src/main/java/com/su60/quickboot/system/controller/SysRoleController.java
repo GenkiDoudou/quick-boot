@@ -6,6 +6,7 @@ import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.validation.AddGroup;
 import com.su60.quickboot.common.validation.UpdateGroup;
 import com.su60.quickboot.data.excel.ExcelUtils;
+import com.su60.quickboot.data.excel.ExcelUtils2;
 import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.system.dos.SysRoleDo;
 import com.su60.quickboot.system.entity.SysRoleEntity;
@@ -70,10 +71,8 @@ public class SysRoleController {
 	 */
 	@SaCheckPermission("system:role:export")
 	@PostMapping("export")
-	public void export(HttpServletResponse response, SysRoleDo sysRoleDo) throws IOException {
-		List<SysRoleEntity> list = sysRoleService.list(BeanConvertUtils.convertTo(sysRoleDo, SysRoleEntity.class));
-		List<SysRoleExcel> sysRoleExcels = BeanConvertUtils.convertListTo(list, SysRoleExcel::new);
-		ExcelUtils.exportExcel(response, "角色列表", null, sysRoleExcels, SysRoleExcel.class);
+	public void export(HttpServletResponse response, SysRoleDo sysRoleDo) throws Exception {
+		sysRoleService.export(response, sysRoleDo);
 	}
 
 	/**

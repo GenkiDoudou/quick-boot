@@ -21,7 +21,18 @@
         </el-col>
 
       </el-row>
-
+      <el-row>
+        <el-col :span="8">
+          <el-form-item label="类型" prop="loginType">
+            {{ dataForm.loginType }}
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="结果" prop="loginResult">
+            <dict-tag dictType="sys_normal_disable" v-model:value="dataForm.loginResult" />
+          </el-form-item>
+        </el-col>
+      </el-row>
       <el-row>
         <el-col :span="8">
           <el-form-item label="登录地点" prop="loginLocation">
@@ -51,6 +62,9 @@
       </el-row>
 
 
+
+
+
       <el-row>
 
       </el-row>
@@ -68,6 +82,7 @@
 import {C7Dialog} from "@/components/c7"
 import {reactive, ref, getCurrentInstance} from "vue";
 import { getLogininfor } from '@/api/system/logininfor.js';
+import DictTag from "@/components/DictTag/index.vue";
 
 const {proxy} = getCurrentInstance();
 const emit = defineEmits(["refreshDataList"]);

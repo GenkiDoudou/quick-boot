@@ -46,7 +46,8 @@ import { listLogininfor } from '@/api/system/logininfor.js';
 
 // 获取当前实例和权限检查函数
 const { proxy } = getCurrentInstance();
-
+const dictData = proxy.useDict("sys_normal_disable");
+const sys_normal_disable = dictData.sys_normal_disable;
 // 表格引用
 const tableRef = ref();
 const addOrUpdateRef = ref();
@@ -80,15 +81,23 @@ const searchColumns = ref([
 
 // 表格列配置
 const tableColumns = ref([
-  {
-    label: "访问编号",
-    prop: "infoId",
-    width: 100
-  },
+
   {
     label: "用户账号",
     prop: "userName",
     showOverflowTooltip: true
+  },
+  {
+    label: "类型",
+    prop: "loginType",
+    showOverflowTooltip: true
+  },
+  {
+    label: "结果",
+    prop: "loginResult",
+    showOverflowTooltip: true,
+    columnType: 'tag',
+    dictList: sys_normal_disable,
   },
   {
     label: "登录IP地址",

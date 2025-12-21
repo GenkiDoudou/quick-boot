@@ -57,7 +57,7 @@
         />
 
         <!-- 日期选择器 -->
-        <el-date-picker
+        <C7DatePicker
             v-else-if="datePickerTypes.includes(item.type)"
             v-model="formData[item.prop]"
             :type="item.type"
@@ -70,34 +70,27 @@
         />
 
         <!-- 复选框 -->
-        <el-checkbox-group
+        <C7Checkbox
             v-else-if="item.type === 'checkbox'"
             v-model="formData[item.prop]"
+            :data-list="item.dataList"
+            :label-key="item.labelKey || 'label'"
+            :value-key="item.valueKey || 'value'"
+            :separator="item.separator !== false"
+            :fetch-data="item.fetchData"
+            :fetch-params="item.fetchParams"
+            :indeterminate="item.indeterminate || false"
+            :button="item.button || false"
             @change="handleChange(item, formData[item.prop])"
-        >
-          <el-checkbox
-              v-for="option in item.dataList"
-              :key="option.value"
-              :label="option.value"
-          >
-            {{ option.label }}
-          </el-checkbox>
-        </el-checkbox-group>
+        />
 
         <!-- 单选框 -->
-        <el-radio-group
+        <C7Radio
             v-else-if="item.type === 'radio'"
             v-model="formData[item.prop]"
+            :data-list="item.dataList"
             @change="handleChange(item, formData[item.prop])"
-        >
-          <el-radio
-              v-for="option in item.dataList"
-              :key="option.value"
-              :label="option.value"
-          >
-            {{ option.label }}
-          </el-radio>
-        </el-radio-group>
+        />
 
         <!-- 文件上传 -->
         <C7Upload
@@ -118,6 +111,9 @@
 import { computed, ref, watch, defineEmits, defineProps } from 'vue'
 import C7Select from '../c7-select/index.vue'
 import C7Upload from '../c7-upload/index.vue'
+import C7DatePicker from '../c7-date-picker/index.vue'
+import C7Checkbox from '../c7-checkbox/index.vue'
+import C7Radio from '../c7-radio/index.vue'
 
 defineOptions({
   name: 'JsonForm'

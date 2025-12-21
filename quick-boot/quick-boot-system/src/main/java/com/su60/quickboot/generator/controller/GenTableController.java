@@ -52,6 +52,7 @@ public class GenTableController {
 		return genTableService.page(genTableDo, new PageVoHandler<GenTableEntity, GenTableDo>() {
 			@Override
 			public void queryWrapperHandler(GenTableDo vo, GenTableEntity genTableEntity, LambdaQueryWrapper<GenTableEntity> queryWrapper) {
+				queryWrapper.orderByDesc(GenTableEntity::getCreateTime);
 			}
 
 

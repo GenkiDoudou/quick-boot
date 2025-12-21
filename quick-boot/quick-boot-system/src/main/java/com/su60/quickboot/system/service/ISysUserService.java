@@ -3,6 +3,9 @@ package com.su60.quickboot.system.service;
 import com.su60.quickboot.system.entity.SysUserEntity;
 import com.su60.quickboot.system.dos.SysUserDo;
 import com.su60.quickboot.data.mybatisplus.IBaseService2;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 /**
  * <p>
@@ -43,4 +46,38 @@ public interface ISysUserService extends IBaseService2<SysUserEntity, SysUserDo>
 	 */
 	Boolean updateUser(SysUserDo sysUserDo);
 
+	/**
+	 * 重置密码
+	 * @since 2025/11/18
+	 * @param userId 用户id
+	 * @return
+	 */
+	void resetPwd(Long userId);
+
+	/**
+	 * 修改状态
+	 * @since 2025/11/19
+	 * @param userId 用户id
+	 * @param status  状态
+	 * @return
+	 */
+	void updateStatus(Long userId, String status);
+
+	/**
+	 * 用户导出
+	 * @since 2025/11/21
+	 * @param response
+	 * @param sysUserDo
+	 * @return
+	 */
+	void exportExcel(HttpServletResponse response,SysUserDo sysUserDo) throws Exception;
+
+	/**
+	 * 用户导入
+	 * @since 2025/11/29
+	 * @param file Excel文件
+	 * @param updateSupport 是否更新已存在的数据
+	 * @return 导入结果
+	 */
+	com.su60.quickboot.common.core.ImportResult importExcel(org.springframework.web.multipart.MultipartFile file, Boolean updateSupport) throws IOException;
 }

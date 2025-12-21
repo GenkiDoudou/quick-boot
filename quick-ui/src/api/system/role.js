@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request, {downloadRequest} from '@/utils/request'
 
 // 查询角色列表
 export function listRole(query) {
@@ -116,4 +116,9 @@ export function deptTreeSelect(roleId) {
     url: '/system/role/deptTree/' + roleId,
     method: 'get'
   })
+}
+
+// 导出用户
+export function exportRole(queryParams) {
+  return downloadRequest('/system/role/export', queryParams)
 }

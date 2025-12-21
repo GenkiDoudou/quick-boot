@@ -3,8 +3,11 @@ package com.su60.quickboot.system.service;
 import com.su60.quickboot.data.mybatisplus.IBaseService2;
 import com.su60.quickboot.system.dos.SysRoleDo;
 import com.su60.quickboot.system.entity.SysRoleEntity;
+import com.su60.quickboot.system.excel.SysRoleExcel;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -100,4 +103,14 @@ public interface ISysRoleService extends IBaseService2<SysRoleEntity, SysRoleDo>
 	 * @since 2024/10/31
 	 */
 	List<SysRoleDo> listAll(SysRoleDo sysRoleDo);
+
+	/**
+	 * 导出
+	 * @since 2025/12/19
+	 * @param response
+	 * @param sysRoleDo
+	 * @return
+	 */
+	void export(HttpServletResponse response, SysRoleDo sysRoleDo) throws Exception;
+
 }

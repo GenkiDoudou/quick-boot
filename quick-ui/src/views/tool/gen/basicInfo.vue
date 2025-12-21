@@ -47,7 +47,7 @@
       </el-col>
 
 
-      <el-col :span="12" v-if="dataForm.genType == '1'">
+      <el-col :span="12" v-if="dataForm && dataForm.genType == '1'">
         <el-form-item label="生成包路径" prop="genPath">
           <el-input v-model="dataForm.genPath" :disabled placeholder="请输入生成包路径"/>
         </el-form-item>

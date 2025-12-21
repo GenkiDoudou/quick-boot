@@ -35,17 +35,6 @@ public class MybatisPlusExtendAutoConfiguration {
 		return new MySqlInjector();
 	}
 
-	/**
-	 * yid生成器
-	 *
-	 * @return yid生成器
-	 * @since 2023/09/16
-	 */
-	@Bean
-	@ConditionalOnProperty(prefix = MybatisPlusExtentProperties.PREFIX, value = "id-generator", havingValue = "yid", matchIfMissing = false)
-	public IdentifierGenerator customKeyGenerator() {
-		return new YitIdentifierGenerator();
-	}
 
 	/**
 	 * 添加分页插件

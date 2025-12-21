@@ -2,7 +2,7 @@
   <!-- C7JsonTable 表格组件容器 -->
   <div class="json-table">
     <!-- 搜索表单区域 -->
-    <el-form v-if="showSearch" ref="searchForm" :model="searchParam" >
+    <el-form v-if="showSearch" ref="searchForm" :model="searchParam">
       <el-row gutter="20">
         <!-- 动态搜索表单组件 -->
         <JsonForm
@@ -20,19 +20,22 @@
     </el-form>
 
     <!-- 操作按钮工具栏 -->
-    <div class="operate-bar" v-if="$slots.operate || showAdd || showEdit || showDelete || showRefresh || showExport || showImport">
+    <div class="operate-bar"
+         v-if="$slots.operate || showAdd || showEdit || showDelete || showRefresh || showExport || showImport">
       <!-- 自定义操作按钮插槽 -->
       <slot name="operate">
         <!-- 新增按钮 -->
         <el-button v-if="showAdd" type="primary" icon="Plus" @click="handleAdd">新增</el-button>
         <!-- 修改按钮 - 需要选中数据才能操作 -->
-        <el-button v-if="showEdit" type="success" icon="Edit" @click="handleEdit" :disabled="!hasSelection">修改</el-button>
+        <el-button v-if="showEdit" type="success" icon="Edit" @click="handleEdit" :disabled="!hasSelection">修改
+        </el-button>
         <!-- 删除按钮 - 需要选中数据才能操作 -->
-        <el-button v-if="showDelete" type="danger" icon="Delete" @click="handleDelete" :disabled="!hasSelection">删除</el-button>
+        <el-button v-if="showDelete" type="danger" icon="Delete" @click="handleDelete" :disabled="!hasSelection">删除
+        </el-button>
         <!-- 导出按钮 -->
-        <el-button v-if="showExport" type="warning" icon="Download" @click="handleExport">导出</el-button>
+        <el-button v-if="showExport" type="primary" icon="Download" @click="handleExport">导出</el-button>
         <!-- 导入按钮 -->
-        <el-button v-if="showImport" type="warning" icon="Upload" @click="handleImport">导入</el-button>
+        <el-button v-if="showImport" type="primary" icon="Upload" @click="handleImport">导入</el-button>
       </slot>
     </div>
 
@@ -42,8 +45,8 @@
         :row-key="rowKey"
         v-loading="loading"
         @selection-change="handleSelectionChange"
-        style="width: 100%"
-        table-layout="auto"
+
+        align="center"
         :tree-props="tableProps.treeProps"
         :default-expand-all="tableProps.defaultExpandAll"
         :lazy="tableProps.lazy"
@@ -54,7 +57,7 @@
           type="selection"
           width="55"
       />
-      
+
       <!-- 序号列 - 显示行号 -->
       <el-table-column
           v-if="showIndex"
@@ -75,13 +78,13 @@
           :show-overflow-tooltip="column.showOverflowTooltip !== false"
       >
         <template #default="{ row, $index }">
-        <!-- 操作列插槽 - 用于自定义操作按钮 -->
-        <slot
-            v-if="column.prop === 'table-operate'"
-            name="table-operate"
-            :row="row"
-            :index="$index"
-        />
+          <!-- 操作列插槽 - 用于自定义操作按钮 -->
+          <slot
+              v-if="column.prop === 'table-operate'"
+              name="table-operate"
+              :row="row"
+              :index="$index"
+          />
           <!-- 自定义列插槽 - 用于自定义列内容 -->
           <slot
               v-else-if="column.slotName"
@@ -123,7 +126,7 @@
 <script setup>
 /**
  * C7JsonTable 表格组件
- * 
+ *
  * 功能特性：
  * - 支持搜索表单
  * - 支持操作按钮（新增、编辑、删除、导出、导入等）
@@ -133,16 +136,22 @@
  * - 支持分页
  * - 支持树形表格
  * - 支持懒加载
- * 
+ *
  * @author C7 Team
  * @version 1.0.0
  */
 
-import { ref, computed, onMounted, watch, defineOptions, defineProps } from 'vue'
+import {ref, computed, onMounted, watch, defineOptions, defineProps, getCurrentInstance} from 'vue'
+import {ElLoading, ElMessage, ElMessageBox} from 'element-plus'
 import JsonForm from '../c7-json-form/index.vue'
+import {blobValidate, tansParams} from "@/utils/ruoyi.js";
+import errorCode from "@/utils/errorCode.js";
+import service from "@/utils/request.js";
+import {saveAs} from 'file-saver';
+import {delUser} from "@/api/system/user.js";
 
 // 定义组件名称
-defineOptions({ name: 'JsonTable' })
+defineOptions({name: 'JsonTable'})
 
 /**
  * C7JsonTable 组件 Props 定义
@@ -166,30 +175,35 @@ defineOptions({ name: 'JsonTable' })
 const props = defineProps({
   // ==================== 数据相关 ====================
   /** 数据获取函数，用于从后端API获取数据 */
-  listFunction: { type: Function, required: false },
+  listFunction: {type: Function, required: false},
   /** 静态表格数据，如果提供则不会调用listFunction */
-  tableData: { type: Array, default: () => [] },
+  tableData: {type: Array, default: () => []},
   /** 行数据的唯一标识字段名 */
-  rowKey: { type: String, default: 'id' },
+  rowKey: {type: String, default: 'id'},
   /** 响应数据中列表数据的路径，支持嵌套如 'data.records' */
-  rowsKey: { type: String, default: 'data.records' },
+  rowsKey: {type: String, default: 'data.records'},
   /** 响应数据中总数的路径，支持嵌套如 'data.total' */
-  totalKey: { type: String, default: 'data.total' },
-  
+  totalKey: {type: String, default: 'data.total'},
+
   // ==================== 搜索相关 ====================
   /** 是否显示搜索表单 */
-  showSearch: { type: Boolean, default: true },
+  showSearch: {type: Boolean, default: true},
   /** 搜索表单列配置 */
-  searchColumns: { type: Array, default: () => [] },
+  searchColumns: {type: Array, default: () => []},
   /** 搜索参数对象 */
-  searchParam: { type: Object, default: () => ({}) },
-  
+  searchParam: {type: Object, default: () => ({})},
+
+
+  // ==================== 删除 ====================
+  deleteFunction: {type: Function, required: false},
+  // ==================== 导入导出相关 ====================
+  exportFunction: {type: Function, required: false},
   // ==================== 表格相关 ====================
   /** 表格列配置 */
-  tableColumns: { type: Array, default: () => [] },
+  tableColumns: {type: Array, default: () => []},
   /** 表格属性配置对象 */
-  tableProps: { 
-    type: Object, 
+  tableProps: {
+    type: Object,
     default: () => ({
       // 按钮显示控制
       showAdd: false,        // 是否显示新增按钮
@@ -211,35 +225,35 @@ const props = defineProps({
     // 添加验证函数来确保传入的对象包含正确的属性
     validator: (value) => {
       if (!value || typeof value !== 'object') return true
-      
+
       const validKeys = [
         'showAdd', 'showEdit', 'showDelete', 'showRefresh', 'showExport', 'showImport', 'selection',
         'border', 'stripe', 'height', 'treeProps', 'defaultExpandAll', 'lazy'
       ]
-      
+
       return Object.keys(value).every(key => validKeys.includes(key))
     }
   },
   /** 是否显示序号列 */
-  showIndex: { type: Boolean, default: true },
-  
+  showIndex: {type: Boolean, default: true},
+
   // ==================== 分页相关 ====================
   /** 数据总数 */
-  total: { type: Number, default: 0 },
+  total: {type: Number, default: 0},
   /** 每页显示条数选项 */
-  pageSizes: { type: Array, default: () => [10, 20, 30, 50] },
+  pageSizes: {type: Array, default: () => [10, 20, 30, 50]},
   /** 分页组件布局 */
-  pageLayout: { type: String, default: 'total, sizes, prev, pager, next, jumper' },
+  pageLayout: {type: String, default: 'total, sizes, prev, pager, next, jumper'},
   /** 分页组件背景色 */
-  pageBackground: { type: Boolean, default: true },
+  pageBackground: {type: Boolean, default: true},
   /** 是否隐藏分页组件 */
-  pageHidden: { type: Boolean, default: false },
-  
+  pageHidden: {type: Boolean, default: false},
+
   // ==================== 初始化相关 ====================
   /** 组件挂载时是否自动获取数据 */
-  init: { type: Boolean, default: true },
+  init: {type: Boolean, default: true},
   /** 初始化参数，用于传递给数据获取函数 */
-  initParam: { type: Object, default: () => ({}) }
+  initParam: {type: Object, default: () => ({})}
 })
 
 // 定义组件事件
@@ -264,7 +278,7 @@ const currentPage = ref(1)
 /** 每页显示条数 */
 const pageSize = ref(10)
 /** 搜索参数 */
-const searchParam = ref({ ...props.searchParam })
+const searchParam = ref({...props.searchParam})
 /** 数据总数 */
 const total = ref(0)
 /** 选中的行数据 */
@@ -281,8 +295,15 @@ const tableData = computed(() => {
   return internalTableData.value
 })
 
-/** 计算后的总数 */
-const computedTotal = computed(() => total.value)
+/** 计算后的总数 - 优先使用传入的total，否则使用内部解析的total */
+const computedTotal = computed(() => {
+  // 如果传入了 total 且大于0，优先使用传入的值
+  if (props.total && props.total > 0) {
+    return props.total
+  }
+  // 否则使用内部解析的 total
+  return total.value
+})
 
 // ==================== 按钮显示控制 ====================
 /** 是否显示新增按钮 */
@@ -305,8 +326,8 @@ const hasSelection = computed(() => selectedRows.value.length > 0)
 // ==================== 监听器 ====================
 /** 监听搜索参数变化 */
 watch(() => props.searchParam, (newVal) => {
-  searchParam.value = { ...newVal }
-}, { deep: true })
+  searchParam.value = {...newVal}
+}, {deep: true})
 
 /** 监听初始化参数变化 */
 watch(() => props.initParam, (newVal, oldVal) => {
@@ -314,13 +335,13 @@ watch(() => props.initParam, (newVal, oldVal) => {
   if (newVal && Object.keys(newVal).length > 0) {
     const newValStr = JSON.stringify(newVal)
     const oldValStr = JSON.stringify(oldVal || {})
-    
+
     if (newValStr !== oldValStr) {
       console.log('initParam changed, refetching data:', newVal)
       fetchData()
     }
   }
-}, { deep: true, immediate: false })
+}, {deep: true, immediate: false})
 
 // ==================== 核心方法 ====================
 /**
@@ -334,12 +355,12 @@ const fetchData = async () => {
   if (props.tableData && props.tableData.length > 0) {
     return
   }
-  
+
   if (!props.listFunction) {
     console.warn('listFunction is required when tableData is not provided')
     return
   }
-  
+
   loading.value = true
   try {
     // 构建请求参数
@@ -349,14 +370,10 @@ const fetchData = async () => {
       ...searchParam.value,
       ...props.initParam
     }
-    console.log("params",params)
-    
+
     // 调用数据获取函数
     const response = await props.listFunction(params)
-    console.log('C7JsonTable fetchData response:', response)
-    console.log('C7JsonTable rowsKey:', props.rowsKey)
-    console.log('C7JsonTable totalKey:', props.totalKey)
-    
+
     // 根据配置的键路径解析数据
     if (response) {
       // 解析数据列表
@@ -366,18 +383,28 @@ const fetchData = async () => {
         rowsData = rowsData?.[key]
       }
       internalTableData.value = Array.isArray(rowsData) ? rowsData : []
-      console.log('C7JsonTable parsed rowsData:', rowsData)
-      console.log('C7JsonTable internalTableData:', internalTableData.value)
-      
+
       // 解析总数
       const totalPath = props.totalKey.split('.')
       let totalData = response
       for (const key of totalPath) {
-        totalData = totalData?.[key]
+        if (totalData && typeof totalData === 'object' && key in totalData) {
+          totalData = totalData[key]
+        } else {
+          console.warn(`C7JsonTable: totalKey path "${props.totalKey}" not found in response, key "${key}" is missing`)
+          totalData = undefined
+          break
+        }
       }
-      total.value = typeof totalData === 'number' ? totalData : 0
-      console.log('C7JsonTable parsed totalData:', totalData)
-      console.log('C7JsonTable total:', total.value)
+
+      // 尝试转换为数字
+      if (totalData !== undefined && totalData !== null) {
+        const numValue = Number(totalData)
+        total.value = !isNaN(numValue) ? numValue : 0
+      } else {
+        total.value = 0
+      }
+
     } else {
       internalTableData.value = []
       total.value = 0
@@ -391,11 +418,16 @@ const fetchData = async () => {
   }
 }
 
+const buildExportPayload = () => ({
+  ...searchParam.value,
+  ...props.initParam
+})
+
 // ==================== 事件处理方法 ====================
 /** 搜索事件处理 */
 const handleSearch = () => {
   currentPage.value = 1
-  emit('update:searchParam', { ...searchParam.value })
+  emit('update:searchParam', {...searchParam.value})
   fetchData()
 }
 
@@ -440,9 +472,43 @@ const handleEdit = () => {
 }
 
 /** 删除按钮点击事件 - 需要选中数据 */
-const handleDelete = () => {
-  if (selectedRows.value.length > 0) {
-    emit('deleteBtnHandle', selectedRows.value)
+const handleDelete = async (id) => {
+  // console.log("handleDelete")
+  // if (selectedRows.value.length > 0) {
+  //   emit('deleteBtnHandle', selectedRows.value)
+  // }
+
+  try {
+    let ids = [];
+    let message = '';
+
+    // 判断参数类型
+    if (Array.isArray(selectedRows.value) && selectedRows.value.length > 0) {
+      // 来自表格组件的批量删除
+      ids = selectedRows.value.map(row => row[props.rowKey]);
+      message = `是否确认删除选中的${ids.length}个数据？`;
+    } else {
+      // 来自操作列的单个删除
+      ids = [id];
+      message = `是否确认删除编号为"${id}"的数据项？`;
+    }
+
+    await ElMessageBox.confirm(message, '系统提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    const response = await props.deleteFunction(ids)
+    if (response){
+      ElMessage.success('删除成功');
+      handleRefresh();
+    }else {
+      ElMessage.error('删除失败');
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败');
+    }
   }
 }
 
@@ -452,9 +518,43 @@ const handleRefresh = () => {
   fetchData()
 }
 
+let downloadLoadingInstance = null
+const {proxy} = getCurrentInstance();
 /** 导出按钮点击事件 */
-const handleExport = () => {
-  emit('exportBtnHandle')
+const handleExport = async () => {
+  if (typeof props.exportFunction !== 'function') {
+    ElMessage.warning('未配置导出方法')
+    return
+  }
+
+  downloadLoadingInstance = ElLoading.service({text: "正在下载数据，请稍候", background: "rgba(0, 0, 0, 0.7)",})
+  const payload = buildExportPayload()
+
+  try {
+    const data = await props.exportFunction(payload)
+    console.log('Export response:', data)
+
+    let fname = data?.filename || `export_${new Date().getTime()}.xlsx`
+    const isBlob = blobValidate(data)
+
+    if (isBlob) {
+      const blob = new Blob([data])
+      saveAs(blob, fname)
+      ElMessage.success('导出成功')
+    } else {
+      const resText = await data.text()
+      const rspObj = JSON.parse(resText)
+      const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode['default']
+      ElMessage.error(errMsg)
+    }
+  } catch (error) {
+    console.error('Export error:', error)
+    ElMessage.error(error?.message || '下载文件出现错误，请联系管理员！')
+  } finally {
+    downloadLoadingInstance?.close()
+    downloadLoadingInstance = null
+  }
+
 }
 
 /** 导入按钮点击事件 */
@@ -505,17 +605,15 @@ onMounted(() => {
 /** 暴露方法给父组件调用 */
 defineExpose({
   getDataList: fetchData,    // 获取数据列表
-  refreshData: fetchData     // 刷新数据（别名）
+  refreshData: fetchData,
+  handleDelete: handleDelete,
+  // 刷新数据（别名）
 })
 </script>
 
 <style scoped>
 /* ==================== 组件样式 ==================== */
 
-/* 表格组件容器 */
-.json-table {
-  width: 100%;
-}
 
 /* 搜索表单样式 */
 .search-form {
@@ -533,18 +631,9 @@ defineExpose({
 /* 分页组件样式 */
 .pagination {
   margin-top: 16px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
-/* ==================== 响应式样式 ==================== */
-/* 移动端适配 */
-@media (max-width: 768px) {
-  .search-form {
-    padding: 12px;
-  }
-  
-  .pagination {
-    text-align: center;
-  }
-}
 </style>

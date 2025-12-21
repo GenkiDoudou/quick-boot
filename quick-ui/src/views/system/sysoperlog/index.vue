@@ -98,21 +98,7 @@ const searchColumns = ref([
 
 // 表格列配置
 const tableColumns = ref([
-  {
-    label: "日志编号",
-    prop: "operId",
-    width: 100
-  },
-  {
-    label: "系统模块",
-    prop: "title",
-    showOverflowTooltip: true
-  },
-  {
-    label: "操作类型",
-    prop: "businessType",
-    width: 100
-  },
+
   {
     label: "方法名称",
     prop: "method",
@@ -131,6 +117,12 @@ const tableColumns = ref([
   {
     label: "主机地址",
     prop: "operIp",
+    width: 130
+  },
+
+  {
+    label: "操作地点",
+    prop: "operLocation",
     width: 130
   },
   {
@@ -161,7 +153,7 @@ const tableProps = ref({
   selection: false,
   showAdd: false,
   showEdit: false,
-  showDelete: proxy.checkPermission('system:operlog:remove'),
+  showDelete: false,
   showRefresh: true,
   showExport: proxy.checkPermission('system:operlog:export'),
   showImport: false,

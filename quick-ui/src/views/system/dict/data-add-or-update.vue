@@ -36,15 +36,14 @@
       <el-row>
         <el-col :span="12">
           <el-form-item label="回显样式" prop="listClass">
-            <c7-select dict-type="sys_dict_list_class" v-model="dataForm.listClass"></c7-select>
+            <c7-select :data-list="sys_dict_list_class" v-model="dataForm.listClass"></c7-select>
           </el-form-item>
 
         </el-col>
         <el-col :span="12">
           <el-form-item label="状态" prop="status">
 
-            <c7-radio dict-type="sys_normal_disable" v-model="dataForm.status" placeholder="请选择状态"></c7-radio>
-
+            <c7-radio :data-list="sys_normal_disable" v-model="dataForm.status" placeholder="请选择状态"></c7-radio>
           </el-form-item>
         </el-col>
       </el-row>
@@ -70,6 +69,10 @@ import baseService from "@/service/baseService.js";
 
 
 const {proxy} = getCurrentInstance();
+
+// 获取字典数据
+const { sys_dict_list_class, sys_normal_disable } = proxy.useDict("sys_dict_list_class", "sys_normal_disable");
+
 const emit = defineEmits(["refreshDataList"]);
 
 const visibleRef = ref(false);

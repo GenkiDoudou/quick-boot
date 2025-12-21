@@ -22,27 +22,20 @@
       </el-row>
 
 
+
+
       <el-row>
-        <el-col :span="10">
-          <el-form-item label="系统模块:" prop="title">
-            {{ dataForm.title }}
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
+        <el-col :span="8">
           <el-form-item label="请求URL:" prop="operUrl">
             {{ dataForm.requestMethod }} {{ dataForm.operUrl }}
           </el-form-item>
         </el-col>
-      </el-row>
-
-
-      <el-row>
-        <el-col :span="10">
+        <el-col :span="8">
           <el-form-item label="主机地址" prop="operIp">
             {{ dataForm.operIp }}
           </el-form-item>
         </el-col>
-        <el-col :span="10">
+        <el-col :span="8">
           <el-form-item label="操作地点" prop="operLocation">
             {{ dataForm.operLocation }}
           </el-form-item>

@@ -11,8 +11,8 @@
 	<!--  日志文件总大小超过多少压缩  -->
 	<springProperty scope="context" name="LOG_MAX_TOTAL_SIZE_CAP" source="logging.max-total-size-cap" defaultValue="1GB"/>
 
-	<property name="log.colorPattern" value="%magenta(%d{yyyy-MM-dd HH:mm:ss}) %highlight(%-5level) %yellow(%thread) %green(%logger) %msg%n"/>
-	<property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss} %-5level %thread %logger %msg%n"/>
+	<property name="log.colorPattern" value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - [traceId:%X{otel_trace_id}] [spanId:%X{otel_span_id}] - %msg%n"/>
+	<property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - [traceId:%X{trace_id}] [spanId:%X{span_id}] - %msg%n"/>
 
 	<!--输出到控制台-->
 	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">

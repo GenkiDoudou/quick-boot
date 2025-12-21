@@ -79,8 +79,7 @@ spring:
       - client-id: app
         client-secret: app
         verification-code: false
-  cache:
-    type: caffeine
+
   profiles:
     active: dev
   flyway:
@@ -130,6 +129,12 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+  otlp:
+    tracing:
+      endpoint: "http://localhost:4318/v1/traces"   # 不需要 collector 也没关系
+  tracing:
+    sampling:
+      probability: 1.0   # 100% 采样
 
 # CORS 统一配置（如已在网关处理，可移除）
 cors:
@@ -180,8 +185,8 @@ file:
 mybatis-plus:
 
   mapper-locations: classpath*:mapper/**/*.xml
-  configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  #configuration:
+   # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: assign_id
@@ -195,4 +200,6 @@ mybatis-plus:
   extend:
     enable: true
     id-generator: yid
+
+
 

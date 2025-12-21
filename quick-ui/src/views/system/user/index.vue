@@ -1,46 +1,55 @@
 <template>
   <div class="app-container">
     <!-- 用户管理表格 -->
-    <c7-json-table 
-      ref="tableRef"
-      :listFunction="listUser" 
-      :tableColumns="tableColumns" 
-      :searchColumns="searchColumns"
-      :tableProps="tableProps"
-      rowsKey="data.records" 
-      totalKey="data.total"
-      @addBtnHandle="handleAdd"
-      @editBtnHandle="handleEdit"
-      @deleteBtnHandle="handleDelete"
-      @refreshDataList="refreshData"
+    <c7-json-table
+        ref="tableRef"
+        :listFunction="listUser"
+        :delete-function="delUser"
+        :tableColumns="tableColumns"
+        :searchColumns="searchColumns"
+        :tableProps="tableProps"
+        rowsKey="data.records"
+        totalKey="data.total"
+        :exportFunction="exportUser"
+        @addBtnHandle="handleAdd"
+        @editBtnHandle="handleEdit"
+        @importBtnHandle ="importBtnHandle"
     >
+      <template #status="{ row }">
+        <el-switch
+            v-model="row.status"
+            active-value="0"
+            inactive-value="1"
+            @change="handleStatusChange(row)"
+        />
+      </template>
       <!-- 操作列插槽 -->
       <template #table-operate="scope">
-        <C7ButtonGroup>
-          <C7Button 
-            type="primary" 
-            link 
-            icon="Edit" 
-            @click="handleEdit(scope.row)"
-            v-hasPermi="['system:user:edit']"
+        <C7ButtonGroup mode="inline">
+          <C7Button
+              type="primary"
+              link
+              icon="Edit"
+              @click="handleEdit(scope.row)"
+              v-hasPermi="['system:user:edit']"
           >
             修改
           </C7Button>
-          <C7Button 
-            type="danger" 
-            link 
-            icon="Delete" 
-            @click="handleDelete(scope.row.userId)"
-            v-hasPermi="['system:user:remove']"
+          <C7Button
+              type="danger"
+              link
+              icon="Delete"
+              @click="tableRef.handleDelete(scope.row.id)"
+              v-hasPermi="['system:user:remove']"
           >
             删除
           </C7Button>
-          <C7Button 
-            type="warning" 
-            link 
-            icon="Key" 
-            @click="handleResetPwd(scope.row)"
-            v-hasPermi="['system:user:resetPwd']"
+          <C7Button
+              type="warning"
+              link
+              icon="Key"
+              @click="handleResetPwd(scope.row)"
+              v-hasPermi="['system:user:resetPwd']"
           >
             重置密码
           </C7Button>
@@ -49,38 +58,121 @@
     </c7-json-table>
 
     <!-- 新增/编辑用户弹窗 -->
-    <add-or-update 
-      :key="addKey" 
-      ref="addOrUpdateRef" 
-      @refreshDataList="refreshData"
+    <add-or-update
+        :key="addKey"
+        ref="addOrUpdateRef"
+        @refreshDataList="tableRef.refreshData()"
     />
+
+    <!-- 导入用户对话框 -->
+    <C7Dialog
+        :visible="importDialogVisible"
+        mode="dialog"
+        title="用户导入"
+        :modal-props="{
+          width: '60%',
+          'close-on-click-modal': false
+        }"
+        :footer="true"
+        @close="importDialogVisible = false"
+    >
+      <C7Upload style="margin-left: 10%"
+          ref="uploadRef"
+          :auto-upload="false"
+          :on-remove="handleFileRemove"
+          :before-upload="beforeUpload"
+          :limit="1"
+          :file-type="'xlsx,xls'"
+          :file-size="10"
+          :upload-url="'111'"
+      >
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">
+          将文件拖到此处，或<em>点击上传</em>
+        </div>
+      </C7Upload>
+      
+      <el-checkbox v-model="updateSupport" style="margin-top: 20px; margin-left: 10%">
+        是否更新已经存在的用户数据
+      </el-checkbox>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="importDialogVisible = false">取消</el-button>
+          <el-button  type="primary" @click="confirmImport = false">取消</el-button>
+        </div>
+      </template>
+    </C7Dialog>
+
+    <!-- 导入结果对话框 -->
+    <C7Dialog
+        :visible="importResultDialogVisible"
+        mode="dialog"
+        title="导入结果"
+        :modal-props="{
+          width: '600px',
+          'close-on-click-modal': false
+        }"
+        :footer="false"
+        @close="closeImportResult"
+    >
+      <div v-if="importResult">
+        <el-alert
+            :title="`导入完成！成功 ${importResult.successNum} 条，失败 ${importResult.failureNum} 条`"
+            :type="importResult.failureNum > 0 ? 'warning' : 'success'"
+            :closable="false"
+            style="margin-bottom: 20px;"
+        />
+        
+        <div v-if="importResult.failureNum > 0 && importResult.failureList && importResult.failureList.length > 0">
+          <div style="margin-bottom: 10px; font-weight: bold;">失败数据详情：</div>
+          <el-table
+              :data="importResult.failureList"
+              border
+              max-height="300"
+          >
+            <el-table-column
+                prop="rowNum"
+                label="行号"
+                width="80"
+                align="center"
+            />
+            <el-table-column
+                prop="errorMsg"
+                label="失败原因"
+                show-overflow-tooltip
+            />
+          </el-table>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <C7Button type="primary" @click="closeImportResult">确定</C7Button>
+        </div>
+      </template>
+    </C7Dialog>
   </div>
 </template>
 
 
 <script setup>
-import { C7JsonTable, C7Button, C7ButtonGroup } from "@/components/c7";
-import { ref, getCurrentInstance, nextTick } from "vue";
-import { ElMessage, ElMessageBox } from 'element-plus';
+import {C7JsonTable, C7Button, C7ButtonGroup, C7Radio, C7Upload, C7Dialog} from "@/components/c7";
+import {ref, getCurrentInstance, nextTick} from "vue";
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {UploadFilled} from '@element-plus/icons-vue';
 import AddOrUpdate from "./add-or-update.vue";
-import { listUser, delUser, resetUserPwd } from '@/api/system/user.js';
-import useUserStore from '@/store/modules/user';
+import {listUser, delUser, resetUserPwd, changeUserStatus, exportUser, importUser} from '@/api/system/user.js';
 
 // 获取当前实例和字典数据
-const { proxy } = getCurrentInstance();
+const {proxy} = getCurrentInstance();
 const dictData = proxy.useDict("sys_normal_disable", "sys_user_sex");
 const sys_normal_disable = dictData.sys_normal_disable;
-const sys_user_sex = dictData.sys_user_sex;
 
 // 表格引用
-const tableRef = ref();
+const tableRef = ref(null);
 const addOrUpdateRef = ref();
 const addKey = ref(0);
-
-// 调试权限信息
-console.log('用户权限列表:', useUserStore().permissions);
-console.log('检查权限 system:user:edit111:', proxy.checkPermission('system:user:edit111'));
-
 // 表格配置
 const tableProps = ref({
   selection: true,
@@ -92,7 +184,9 @@ const tableProps = ref({
   showImport: proxy.checkPermission('system:user:import'),
   border: true,
   stripe: true,
-  height: 'auto'
+  height: 'auto',
+  align: "center",
+  headAlign: "center"
 });
 
 // 搜索字段配置
@@ -105,7 +199,7 @@ const searchColumns = ref([
     clearable: true
   },
   {
-    label: "用户昵称", 
+    label: "用户昵称",
     prop: "nickName",
     type: "input",
     placeholder: "请输入用户昵称",
@@ -113,7 +207,7 @@ const searchColumns = ref([
   },
   {
     label: "手机号码",
-    prop: "phonenumber", 
+    prop: "phonenumber",
     type: "input",
     placeholder: "请输入手机号码",
     clearable: true
@@ -128,8 +222,9 @@ const searchColumns = ref([
   },
   {
     label: "创建时间",
-    prop: "createTime",
+    prop: "searchCreateTime",
     type: "daterange",
+
     placeholder: ["开始日期", "结束日期"]
   }
 ]);
@@ -139,12 +234,11 @@ const tableColumns = ref([
   {
     label: "用户账号",
     prop: "userName",
-
     showOverflowTooltip: true
   },
   {
     label: "用户昵称",
-    prop: "nickName", 
+    prop: "nickName",
 
     showOverflowTooltip: true
   },
@@ -168,9 +262,7 @@ const tableColumns = ref([
   {
     label: "帐号状态",
     prop: "status",
-    columnType: 'tag',
-    dictList: sys_normal_disable,
-
+    slotName: 'status'
   },
   {
     label: "创建时间",
@@ -178,14 +270,14 @@ const tableColumns = ref([
 
   },
   {
-    label: "最后登录时间", 
+    label: "最后登录时间",
     prop: "loginDate",
 
   },
   {
     label: "操作",
     prop: "table-operate",
-    width: 160,
+    width: 200,
     fixed: "right"
   }
 ]);
@@ -205,52 +297,18 @@ const handleEdit = (row) => {
   });
 };
 
-const handleDelete = async (userIdOrRows) => {
-  try {
-    let ids = [];
-    let message = '';
-    
-    // 判断参数类型
-    if (Array.isArray(userIdOrRows)) {
-      // 来自表格组件的批量删除
-      ids = userIdOrRows.map(row => row.id);
-      message = `是否确认删除选中的${ids.length}个用户？`;
-    } else {
-      // 来自操作列的单个删除
-      ids = [userIdOrRows];
-      message = `是否确认删除用户编号为"${userIdOrRows}"的数据项？`;
-    }
-    
-    await ElMessageBox.confirm(message, '系统提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-    
-    // 批量删除
-    for (const id of ids) {
-      await delUser(id);
-    }
-    
-    ElMessage.success('删除成功');
-    refreshData();
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败');
-    }
-  }
-};
+
 
 const handleResetPwd = async (row) => {
   try {
     await ElMessageBox.confirm(
-      '是否确认重置用户"' + row.userName + '"的密码？',
-      '系统提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        '是否确认重置用户"' + row.userName + '"的密码？',
+        '系统提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
     );
     await resetUserPwd(row.id);
     ElMessage.success('重置成功');
@@ -261,21 +319,111 @@ const handleResetPwd = async (row) => {
   }
 };
 
-// 处理下拉菜单命令
-const handleDropdownCommand = (command, row) => {
-  switch (command) {
-    case 'delete':
-      handleDelete(row.id);
-      break;
-    case 'resetPwd':
-      handleResetPwd(row);
-      break;
+
+
+
+
+
+// 状态修改
+// 修改 handleStatusChange 方法，添加防重复调用逻辑
+const handleStatusChange = (row) => {
+  console.log(row)
+  // 添加判断，避免初始化时触发
+  const id = row.id;
+  if (!id) {
+    return;
   }
+  let text = row.status === "0" ? "启用" : "停用";
+  proxy.$modal.confirm('确认要"' + text + '""' + row.userName + '"用户吗?').then(function () {
+    return changeUserStatus(row.id, row.status);
+  }).then(() => {
+    proxy.$modal.msgSuccess(text + "成功");
+  }).catch(function () {
+    row.status = row.status === "0" ? "1" : "0";
+  });
 };
 
-const refreshData = () => {
-  tableRef.value?.getDataList();
-};
+
+// 导入相关
+const importDialogVisible = ref(false)
+const uploadRef = ref()
+const importFile = ref(null)
+const updateSupport = ref(false)
+const importResult = ref(null)
+const importResultDialogVisible = ref(false)
+
+// 导入按钮处理
+const importBtnHandle = () => {
+  importDialogVisible.value = true
+  importFile.value = null
+  updateSupport.value = false
+  importResult.value = null
+  // 清空上传组件
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
+  }
+}
+
+// 导入文件上传前的验证
+const beforeUpload = (file) => {
+  const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+  const isLt10M = file.size / 1024 / 1024 < 10
+
+  if (!isExcel) {
+    ElMessage.error('只能上传 Excel 文件!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+  // 保存文件，但不自动上传
+  importFile.value = file
+  return false // 阻止自动上传
+}
+
+// 文件移除
+const handleFileRemove = () => {
+  importFile.value = null
+}
+
+// 确认导入
+const confirmImport = async () => {
+  if (!importFile.value) {
+    ElMessage.warning('请先上传 Excel 文件')
+    return
+  }
+
+  try {
+    const response = await importUser(importFile.value, updateSupport.value)
+    
+    if (response.code === 200) {
+      importResult.value = response.data
+      importDialogVisible.value = false
+      importResultDialogVisible.value = true
+      
+      if (importResult.value.failureNum > 0) {
+        ElMessage.warning(`导入完成！成功 ${importResult.value.successNum} 条，失败 ${importResult.value.failureNum} 条`)
+      } else {
+        ElMessage.success(`导入成功！共导入 ${importResult.value.successNum} 条数据`)
+      }
+      
+      // 刷新列表
+      refreshData()
+    } else {
+      ElMessage.error(response.msg || '导入失败')
+    }
+  } catch (error) {
+    console.error('导入失败:', error)
+    ElMessage.error(error.message || '导入失败，请检查文件格式是否正确')
+  }
+}
+
+// 关闭导入结果对话框
+const closeImportResult = () => {
+  importResultDialogVisible.value = false
+  importResult.value = null
+}
 </script>
 <style scoped lang="scss">
 

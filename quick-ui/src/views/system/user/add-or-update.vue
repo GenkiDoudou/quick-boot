@@ -14,8 +14,6 @@
           </el-form-item>
         </el-col>
       </el-row>
-
-
       <el-row>
         <el-col :span="20">
           <el-form-item label="用户昵称" prop="nickName">
@@ -58,7 +56,7 @@
       </el-row>
 
 
-      <el-row>
+      <el-row v-if="!dataForm.id">
         <el-col :span="20">
           <el-form-item label="密码" prop="password">
             <el-input v-model="dataForm.password" type="password"
@@ -117,6 +115,7 @@ import {ref, getCurrentInstance} from 'vue'
 
 import {C7Dialog, C7Radio} from "@/components/c7";
 import baseService from "@/service/baseService.js";
+import {validateEmail, validatePassword, validatePhone} from "@/utils/validate.js";
 
 const visibleRef = ref(false)
 const {proxy} = getCurrentInstance();
@@ -141,13 +140,7 @@ const dataForm = ref({
 
 
 })
-const validatePassword = (rule, value, callback) => {
 
-  if (!dataForm.value.id && (value == '' || value.length == 0)) {
-    return callback(new Error("密码不能为空"));
-  }
-  callback();
-}
 //  校验
 const rules = ref(
     {
@@ -155,11 +148,17 @@ const rules = ref(
       userName: [{required: true, message: '请输入用户账号', trigger: 'blur'}],
       nickName: [{required: true, message: '请输入用户昵称', trigger: 'blur'}],
       password: [
-
-        {validator: validatePassword, trigger: "blur"}
+        {required: true, message: '请输入密码', trigger: 'blur'},
+        {validator: proxy.$validate.validatePassword, trigger: "blur"}
       ],
       status: [{required: true, message: '请输入帐号状态', trigger: 'blur'}],
       roleIds: [{required: true, message: '请输入角色', trigger: 'blur'}],
+      phonenumber: [
+        {validator: proxy.$validate.validatePhone, trigger: "blur"}
+      ],
+      email: [
+        {validator: proxy.$validate.validateEmail, trigger: "blur"}
+      ]
 
 
     }
@@ -184,6 +183,7 @@ const dataFormRef = ref()
 // 提交
 const submit = () => {
   dataFormRef.value.validate(valid => {
+    console.log(valid)
     if (valid) {
 
 

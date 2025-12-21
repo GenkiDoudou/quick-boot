@@ -15,6 +15,7 @@
             :tableProps="tableProps"
             rowsKey="data.records"
             totalKey="data.total"
+            :export-function="exportDict"
             @addBtnHandle="handleAdd"
             @editBtnHandle="handleEdit"
             @deleteBtnHandle="handleDelete"
@@ -25,20 +26,13 @@
           </template>
           <template #table-operate="scope">
             <!-- 使用 c7-button-group 和 c7-button 组件 -->
-            <c7-button-group :maxVisible="1" mode="auto" trigger="click" >
+            <c7-button-group :maxVisible="4" mode="auto" trigger="click" >
               <c7-button 
                 btnType="edit" 
                 @click="handleEdit(scope.row)" 
                 v-hasPermi="['system:dict:edit']"
               />
-              <c7-button 
-                type="success" 
-                icon="Plus" 
-                @click="toData(scope.row)"
-                v-hasPermi="['system:dict:list']"
-              >
-                字典项
-              </c7-button>
+
               <c7-button 
                 btnType="delete" 
                 :confirm="true"
@@ -46,22 +40,8 @@
                 @click="handleDelete(scope.row.id)" 
                 v-hasPermi="['system:dict:remove']"
               />
-              <c7-button 
-                type="warning" 
-                icon="View" 
-                @click="handleView(scope.row)"
-                v-hasPermi="['system:dict:query']"
-              >
-                查看
-              </c7-button>
-              <c7-button 
-                type="info" 
-                icon="CopyDocument" 
-                @click="handleCopy(scope.row)"
-                v-hasPermi="['system:dict:add']"
-              >
-                复制
-              </c7-button>
+
+
             </c7-button-group>
           </template>
         </c7-json-table>
@@ -84,7 +64,7 @@ import {C7JsonTable, C7Button, C7SwitchForm, C7ButtonGroup} from "@/components/c
 import {reactive, ref, toRefs, nextTick, getCurrentInstance} from "vue";
 import {ElMessage, ElMessageBox} from 'element-plus';
 import AddOrUpdate from "./add-or-update.vue";
-import {listType as listDict, delType as delDict} from '@/api/system/dict/type.js';
+import {listType as listDict, delType as delDict,exportDict} from '@/api/system/dict/type.js';
 import DataList from "@/views/system/dict/data.vue";
 // 搜索字段
 const searchColumns = ref([
@@ -125,35 +105,33 @@ const tableColumns = ref([
   {
     label: "字典名称",
     prop: "dictName",
-    showOverflowTooltip: true
   },
   {
     label: "字典类型",
     prop: "dictType",
     columnType: 'slot',
     slotName: 'dictType',
-    showOverflowTooltip: true
   },
   {
     label: "状态",
     prop: "status",
     columnType: 'tag',
-    dictList: sys_normal_disable
+    dictList: sys_normal_disable,
   },
   {
     label: "备注",
     prop: "remark",
-    showOverflowTooltip: true
+    showOverflowTooltip: true,
   },
   {
     label: "创建时间",
-    prop: "createTime"
+    prop: "createTime",
   },
   {
     label: "操作",
     prop: "table-operate",
-    width: 250,
-    fixed: "right"
+
+
   }
 ]);
 
@@ -233,11 +211,7 @@ const handleView = (row) => {
   // 这里可以添加查看详情的逻辑
 };
 
-// 复制字典
-const handleCopy = (row) => {
-  ElMessage.success(`复制字典: ${row.dictType}`);
-  // 这里可以添加复制字典的逻辑
-};
+
 const showIndexs = ref([{
   title: '列表',
   name: 'list',

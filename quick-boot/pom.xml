@@ -54,8 +54,8 @@
 	</dependencies>
 
 	<dependencyManagement>
-
 		<dependencies>
+
 			<!-- 内部模块依赖管理 -->
 			<dependency>
 				<groupId>com.su60.quickboot.common</groupId>
@@ -104,11 +104,7 @@
 				<artifactId>UserAgentUtils</artifactId>
 				<version>${useragentutils.version}</version>
 			</dependency>
-			<dependency>
-				<groupId>com.turn</groupId>
-				<artifactId>ttorrent-core</artifactId>
-				<version>${ttorrent.version}</version>
-			</dependency>
+
 			<dependency>
 				<groupId>com.baomidou</groupId>
 				<artifactId>mybatis-plus-spring-boot3-starter</artifactId>
@@ -141,6 +137,7 @@
 				<artifactId>hutool-all</artifactId>
 				<version>${hutool-all.version}</version>
 			</dependency>
+
 
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
@@ -307,28 +304,28 @@ Changelog of My Project.
 		</plugins>
 	</build>
 
-	<!-- 阿里云maven仓库 -->
-	<repositories>
-		<repository>
-			<id>public</id>
-			<name>aliyun nexus</name>
-			<url>https://maven.aliyun.com/repository/public/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-		</repository>
-	</repositories>
-	<pluginRepositories>
-		<pluginRepository>
-			<id>public</id>
-			<name>aliyun nexus</name>
-			<url>https://maven.aliyun.com/repository/public/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</pluginRepository>
-	</pluginRepositories>
+<!--	&lt;!&ndash; 阿里云maven仓库 &ndash;&gt;-->
+<!--	<repositories>-->
+<!--		<repository>-->
+<!--			<id>public</id>-->
+<!--			<name>aliyun nexus</name>-->
+<!--			<url>https://maven.aliyun.com/repository/public/</url>-->
+<!--			<releases>-->
+<!--				<enabled>true</enabled>-->
+<!--			</releases>-->
+<!--		</repository>-->
+<!--	</repositories>-->
+<!--	<pluginRepositories>-->
+<!--		<pluginRepository>-->
+<!--			<id>public</id>-->
+<!--			<name>aliyun nexus</name>-->
+<!--			<url>https://maven.aliyun.com/repository/public/</url>-->
+<!--			<releases>-->
+<!--				<enabled>true</enabled>-->
+<!--			</releases>-->
+<!--			<snapshots>-->
+<!--				<enabled>false</enabled>-->
+<!--			</snapshots>-->
+<!--		</pluginRepository>-->
+<!--	</pluginRepositories>-->
 </project>

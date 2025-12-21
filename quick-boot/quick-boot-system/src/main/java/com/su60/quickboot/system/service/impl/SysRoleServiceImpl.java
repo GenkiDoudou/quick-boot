@@ -1,17 +1,23 @@
 package com.su60.quickboot.system.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.exception.Assert;
+import com.su60.quickboot.data.excel.ExcelUtils2;
 import com.su60.quickboot.system.entity.SysRoleEntity;
 import com.su60.quickboot.system.dos.SysRoleDo;
 import com.su60.quickboot.system.entity.SysUserRoleEntity;
+import com.su60.quickboot.system.excel.SysRoleExcel;
 import com.su60.quickboot.system.mapper.SysRoleMapper;
 import com.su60.quickboot.system.service.ISysRoleMenuService;
 import com.su60.quickboot.system.service.ISysRoleService;
 import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.su60.quickboot.system.service.ISysUserRoleService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -111,6 +117,25 @@ public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleE
 	public List<SysRoleDo> listAll(SysRoleDo sysRoleDo) {
 		List<SysRoleEntity> list = super.list(new LambdaQueryWrapper<SysRoleEntity>(BeanConvertUtils.convertTo(sysRoleDo, SysRoleEntity.class)));
 		return BeanConvertUtils.convertListTo(list, SysRoleDo::new);
+	}
+
+	@Override
+	public void export(HttpServletResponse response, SysRoleDo sysRoleDo) throws Exception {
+
+		LambdaQueryWrapper<SysRoleEntity> queryWrapper = new LambdaQueryWrapper<>();
+		queryWrapper.like(StrUtil.isNotBlank(sysRoleDo.getRoleName()), SysRoleEntity::getRoleName, sysRoleDo.getRoleName());
+		queryWrapper.eq(StrUtil.isNotBlank(sysRoleDo.getRoleKey()), SysRoleEntity::getRoleKey, sysRoleDo.getRoleKey());
+		ExcelUtils2.builder(response)
+				.addSheet(ExcelUtils2.sheet(SysRoleExcel.class)
+						.name("角色列表")
+						.page(current -> {
+
+							IPage<SysRoleEntity> page = new Page(current, 100);
+							page = this.baseMapper.selectPage(page, queryWrapper);
+							List<SysRoleEntity> records = page.getRecords();
+							return BeanConvertUtils.convertListTo(records, SysRoleExcel::new);
+						}).build())
+				.export("角色列表");
 	}
 }
 

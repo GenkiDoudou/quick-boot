@@ -1,11 +1,11 @@
 package com.su60.quickboot.data.mybatisplus;
 
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.core.PageRequest;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.github.yulichang.base.MPJBaseServiceImpl;
 
 /**
  * 基础Service实现
@@ -15,7 +15,7 @@ import com.github.yulichang.base.MPJBaseServiceImpl;
  * @author luyanan
  * @since 2023/09/16
  **/
-public class BaseServiceImpl<M extends BaseBaseMapper<T>, T> extends MPJBaseServiceImpl<M, T> implements IBaseService<T> {
+public class BaseServiceImpl<M extends BaseBaseMapper<T>, T> extends ServiceImpl<M, T> implements IBaseService<T> {
 	@Override
 	public PageInfo<T> page(PageRequest<T> pageRequest, PageHandler<T> pageHandler) {
 		IPage iPage = getPage(pageRequest);

@@ -13,6 +13,7 @@ import com.su60.quickboot.system.entity.SysDictTypeEntity;
 import com.su60.quickboot.system.service.ISysDictDataService;
 import com.su60.quickboot.system.service.ISysDictTypeService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.validation.annotation.Validated;
@@ -215,5 +216,20 @@ public class SysDictControllr {
 		return sysDictTypeService.listAll().stream().map(item -> new DictVo()
 				.setValue(item.getDictType())
 				.setLabel(item.getDictName())).toList();
+	}
+
+
+	/**
+	 * excel导出
+	 * @since 2025/12/20 
+	 * @param dictTypeDo
+	 * @param response
+	 * @return
+	 */
+
+	@PostMapping("export")
+	public void export(SysDictTypeDo dictTypeDo, HttpServletResponse response) throws Exception {
+
+		sysDictTypeService.export(dictTypeDo, response);
 	}
 }

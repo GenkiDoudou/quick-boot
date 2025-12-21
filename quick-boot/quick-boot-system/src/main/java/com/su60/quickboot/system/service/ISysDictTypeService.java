@@ -3,6 +3,7 @@ package com.su60.quickboot.system.service;
 import com.su60.quickboot.data.mybatisplus.IBaseService2;
 import com.su60.quickboot.system.dos.SysDictTypeDo;
 import com.su60.quickboot.system.entity.SysDictTypeEntity;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -26,4 +27,13 @@ public interface ISysDictTypeService extends IBaseService2<SysDictTypeEntity, Sy
 	 */
 	List<SysDictTypeEntity> listAll();
 
+	/**
+	 * excel导出
+	 * @since 2025/12/20
+	 * @param dictTypeDo
+	 * @param response
+	 * @return
+	 */
+
+	void export(SysDictTypeDo dictTypeDo, HttpServletResponse response) throws Exception;
 }

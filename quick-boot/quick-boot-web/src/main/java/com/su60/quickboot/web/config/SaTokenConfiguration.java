@@ -1,6 +1,8 @@
 package com.su60.quickboot.web.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
+import cn.dev33.satoken.jwt.StpLogicJwtForStateless;
+import cn.dev33.satoken.stp.StpLogic;
 import com.su60.quickboot.common.captcha.CaptchaService;
 import com.su60.quickboot.common.captcha.CaptchaServiceImpl;
 import com.su60.quickboot.common.security.PasswordEncoder;
@@ -46,4 +48,10 @@ public class SaTokenConfiguration implements WebMvcConfigurer {
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
+//
+	// Sa-Token 整合 jwt (Simple 简单模式)
+	@Bean
+	public StpLogic getStpLogicJwt() {
+		return new StpLogicJwtForStateless();
+	}
 }

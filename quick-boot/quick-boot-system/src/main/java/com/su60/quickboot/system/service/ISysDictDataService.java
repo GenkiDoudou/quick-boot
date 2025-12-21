@@ -34,4 +34,12 @@ public interface ISysDictDataService extends IBaseService2<SysDictDataEntity, Sy
 	 * @since 2024/10/12
 	 */
 	boolean hasData(String dictType);
+
+
+	/**
+	 * 清空缓存
+	 * @since 2025/11/29
+	 * @return
+	 */
+	void clear();
 }

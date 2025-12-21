@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request, {downloadRequest} from '@/utils/request'
 
 // 查询字典类型列表
 export function listType(query) {
@@ -57,4 +57,9 @@ export function optionselect() {
     url: '/system/dict/type/optionselect',
     method: 'get'
   })
+}
+
+// 导出用户
+export function exportDict(queryParams) {
+  return downloadRequest('/system/dict/export', queryParams)
 }

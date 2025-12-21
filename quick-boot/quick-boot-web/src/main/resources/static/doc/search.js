@@ -376,6 +376,13 @@ api[0].list[6].list.push({
     methodId: 'a00fcfbe91263b97cd8aa3435adabd88',
     desc: '查询所有的字典项',
 });
+api[0].list[6].list.push({
+    order: '13',
+    deprecated: 'false',
+    url: 'http://localhost:12000/system/dict/export',
+    methodId: '99292bca8e7a3fb475482772f627cef3',
+    desc: 'excel导出',
+});
 api[0].list.push({
     alias: 'SysLogininforController',
     order: '8',
@@ -589,9 +596,37 @@ api[0].list[11].list.push({
 api[0].list[11].list.push({
     order: '5',
     deprecated: 'false',
-    url: 'http://localhost:12000/sys/user',
+    url: 'http://localhost:12000/sys/user/delete',
     methodId: '12b78821c364a56c84b91f5b49527e8b',
     desc: '根据ids 删除',
+});
+api[0].list[11].list.push({
+    order: '6',
+    deprecated: 'false',
+    url: 'http://localhost:12000/sys/user/resetPwd/{userId}',
+    methodId: 'b339f509619d9c2d5a1c5fbb12db58ec',
+    desc: '重置密码',
+});
+api[0].list[11].list.push({
+    order: '7',
+    deprecated: 'false',
+    url: 'http://localhost:12000/sys/user/updateStatus/{userId}/{status}',
+    methodId: '31014cf6b2c810907c3a5aa7ea05be3b',
+    desc: '修改状态',
+});
+api[0].list[11].list.push({
+    order: '8',
+    deprecated: 'false',
+    url: 'http://localhost:12000/sys/user/exportExcel',
+    methodId: 'b69506102d5961f1dbed95059228f4a9',
+    desc: '导出excel',
+});
+api[0].list[11].list.push({
+    order: '9',
+    deprecated: 'false',
+    url: 'http://localhost:12000/sys/user/importExcel',
+    methodId: '03ab1d566ae6f04756727f6c969e804c',
+    desc: '导入excel',
 });
 api[0].list.push({
     alias: 'FileController',
