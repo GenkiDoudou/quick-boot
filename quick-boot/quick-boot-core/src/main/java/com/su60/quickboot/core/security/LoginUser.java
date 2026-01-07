@@ -1,5 +1,6 @@
 package com.su60.quickboot.core.security;
 
+import com.su60.quickboot.data.datascope.DataScopeType;
 import lombok.Data;
 
 import java.util.Date;
@@ -92,6 +93,30 @@ public class LoginUser {
 	private List<String> perms;
 
 	private String clientId;
+
+	/**
+	 * 用户权限(最大权限)
+	 * @since 2025/12/26
+	 */
+
+	private DataScopeType dataScopeType;
+
+
+	/**
+	 * 权限部门
+	 * @author luyanan
+	 * @since 2026/1/3
+	 */
+
+	private List<Long> dataScopeDeptIds;
+
+
+	/**
+	 * 部门id
+	 * @since 2025/12/26
+	 */
+
+	private Long deptId;
 
 	/**
 	 * 获取密码

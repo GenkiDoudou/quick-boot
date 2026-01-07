@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 import jakarta.validation.constraints.NotNull;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
@@ -91,6 +92,18 @@ public class SysLogininforDo implements Serializable {
 	private Long userId;
 
 
+	/**
+	 * 登录/注销
+	 * @since 2025/12/21
+	 */
+
+	private String loginType;
+	/**
+	 * 结果(成功/失败)
+	 * @since 2025/12/21
+	 */
+
+	private String loginResult;
 	/**
 	 * 客户端id
 	 *

@@ -4,6 +4,7 @@ import cn.hutool.core.lang.tree.Tree;
 import cn.hutool.core.lang.tree.TreeNode;
 import cn.hutool.core.lang.tree.TreeUtil;
 import cn.hutool.core.map.MapBuilder;
+import com.su60.quickboot.common.core.R;
 import com.su60.quickboot.common.validation.AddGroup;
 import com.su60.quickboot.common.validation.UpdateGroup;
 import com.su60.quickboot.core.security.LoginUserUtils;
@@ -80,6 +81,21 @@ public class SysMenuController {
 	public List<SysMenuDo> list(SysMenuDo sysMenuDo) {
 		return sysMenuService.listByUserId(LoginUserUtils.getUser().getId(), sysMenuDo);
 	}
+
+	/**
+	 * 查询菜单列表(树形)
+	 *
+	 * @param sysMenuDo 菜单信息
+	 * @return 菜单列表
+	 * @since 2024/11/6
+	 */
+	@SaCheckPermission("system:menu:list")
+	@GetMapping("treeList")
+	public List<Tree<Long>> treeList(SysMenuDo sysMenuDo) {
+
+		return sysMenuService.treeList(sysMenuDo, LoginUserUtils.getUser().getId());
+	}
+
 
 	/**
 	 * 根据id查询

@@ -1,6 +1,6 @@
 package com.su60.quickboot.system.service;
 
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
+import cn.hutool.core.lang.tree.Tree;
 import com.su60.quickboot.system.dos.RouterVo;
 import com.su60.quickboot.system.dos.SysMenuDo;
 import com.su60.quickboot.system.dos.TreeSelect;
@@ -17,7 +17,7 @@ import java.util.List;
  * @since 2024/08/07
  */
 
-public interface ISysMenuService extends IBaseService2<SysMenuEntity, SysMenuDo> {
+public interface ISysMenuService {
 
 	/**
 	 * 根据角色id查询权限列表
@@ -93,4 +93,47 @@ public interface ISysMenuService extends IBaseService2<SysMenuEntity, SysMenuDo>
 	 * @return 列表
 	 */
 	List<Long> findParent(Long id);
+
+
+	/**
+	 * 树形菜单列表
+	 * @since 2025/12/23
+	 * @param sysMenuDo 参数
+	 * @param userId  用户id
+	 * @return
+	 */
+	List<Tree<Long>> treeList(SysMenuDo sysMenuDo, Long userId);
+
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id id
+	 * @return
+	 */
+	SysMenuDo getVoById(Long id);
+
+	/**
+	 * 保存
+	 * @since 2025/12/30
+	 * @param sysMenuDo
+	 * @return
+	 */
+	Boolean saveVo(SysMenuDo sysMenuDo);
+
+	/**
+	 * 根据id修改
+	 * @since 2025/12/30
+	 * @param sysMenuDo
+	 * @return
+	 */
+	Boolean updateVoById(SysMenuDo sysMenuDo);
+
+	/**
+	 * 根据id删除
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	Boolean deleteById(Long id);
 }

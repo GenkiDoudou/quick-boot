@@ -1,22 +1,44 @@
 package com.su60.quickboot.data.mybatisplus;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.core.PageRequest;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 
 /**
- * 基础Service实现
- *
- * @param <T> 实体类泛型
- * @param <M> mapper类
+ * service层的扩展层
  * @author luyanan
- * @since 2023/09/16
- **/
-public class BaseServiceImpl<M extends BaseBaseMapper<T>, T> extends ServiceImpl<M, T> implements IBaseService<T> {
-	@Override
+ * @since 2025/12/28
+ */
+
+public abstract class BaseServiceImpl<M extends BaseBaseMapper<T>, T> extends ServiceImpl<M, T> {
+
+
+	/**
+	 * 构建Page对象
+	 *
+	 * @param pageRequest 分页参数
+	 * @return Page对象
+	 * @since 2023/09/13
+	 */
+	public IPage getPage(PageRequest pageRequest) {
+		IPage page = new Page<>();
+		page.setCurrent(pageRequest.getCurrent());
+		page.setSize(pageRequest.getSize());
+		return page;
+	}
+
+	/**
+	 * 分页
+	 *
+	 * @param pageRequest 分页参数
+	 * @param pageHandler 分页处理类
+	 * @return 分页返回
+	 * @since 2023/09/13
+	 */
 	public PageInfo<T> page(PageRequest<T> pageRequest, PageHandler<T> pageHandler) {
 		IPage iPage = getPage(pageRequest);
 
@@ -28,23 +50,29 @@ public class BaseServiceImpl<M extends BaseBaseMapper<T>, T> extends ServiceImpl
 		}
 		pageHandler.queryWrapperHandler(param, queryWrapper);
 		queryWrapper.setEntity(param);
-
-
 		IPage resultPage = this.page(iPage, queryWrapper);
 		return pageHandler.getPageInfo(resultPage);
 	}
 
-	@Override
+
+	/************************vo类操作***********************/
+	/**
+	 * vo分页
+	 *
+	 * @param <V>           vo类泛型
+	 * @param pageRequest   分页参数
+	 * @param voClass       vo类
+	 * @param pageVoHandler 分页处理器
+	 * @return 分页结果
+	 * @since 2023/09/13
+	 */
 	public <V> PageInfo<V> pageVo(PageRequest pageRequest, Class<V> voClass, PageVoHandler<T, V> pageVoHandler) {
 		IPage<T> page = getPage(pageRequest);
 		LambdaQueryWrapper<T> queryWrapper = new LambdaQueryWrapper<>();
-
 		V v = (V) pageRequest.getParam();
-
 		T t = BeanConvertUtils.instantiateClass(currentModelClass());
 		if (null != v) {
 			BeanConvertUtils.copyProperties(v, t);
-
 		}
 		queryWrapper.setEntity(t);
 		pageVoHandler.queryWrapperHandler(v, t, queryWrapper);

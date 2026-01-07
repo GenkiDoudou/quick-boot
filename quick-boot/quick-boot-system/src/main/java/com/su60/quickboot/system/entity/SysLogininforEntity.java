@@ -106,5 +106,16 @@ public class SysLogininforEntity implements Serializable {
 	 */
 
 	private String clientId;
+	/**
+	 * 登录/注销
+	 * @since 2025/12/21
+	 */
 
+	private String loginType;
+	/**
+	 * 结果(成功/失败)
+	 * @since 2025/12/21
+	 */
+
+	private String loginResult;
 }

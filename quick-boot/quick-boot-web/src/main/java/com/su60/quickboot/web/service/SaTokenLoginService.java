@@ -3,27 +3,27 @@ package com.su60.quickboot.web.service;
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.SaLoginConfig;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.StrUtil;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.utils.IpUtils;
 import com.su60.quickboot.common.utils.ServletUtil;
 import com.su60.quickboot.core.security.LoginUser;
 import com.su60.quickboot.core.security.LoginUserUtils;
 import com.su60.quickboot.common.security.PasswordEncoder;
+import com.su60.quickboot.data.datascope.DataScopeType;
 import com.su60.quickboot.data.spring.SpringContextHolder;
 import com.su60.quickboot.system.dos.SysLogininforDo;
 import com.su60.quickboot.system.dos.SysRoleDo;
 import com.su60.quickboot.system.dos.SysUserDo;
-import com.su60.quickboot.system.service.ISysLogininforService;
-import com.su60.quickboot.system.service.ISysMenuService;
-import com.su60.quickboot.system.service.ISysRoleService;
-import com.su60.quickboot.system.service.ISysUserService;
+import com.su60.quickboot.system.entity.SysRoleEntity;
+import com.su60.quickboot.system.service.*;
 import eu.bitwalker.useragentutils.UserAgent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Sa-Token 登录服务
@@ -44,6 +44,10 @@ public class SaTokenLoginService {
 	private final ISysMenuService sysMenuService;
 
 	private final ISysLogininforService logininforService;
+
+	private final ISysRoleDeptService sysRoleDeptService;
+
+	private final ISysDeptService sysDeptService;
 
 	/**
 	 * 用户登录
@@ -79,6 +83,21 @@ public class SaTokenLoginService {
 			loginUser.setStatus(sysUserDo.getStatus());
 			// 查询角色
 			List<SysRoleDo> sysRoleDos = sysRoleService.listByUserId(sysUserDo.getId());
+
+
+			// 权限
+			// TODO 这里是不是可以考虑一下 不放这里 而是直接将角色放缓存里面
+			// 多角色取权限最大的
+//			DataScopeType scope = sysRoleDos.stream()
+//					.filter(a -> StrUtil.isNotBlank(a.getDataScope()))
+//					.map(r -> DataScopeType.valueOf(r.getDataScope()))
+//					.max(Comparator.comparingInt(DataScopeType::getPriority))
+//					.orElse(DataScopeType.SELF);
+//			loginUser.setDataScopeType(scope);
+
+			loginUser.setDeptId(sysUserDo.getDeptId());
+
+
 			List<Long> roleIds = sysRoleDos.stream().map(SysRoleDo::getId).toList();
 			// 角色编码
 			List<String> roleKeys = sysRoleDos.stream().map(SysRoleDo::getRoleKey).toList();
@@ -90,6 +109,41 @@ public class SaTokenLoginService {
 //		if (loginUser.isAdmin()) {
 //			perms.add("*:*:*");
 //		}
+
+			// 这里处理权限的问题
+			List<SysRoleEntity> roleEntities = this.sysRoleService.getVoByIds(new HashSet<>(roleIds));
+			DataScopeType dataScopeType = null;
+			//  1。 如果包含全部数据权限, 则按照最大的权限来
+			//  2.  如果包含自己的权限,  并且 没有其他权限, 则 就是自己
+			List<Long> deptIds = new ArrayList<>();
+			if (roleEntities.stream().anyMatch(a -> a.getDataScope().equals("1"))) {
+				dataScopeType = DataScopeType.ALL;
+			} else {
+				if (roleEntities.size() == 1 && roleEntities.get(0).getDataScope().equals("5")) {
+					dataScopeType = DataScopeType.SELF;
+				} else {
+
+					// 获取部门id
+
+					// 先处理自定义的权限
+					List<Long> customRoleIds = roleEntities.stream().filter(a -> a.getDataScope().equals("2")).distinct().map(SysRoleEntity::getId).collect(Collectors.toList());
+					List<Long> customDeptIds = sysRoleDeptService.listDeptByRoleIds(customRoleIds);
+					deptIds.addAll(customDeptIds);
+					// 本部门权限
+					if (roleEntities.stream().anyMatch(a -> a.getDataScope().equals("3"))) {
+						deptIds.add(sysUserDo.getDeptId());
+					}
+					// 本部门以及以下部门数据权限
+					if (roleEntities.stream().anyMatch(a -> a.getDataScope().equals("4"))) {
+						List<Long> longs = sysDeptService.listDeptAndChild(sysUserDo.getDeptId());
+						deptIds.addAll(longs);
+					}
+					dataScopeType = DataScopeType.DEPT;
+				}
+			}
+
+			loginUser.setDataScopeType(dataScopeType);
+			loginUser.setDataScopeDeptIds(deptIds.stream().distinct().collect(Collectors.toList()));
 			loginUser.setPerms(perms);
 			// 4. 执行登录
 			StpUtil.login(sysUserDo.getId(), SaLoginConfig.setExtra("user", loginUser));

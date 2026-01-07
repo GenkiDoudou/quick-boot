@@ -5,45 +5,40 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
-import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.core.ImportResult;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.exception.WarningException;
 import com.su60.quickboot.common.security.PasswordEncoder;
-import com.su60.quickboot.core.security.LoginUser;
 import com.su60.quickboot.core.security.LoginUserUtils;
-import com.su60.quickboot.data.excel.ExcelUtils;
+import com.su60.quickboot.data.datascope.DataPermission;
 import com.su60.quickboot.data.excel.ExcelUtils2;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
+import com.su60.quickboot.system.dos.SysDeptDo;
+import com.su60.quickboot.system.dos.SysUserDo;
 import com.su60.quickboot.system.entity.SysRoleEntity;
 import com.su60.quickboot.system.entity.SysUserEntity;
-import com.su60.quickboot.system.dos.SysUserDo;
 import com.su60.quickboot.system.entity.SysUserRoleEntity;
 import com.su60.quickboot.system.mapper.SysUserMapper;
+import com.su60.quickboot.system.service.ISysDeptService;
 import com.su60.quickboot.system.service.ISysRoleService;
 import com.su60.quickboot.system.service.ISysUserRoleService;
 import com.su60.quickboot.system.service.ISysUserService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.ibatis.cursor.Cursor;
-import org.apache.ibatis.session.SqlSession;
+import lombok.RequiredArgsConstructor;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -56,7 +51,7 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Service
-public class SysUserServiceImpl extends BaseServiceImpl2<SysUserMapper, SysUserEntity, SysUserDo> implements ISysUserService {
+public class SysUserServiceImpl extends BaseVoServiceImpl<SysUserMapper, SysUserEntity, SysUserDo> implements ISysUserService {
 
 	@Autowired
 	@Lazy
@@ -69,6 +64,8 @@ public class SysUserServiceImpl extends BaseServiceImpl2<SysUserMapper, SysUserE
 
 	@Autowired
 	private SqlSessionFactory sqlSessionFactory;
+
+	private final ISysDeptService sysDeptService;
 
 	@Override
 	public SysUserDo findByUserName(String username) {
@@ -111,7 +108,7 @@ public class SysUserServiceImpl extends BaseServiceImpl2<SysUserMapper, SysUserE
 		if (StrUtil.isNotBlank(sysUserDo.getPassword())) {
 			sysUserDo.setPassword(passwordEncoder.encode(sysUserDo.getPassword()));
 		}
-		Boolean b = this.updateVoById(sysUserDo);
+		Boolean b = super.updateVoById(sysUserDo);
 		// 保存用户和角色关联关系
 		List<Long> roleIds =
 				sysUserDo.getRoleIds();
@@ -184,20 +181,70 @@ public class SysUserServiceImpl extends BaseServiceImpl2<SysUserMapper, SysUserE
 	}
 
 	@Override
-	public Boolean deleteByIds(Collection<? extends Serializable> ids) {
+	public Boolean deleteByIds(List<Long> ids) {
 		// 删除用户与角色的关联关系
 		sysUserRoleService.deleteByUserIds(ids);
 		return super.deleteByIds(ids);
 	}
 
 	@Override
-	public SysUserDo getVoById(Serializable id) {
+	public SysUserDo getVoById(Long id) {
 		SysUserDo aDo = super.getVoById(id);
 		aDo.setPassword(null);
 		// 查询关联关系
 		List<SysUserRoleEntity> sysUserRoleEntities = sysUserRoleService.listByUserId(id);
 		aDo.setRoleIds(sysUserRoleEntities.stream().map(SysUserRoleEntity::getRoleId).collect(Collectors.toList()));
 		return aDo;
+	}
+
+	@DataPermission(tables = {"sys_user"}, userField = "create_by")
+	@Override
+	public PageInfo<SysUserDo> page(SysUserDo sysUserDo) {
+		return super.page(sysUserDo, new PageVoHandler<SysUserEntity, SysUserDo>() {
+			@Override
+			public void queryWrapperHandler(SysUserDo vo, SysUserEntity sysUserEntity, LambdaQueryWrapper<SysUserEntity> queryWrapper) {
+				queryWrapper.orderByDesc(SysUserEntity::getCreateTime);
+				//  用户名搜索
+
+				queryWrapper.like(StrUtil.isNotBlank(vo.getUserName()), SysUserEntity::getUserName, vo.getUserName());
+				sysUserEntity.setUserName(null);
+				// 姓名搜索
+				queryWrapper.like(StrUtil.isNotBlank(vo.getNickName()), SysUserEntity::getNickName, vo.getNickName());
+				sysUserEntity.setNickName(null);
+
+
+			}
+
+			@Override
+			public void recordsHandler(List<SysUserEntity> sysUserEntities, List<SysUserDo> sysUserDos) {
+				Map<Long, List<Long>> userRoleIdsMap = new HashMap<>();
+				Set<Long> allRoleIds = new HashSet<>();
+				List<Long> deptIds = sysUserDos.stream().map(SysUserDo::getDeptId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+				Map<Long, SysDeptDo> sysDeptDoMap = new HashMap<>();
+				if (CollectionUtil.isNotEmpty(deptIds)) {
+					sysDeptDoMap = sysDeptService.listByIds(deptIds);
+				}
+				for (SysUserDo userDo : sysUserDos) {
+					userDo.setPassword(null);
+					// 查询关联的角色
+					List<Long> roleIds = sysRoleService.listRoleIdUserId(userDo.getId());
+					allRoleIds.addAll(roleIds);
+					userRoleIdsMap.put(userDo.getId(), roleIds);
+				}
+
+				Map<Long, String> roleMap = sysRoleService.getVoByIds(allRoleIds).stream().collect(Collectors.toMap(k -> k.getId(), v -> v.getRoleName()));
+				for (SysUserDo userDo : sysUserDos) {
+					List<Long> roleIds = userRoleIdsMap.get(userDo.getId());
+					// 设置角色名称
+					userDo.setRoleIds(roleIds);
+					userDo.setRoleNames(roleIds.stream().map(roleMap::get).collect(Collectors.joining(",")));
+
+					// 设置部门
+					userDo.setDeptName(sysDeptDoMap.get(userDo.getDeptId()) == null ? null : sysDeptDoMap.get(userDo.getDeptId()).getDeptName());
+				}
+
+			}
+		});
 	}
 
 	@Override
@@ -294,5 +341,7 @@ public class SysUserServiceImpl extends BaseServiceImpl2<SysUserMapper, SysUserE
 
 		return importResult;
 	}
+
+
 }
 

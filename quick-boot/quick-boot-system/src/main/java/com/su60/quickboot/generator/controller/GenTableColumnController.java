@@ -40,13 +40,10 @@ public class GenTableColumnController {
 	@GetMapping("list")
 	public PageInfo<GenTableColumnDo> page(GenTableColumnDo genTableColumnDo) {
 
-		return genTableColumnService.page(genTableColumnDo, new PageVoHandler<GenTableColumnEntity, GenTableColumnDo>() {
-			@Override
-			public void queryWrapperHandler(GenTableColumnDo vo, GenTableColumnEntity genTableColumnEntity, LambdaQueryWrapper<GenTableColumnEntity> queryWrapper) {
-			}
+
+		return  genTableColumnService.page(genTableColumnDo);
 
 
-		});
 	}
 
 

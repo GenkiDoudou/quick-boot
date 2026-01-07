@@ -1,10 +1,14 @@
 package com.su60.quickboot.quartz.service.impl;
 
+import cn.hutool.core.util.StrUtil;
+import com.su60.quickboot.common.core.PageInfo;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.quartz.entity.SysJobLogEntity;
 import com.su60.quickboot.quartz.dos.SysJobLogDo;
 import com.su60.quickboot.quartz.mapper.SysJobLogMapper;
 import com.su60.quickboot.quartz.service.ISysJobLogService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +23,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 @Service
-public class SysJobLogServiceImpl extends BaseServiceImpl2<SysJobLogMapper, SysJobLogEntity, SysJobLogDo> implements ISysJobLogService {
+public class SysJobLogServiceImpl extends BaseVoServiceImpl<SysJobLogMapper, SysJobLogEntity, SysJobLogDo> implements ISysJobLogService {
 
 	@Override
 	public void addJobLog(SysJobLogDo sysJobLog) {
@@ -30,6 +34,28 @@ public class SysJobLogServiceImpl extends BaseServiceImpl2<SysJobLogMapper, SysJ
 	public Boolean clean(Long jobId) {
 		return super.remove(new LambdaQueryWrapper<SysJobLogEntity>()
 				.eq(null != jobId, SysJobLogEntity::getJobId, jobId));
+	}
+
+	@Override
+	public PageInfo<SysJobLogDo> page(SysJobLogDo sysJobLogDo) {
+		return super.page(sysJobLogDo, new PageVoHandler<SysJobLogEntity, SysJobLogDo>() {
+			@Override
+			public void queryWrapperHandler(SysJobLogDo vo, SysJobLogEntity sysJobLogEntity, LambdaQueryWrapper<SysJobLogEntity> queryWrapper) {
+				queryWrapper.like(StrUtil.isNotBlank(sysJobLogEntity.getJobName()), SysJobLogEntity::getJobName, vo.getJobName());
+				sysJobLogEntity.setJobName(null);
+				queryWrapper.like(StrUtil.isNotBlank(sysJobLogEntity.getInvokeTarget()), SysJobLogEntity::getInvokeTarget, vo.getInvokeTarget());
+				sysJobLogEntity.setInvokeTarget(null);
+				queryWrapper.orderByDesc(SysJobLogEntity::getCreateTime);
+
+			}
+
+
+		});
+	}
+
+	@Override
+	public SysJobLogDo getVoById(Long id) {
+		return super.getVoById(id);
 	}
 }
 

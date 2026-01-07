@@ -2,28 +2,32 @@ package com.su60.quickboot.system.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.exception.Assert;
 import com.su60.quickboot.data.excel.ExcelUtils2;
-import com.su60.quickboot.system.entity.SysRoleEntity;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.system.dos.SysRoleDo;
+import com.su60.quickboot.system.entity.SysRoleEntity;
 import com.su60.quickboot.system.entity.SysUserRoleEntity;
 import com.su60.quickboot.system.excel.SysRoleExcel;
 import com.su60.quickboot.system.mapper.SysRoleMapper;
+import com.su60.quickboot.system.service.ISysRoleDeptService;
 import com.su60.quickboot.system.service.ISysRoleMenuService;
 import com.su60.quickboot.system.service.ISysRoleService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.su60.quickboot.system.service.ISysUserRoleService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -36,10 +40,12 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @Service
-public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleEntity, SysRoleDo> implements ISysRoleService {
+public class SysRoleServiceImpl extends BaseVoServiceImpl<SysRoleMapper, SysRoleEntity, SysRoleDo> implements ISysRoleService {
 
 	private final ISysUserRoleService sysUserRoleService;
 	private final ISysRoleMenuService sysRoleMenuService;
+
+	private final ISysRoleDeptService sysRoleDeptService;
 
 	@Override
 	public List<SysRoleDo> listByUserId(Long userId) {
@@ -66,6 +72,12 @@ public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleE
 		// 保存角色菜单关联关系
 
 		sysRoleMenuService.save(sysRoleEntity.getId(), sysRoleDo.getMenuIds());
+
+		// 保存角色和自定义部门的关联关系
+		if (!sysRoleDo.getDataScope().equals("2")) {
+			sysRoleDo.setDeptIds(new ArrayList<>());
+		}
+		sysRoleDeptService.save(sysRoleEntity.getId(), sysRoleDo.getDeptIds());
 		return true;
 	}
 
@@ -73,6 +85,8 @@ public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleE
 	public boolean delete(List<Long> ids) {
 		// 删除角色跟菜单的关联关系
 		sysRoleMenuService.delete(ids);
+		// 删除角色与部门的关联关系
+		sysRoleDeptService.deleteByRoleIds(ids);
 		return this.removeByIds(ids);
 	}
 
@@ -99,6 +113,12 @@ public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleE
 		SysRoleEntity sysRoleEntity = BeanConvertUtils.convertTo(sysRoleDo, SysRoleEntity::new);
 		// 角色关联的菜单
 		sysRoleMenuService.save(sysRoleEntity.getId(), sysRoleDo.getMenuIds());
+
+		// 保存角色和自定义部门的关联关系
+		if (!sysRoleDo.getDataScope().equals("2")) {
+			sysRoleDo.setDeptIds(new ArrayList<>());
+		}
+		sysRoleDeptService.save(sysRoleEntity.getId(), sysRoleDo.getDeptIds());
 		return super.updateById(sysRoleEntity);
 
 	}
@@ -136,6 +156,41 @@ public class SysRoleServiceImpl extends BaseServiceImpl2<SysRoleMapper, SysRoleE
 							return BeanConvertUtils.convertListTo(records, SysRoleExcel::new);
 						}).build())
 				.export("角色列表");
+	}
+
+	@Override
+	public SysRoleDo getVoById(Long roleId) {
+		SysRoleDo sysRoleDo = super.getVoById(roleId);
+		if (sysRoleDo.getDataScope().equals("2")) {
+			List<Long> deptIds = sysRoleDeptService.listDeptByRoleId(roleId);
+			sysRoleDo.setDeptIds(deptIds);
+		} else {
+			sysRoleDo.setDeptIds(new ArrayList<>());
+		}
+		return sysRoleDo;
+	}
+
+	@Override
+	public PageInfo<SysRoleDo> page(SysRoleDo sysRoleDo) {
+		return super.page(sysRoleDo, new PageVoHandler<SysRoleEntity, SysRoleDo>() {
+			@Override
+			public void queryWrapperHandler(SysRoleDo vo, SysRoleEntity sysRoleEntity, LambdaQueryWrapper<SysRoleEntity> queryWrapper) {
+				queryWrapper.orderByDesc(SysRoleEntity::getCreateTime);
+				queryWrapper.like(StrUtil.isNotBlank(sysRoleEntity.getRoleName()), SysRoleEntity::getRoleName, sysRoleEntity.getRoleName());
+				sysRoleEntity.setRoleName(null);
+
+				queryWrapper.like(StrUtil.isNotBlank(sysRoleEntity.getRoleKey()), SysRoleEntity::getRoleKey, sysRoleEntity.getRoleKey());
+				sysRoleEntity.setRoleKey(null);
+			}
+		});
+	}
+
+	@Override
+	public List<SysRoleEntity> getVoByIds(Set<Long> ids) {
+		if (CollectionUtil.isEmpty(ids)) {
+			return new ArrayList<>();
+		}
+		return super.listByIds(ids);
 	}
 }
 

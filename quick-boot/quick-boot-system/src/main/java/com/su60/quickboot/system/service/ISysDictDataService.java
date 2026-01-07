@@ -1,8 +1,8 @@
 package com.su60.quickboot.system.service;
 
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.system.entity.SysDictDataEntity;
 import com.su60.quickboot.system.dos.SysDictDataDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * @since 2024/08/07
  */
 
-public interface ISysDictDataService extends IBaseService2<SysDictDataEntity, SysDictDataDo> {
+public interface ISysDictDataService {
 
 	/**
 	 * 根据字段类型查询字典项的信息
@@ -42,4 +42,46 @@ public interface ISysDictDataService extends IBaseService2<SysDictDataEntity, Sy
 	 * @return
 	 */
 	void clear();
+
+	/**
+	 * 分页查询
+	 * @since 2025/12/30
+	 * @param sysDictDataDo
+	 * @return
+	 */
+
+	PageInfo<SysDictDataDo> page(SysDictDataDo sysDictDataDo);
+
+	/**
+	 * 保存
+	 * @since 2025/12/30
+	 * @param sysDictDataDo
+	 * @return
+	 */
+
+	Boolean saveVo(SysDictDataDo sysDictDataDo);
+
+	/**
+	 * 根据id修改
+	 * @since 2025/12/30
+	 * @param sysDictDataDo
+	 * @return
+	 */
+	Boolean updateVoById(SysDictDataDo sysDictDataDo);
+
+	/**
+	 * 根据id集合删除
+	 * @since 2025/12/30
+	 * @param ids  id集合
+	 * @return
+	 */
+	Boolean deleteByIds(List<Long> ids);
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	SysDictDataDo getVoById(Long id);
 }

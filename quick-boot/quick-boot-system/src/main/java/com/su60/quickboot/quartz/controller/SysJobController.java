@@ -44,21 +44,8 @@ public class SysJobController {
 	@GetMapping("list")
 	public PageInfo<SysJobDo> page(SysJobDo sysJobDo) {
 
-		return sysJobService.page(sysJobDo, new PageVoHandler<SysJobEntity, SysJobDo>() {
-			@Override
-			public void queryWrapperHandler(SysJobDo vo, SysJobEntity sysJobEntity, LambdaQueryWrapper<SysJobEntity> queryWrapper) {
 
-
-				queryWrapper.like(StrUtil.isNotBlank(vo.getJobName()), SysJobEntity::getJobName, vo.getJobName());
-				sysJobEntity.setJobName(null);
-				queryWrapper.like(StrUtil.isNotBlank(vo.getInvokeTarget()), SysJobEntity::getInvokeTarget, vo.getInvokeTarget());
-				sysJobEntity.setInvokeTarget(null);
-
-
-			}
-
-			;
-		});
+		return  sysJobService.page(sysJobDo);
 
 	}
 

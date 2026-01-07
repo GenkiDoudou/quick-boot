@@ -141,7 +141,6 @@ public class SysUserDo implements Serializable {
 	 *
 	 * @since 2024/08/07
 	 */
-	@NotBlank
 	private String loginIp;
 
 
@@ -219,5 +218,21 @@ public class SysUserDo implements Serializable {
 	 */
 
 	private String searchCreateTime;
+
+
+	/**
+	 * 部门id
+	 * @since 2025/12/24
+	 */
+
+	private Long deptId;
+
+
+	/**
+	 * 部门名称
+	 * @since 2025/12/25
+	 */
+
+	private String deptName;
 
 }

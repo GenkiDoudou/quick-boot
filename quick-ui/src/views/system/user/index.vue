@@ -13,7 +13,7 @@
         :exportFunction="exportUser"
         @addBtnHandle="handleAdd"
         @editBtnHandle="handleEdit"
-        @importBtnHandle ="importBtnHandle"
+        @importBtnHandle="importBtnHandle"
     >
       <template #status="{ row }">
         <el-switch
@@ -77,29 +77,31 @@
         @close="importDialogVisible = false"
     >
       <C7Upload style="margin-left: 10%"
-          ref="uploadRef"
-          :auto-upload="false"
-          :on-remove="handleFileRemove"
-          :before-upload="beforeUpload"
-          :limit="1"
-          :file-type="'xlsx,xls'"
-          :file-size="10"
-          :upload-url="'111'"
+                ref="uploadRef"
+                :auto-upload="false"
+                :on-remove="handleFileRemove"
+                :before-upload="beforeUpload"
+                :limit="1"
+                :file-type="'xlsx,xls'"
+                :file-size="10"
+                :upload-url="'111'"
       >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <el-icon class="el-icon--upload">
+          <UploadFilled/>
+        </el-icon>
         <div class="el-upload__text">
           将文件拖到此处，或<em>点击上传</em>
         </div>
       </C7Upload>
-      
+
       <el-checkbox v-model="updateSupport" style="margin-top: 20px; margin-left: 10%">
         是否更新已经存在的用户数据
       </el-checkbox>
-      
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="importDialogVisible = false">取消</el-button>
-          <el-button  type="primary" @click="confirmImport = false">取消</el-button>
+          <el-button type="primary" @click="confirmImport = false">取消</el-button>
         </div>
       </template>
     </C7Dialog>
@@ -123,7 +125,7 @@
             :closable="false"
             style="margin-bottom: 20px;"
         />
-        
+
         <div v-if="importResult.failureNum > 0 && importResult.failureList && importResult.failureList.length > 0">
           <div style="margin-bottom: 10px; font-weight: bold;">失败数据详情：</div>
           <el-table
@@ -145,7 +147,7 @@
           </el-table>
         </div>
       </div>
-      
+
       <template #footer>
         <div class="dialog-footer">
           <C7Button type="primary" @click="closeImportResult">确定</C7Button>
@@ -243,6 +245,11 @@ const tableColumns = ref([
     showOverflowTooltip: true
   },
   {
+    label: "部门名称",
+    prop: "deptName",
+
+  },
+  {
     label: "用户邮箱",
     prop: "email",
 
@@ -298,7 +305,6 @@ const handleEdit = (row) => {
 };
 
 
-
 const handleResetPwd = async (row) => {
   try {
     await ElMessageBox.confirm(
@@ -318,10 +324,6 @@ const handleResetPwd = async (row) => {
     }
   }
 };
-
-
-
-
 
 
 // 状态修改
@@ -396,18 +398,18 @@ const confirmImport = async () => {
 
   try {
     const response = await importUser(importFile.value, updateSupport.value)
-    
+
     if (response.code === 200) {
       importResult.value = response.data
       importDialogVisible.value = false
       importResultDialogVisible.value = true
-      
+
       if (importResult.value.failureNum > 0) {
         ElMessage.warning(`导入完成！成功 ${importResult.value.successNum} 条，失败 ${importResult.value.failureNum} 条`)
       } else {
         ElMessage.success(`导入成功！共导入 ${importResult.value.successNum} 条数据`)
       }
-      
+
       // 刷新列表
       refreshData()
     } else {

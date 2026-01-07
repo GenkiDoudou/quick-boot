@@ -12,8 +12,10 @@ import com.su60.quickboot.common.core.PageRequest;
 import com.su60.quickboot.common.exception.WarningException;
 import com.su60.quickboot.data.generator.*;
 import com.su60.quickboot.data.generator.query.GeneratorInterceptor;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
 import com.su60.quickboot.data.mybatisplus.PageUtils;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.generator.dos.GenTableDo;
 import com.su60.quickboot.generator.dos.GenTablePreviewVo;
 import com.su60.quickboot.generator.entity.GenTableColumnEntity;
@@ -45,7 +47,7 @@ import java.util.zip.ZipOutputStream;
  */
 @RequiredArgsConstructor
 @Service
-public class GenTableServiceImpl extends BaseServiceImpl2<GenTableMapper, GenTableEntity, GenTableDo> implements IGenTableService {
+public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTableEntity, GenTableDo> implements IGenTableService {
 
 	private final DataSource dataSource;
 
@@ -74,7 +76,6 @@ public class GenTableServiceImpl extends BaseServiceImpl2<GenTableMapper, GenTab
 		}
 		return true;
 	}
-
 
 
 	@Override
@@ -279,6 +280,38 @@ public class GenTableServiceImpl extends BaseServiceImpl2<GenTableMapper, GenTab
 //
 //		}
 		return previewVos;
+	}
+
+	@Override
+	public PageInfo<GenTableDo> page(GenTableDo genTableDo) {
+		return super.page(genTableDo, new PageVoHandler<GenTableEntity, GenTableDo>() {
+			@Override
+			public void queryWrapperHandler(GenTableDo vo, GenTableEntity genTableEntity, LambdaQueryWrapper<GenTableEntity> queryWrapper) {
+				queryWrapper.orderByDesc(GenTableEntity::getCreateTime);
+			}
+
+
+		});
+	}
+
+	@Override
+	public Boolean saveVo(GenTableDo genTableDo) {
+		return super.saveVo(genTableDo);
+	}
+
+	@Override
+	public Boolean updateVoById(GenTableDo genTableDo) {
+		return super.updateVoById(genTableDo);
+	}
+
+	@Override
+	public GenTableDo getVoById(Long id) {
+		return super.getVoById(id);
+	}
+
+	@Override
+	public Boolean deleteByIds(List<Long> ids) {
+		return super.deleteByIds(ids);
 	}
 
 

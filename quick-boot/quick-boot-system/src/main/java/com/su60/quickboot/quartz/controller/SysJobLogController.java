@@ -39,19 +39,8 @@ public class SysJobLogController {
 	@GetMapping("list")
 	public PageInfo<SysJobLogDo> page(SysJobLogDo sysJobLogDo) {
 
-		return sysJobLogService.page(sysJobLogDo, new PageVoHandler<SysJobLogEntity, SysJobLogDo>() {
-			@Override
-			public void queryWrapperHandler(SysJobLogDo vo, SysJobLogEntity sysJobLogEntity, LambdaQueryWrapper<SysJobLogEntity> queryWrapper) {
-				queryWrapper.like(StrUtil.isNotBlank(sysJobLogEntity.getJobName()), SysJobLogEntity::getJobName, vo.getJobName());
-				sysJobLogEntity.setJobName(null);
-				queryWrapper.like(StrUtil.isNotBlank(sysJobLogEntity.getInvokeTarget()), SysJobLogEntity::getInvokeTarget, vo.getInvokeTarget());
-				sysJobLogEntity.setInvokeTarget(null);
-				queryWrapper.orderByDesc(SysJobLogEntity::getCreateTime);
 
-			}
-
-
-		});
+		return  sysJobLogService.page(sysJobLogDo);
 
 	}
 

@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * 启动类
@@ -11,6 +12,8 @@ import org.springframework.cache.annotation.EnableCaching;
  * @author luyanan
  * @since 2024/04/15
  **/
+@EnableAspectJAutoProxy(exposeProxy = true)
+
 @EnableCaching
 @MapperScan("com.su60.quickboot.*.mapper")
 @SpringBootApplication(scanBasePackages = {"com.su60.quickboot.system",

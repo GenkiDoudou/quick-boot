@@ -9,6 +9,15 @@ export function listMenu(query) {
   })
 }
 
+// 查询菜单列表
+export function listMenuTree(query) {
+  return request({
+    url: '/system/menu/treeList',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询菜单详细
 export function getMenu(menuId) {
   return request({

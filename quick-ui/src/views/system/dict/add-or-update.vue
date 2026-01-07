@@ -117,21 +117,21 @@ const getInfo = (id) => {
 const submit = () => {
   dataFormRef.value.validate(valid => {
     if (valid) {
-      // if (dataForm.value.id != undefined) {
-      //   // 修改
-      //   baseService.put("/system/dict/type", dataForm.value).then(res => {
-      //     proxy.$modal.msgSuccess("修改成功");
-      //     visibleRef.value = false;
-      //     emit("refreshDataList");
-      //   })
-      // } else {
-      //   //保存
-      //   baseService.post("/system/dict/type", dataForm.value).then(res => {
-      //     proxy.$modal.msgSuccess("新增成功");
-      //     visibleRef.value = false;
-      //     emit("refreshDataList");
-      //   })
-      // }
+      if (dataForm.value.id != undefined) {
+        // 修改
+        baseService.put("/system/dict/type", dataForm.value).then(res => {
+          proxy.$modal.msgSuccess("修改成功");
+          visibleRef.value = false;
+          emit("refreshDataList");
+        })
+      } else {
+        //保存
+        baseService.post("/system/dict/type", dataForm.value).then(res => {
+          proxy.$modal.msgSuccess("新增成功");
+          visibleRef.value = false;
+          emit("refreshDataList");
+        })
+      }
     }
   });
 }

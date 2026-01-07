@@ -59,20 +59,9 @@ public class SysDictControllr {
 	@SaCheckPermission("system:dict:list")
 	@GetMapping("type/page")
 	public PageInfo<SysDictTypeDo> typePage(SysDictTypeDo sysDictTypeDo) {
+		return sysDictTypeService.page(sysDictTypeDo);
 
 
-		return sysDictTypeService.page(sysDictTypeDo, new PageVoHandler<SysDictTypeEntity, SysDictTypeDo>() {
-			@Override
-			public void queryWrapperHandler(SysDictTypeDo vo, SysDictTypeEntity sysDictTypeEntity, LambdaQueryWrapper<SysDictTypeEntity> queryWrapper) {
-
-				queryWrapper.like(StrUtil.isNotBlank(sysDictTypeEntity.getDictName()), SysDictTypeEntity::getDictName, sysDictTypeEntity.getDictName());
-				sysDictTypeEntity.setDictName(null);
-				queryWrapper.like(StrUtil.isNotBlank(sysDictTypeEntity.getDictType()), SysDictTypeEntity::getDictType, sysDictTypeEntity.getDictType());
-				sysDictTypeEntity.setDictType(null);
-
-				queryWrapper.orderByDesc(SysDictTypeEntity::getCreateTime);
-			}
-		});
 	}
 
 
@@ -140,14 +129,8 @@ public class SysDictControllr {
 	@SaCheckPermission("system:dict:list")
 	@GetMapping("/data/page")
 	public PageInfo<SysDictDataDo> dataPage(SysDictDataDo sysDictDataDo) {
+		return sysDictDataService.page(sysDictDataDo);
 
-		return sysDictDataService.page(sysDictDataDo, new PageVoHandler<SysDictDataEntity, SysDictDataDo>() {
-			@Override
-			public void queryWrapperHandler(SysDictDataDo vo, SysDictDataEntity sysDictDataEntity, LambdaQueryWrapper<SysDictDataEntity> queryWrapper) {
-				queryWrapper.eq(SysDictDataEntity::getDictType, sysDictDataDo.getDictType());
-				queryWrapper.orderByDesc(SysDictDataEntity::getCreateTime);
-			}
-		});
 	}
 
 	/**

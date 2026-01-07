@@ -51,7 +51,6 @@ public class SysDictDataDo implements Serializable {
 	 *
 	 * @since 2024/08/07
 	 */
-	@JsonProperty("label")
 	@NotBlank(message = "字典标签不能为空", groups = {AddGroup.class, UpdateGroup.class})
 	private String dictLabel;
 
@@ -61,7 +60,6 @@ public class SysDictDataDo implements Serializable {
 	 *
 	 * @since 2024/08/07
 	 */
-	@JsonProperty("value")
 	@NotBlank(message = "字典键值不能为空", groups = {AddGroup.class, UpdateGroup.class})
 	private String dictValue;
 

@@ -1,13 +1,15 @@
 package com.su60.quickboot.system.service;
 
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.system.dos.SysRoleDo;
 import com.su60.quickboot.system.entity.SysRoleEntity;
 import com.su60.quickboot.system.excel.SysRoleExcel;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * <p>
@@ -18,7 +20,7 @@ import java.util.Map;
  * @since 2024/08/07
  */
 
-public interface ISysRoleService extends IBaseService2<SysRoleEntity, SysRoleDo> {
+public interface ISysRoleService {
 
 
 	/**
@@ -112,5 +114,24 @@ public interface ISysRoleService extends IBaseService2<SysRoleEntity, SysRoleDo>
 	 * @return
 	 */
 	void export(HttpServletResponse response, SysRoleDo sysRoleDo) throws Exception;
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param roleId
+	 * @return
+	 */
+	SysRoleDo getVoById(Long roleId);
+
+	/**
+	 * 分页查询
+	 * @since 2025/12/30
+	 * @param sysRoleDo
+	 * @return
+	 */
+
+	PageInfo<SysRoleDo> page(SysRoleDo sysRoleDo);
+
+	List<SysRoleEntity> getVoByIds(Set<Long> ids);
 
 }

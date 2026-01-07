@@ -86,6 +86,8 @@ const {options, loading, fetchAndUpdate} = useFetchOptions({
 
 const props2 = {
   lazy: props.lazy,
+  value: props.valueKey,
+  label: props.labelKey,
   checkStrictly: props.checkStrictly,
   lazyLoad(node, resolve) {
     const {level} = node
@@ -122,7 +124,7 @@ watch(() => props.modelValue, (newValue, oldValue) => {
     console.log("modelValue 变化，触发反显:", oldValue, "->", newValue);
     loadOptions(newValue);
   }
-}, { immediate: false })
+}, {immediate: false})
 
 const loadOptions = async (value) => {
   // 等待数据加载完成
@@ -130,10 +132,11 @@ const loadOptions = async (value) => {
     console.log("数据未加载完成，等待中...", "loading:", loading.value, "dataLoaded:", dataLoaded.value)
     return;
   }
-  
+
   console.log("开始反显，value:", value, "resultType:", props.resultType, "options:", options.value)
-  
-  if (props.resultType === 1) {
+
+  if (props.resultType == 1) {
+    console.log("resultType-1")
     // resultType = 1：绑定值为原生数组
     if (Array.isArray(value)) {
       selectedValue.value = value;
@@ -143,20 +146,19 @@ const loadOptions = async (value) => {
     } else {
       selectedValue.value = [];
     }
-  } else if (props.resultType === 2) {
+  } else if (props.resultType == 2) {
+    console.log("resultType-2")
     // resultType = 2：绑定值为逗号分隔字符串
     if (typeof value === 'string' && value.trim()) {
       selectedValue.value = value.split(',').map(item => item.trim()).filter(item => item);
     } else {
       selectedValue.value = [];
     }
-  } else if (props.resultType === 3) {
+  } else if (props.resultType == 3) {
     // resultType = 3：绑定值为数组的最后一个元素
     if (value !== null && value !== undefined && value !== '') {
       if (!props.lazy) {
-        // 非懒加载模式：在已加载的数据中查找路径
-        const path = findPath(options.value, value);
-        console.log("非懒加载模式 - 查找路径:", path, "目标值:", value, "数据:", options.value)
+        const path = findPath(options.value, value,props.valueKey);
         if (path.length) {
           selectedValue.value = path;
         } else {
@@ -165,12 +167,10 @@ const loadOptions = async (value) => {
         }
       } else {
         // 懒加载模式：调用函数获取父级路径
-        console.log("懒加载模式 - 获取父级路径，目标值:", value)
         if (props.parentNodeFetchFunction) {
           try {
             const res = await props.parentNodeFetchFunction(value);
             const path = jsonGet(res, props.resultKey, []);
-            console.log("懒加载模式 - 获取到路径:", path, "响应:", res)
             selectedValue.value = path;
           } catch (error) {
             console.error("懒加载模式 - 获取父级路径失败:", error)
@@ -236,22 +236,24 @@ const dataLoaded = ref(false);
 watch(selectedValue, (value) => {
   console.log(value, props.resultType, props.resultType === 3)
   let payload = value
-  
-  if (props.resultType === 1) {
+
+  if (props.resultType == 1) {
     // resultType = 1：绑定值为原生数组，直接使用
     payload = Array.isArray(value) ? value : []
-  } else if (props.resultType === 2) {
+  } else if (props.resultType == 2) {
     // resultType = 2：绑定值为逗号分隔字符串
     if (Array.isArray(value) && value.length > 0) {
       payload = value.join(',')
     } else {
       payload = ''
     }
-  } else if (props.resultType === 3) {
+  } else if (props.resultType == 3) {
+
     // resultType = 3：绑定值为数组的最后一个元素
     payload = (value && Array.isArray(value) && value.length ? value[value.length - 1] : '')
+    console.log("payload", payload)
   }
-  
+
   /**
    * 结果类型：
    * 1：绑定值为原生数组（如：[1,2,3]）
@@ -262,23 +264,35 @@ watch(selectedValue, (value) => {
 })
 
 /**
- * 递归查找指定节点的完整路径（返回由各级节点 value 组成的数组）
+ * 递归查找指定节点的完整路径（支持通过valueKey动态配置匹配字段）
  * @param {Array} nodes - 当前级联数据
- * @param {*} target - 目标叶子节点的值
+ * @param {*} target - 目标节点的匹配值（支持数字/字符串类型）
+ * @param {string} [valueKey='id'] - 配置匹配字段（如'id'、'deptId'，默认值为'id'）
  * @returns {Array} 完整路径数组，若未找到则返回空数组
  */
-function findPath(nodes, target) {
+function findPath(nodes, target, valueKey = 'id') {
+  // 统一转换为字符串，避免类型不匹配问题
+  const targetStr = String(target);
+
   for (const node of nodes) {
-    if (node.value === target) {
-      return [node.value];
+    // 动态获取节点的匹配字段值，做容错处理（避免节点无该字段导致报错）
+    const nodeMatchValue = node[valueKey] ? String(node[valueKey]) : '';
+
+    // 匹配目标节点
+    if (nodeMatchValue === targetStr) {
+      return [node[valueKey]];
     }
-    if (node.children) {
-      const childPath = findPath(node.children, target);
-      if (childPath.length) {
-        return [node.value, ...childPath];
+
+    // 存在子节点且子节点非空时递归查找
+    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+      const childPath = findPath(node.children, targetStr, valueKey);
+      // 子路径存在则拼接当前节点的匹配字段值
+      if (childPath.length > 0) {
+        return [node[valueKey], ...childPath];
       }
     }
   }
+
   return [];
 }
 </script>

@@ -1,14 +1,14 @@
 package com.su60.quickboot.system.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
-import com.su60.quickboot.system.entity.SysRoleMenuEntity;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
 import com.su60.quickboot.system.dos.SysRoleMenuDo;
+import com.su60.quickboot.system.entity.SysRoleMenuEntity;
 import com.su60.quickboot.system.mapper.SysRoleMenuMapper;
 import com.su60.quickboot.system.service.ISysRoleMenuService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 
-public class SysRoleMenuServiceImpl extends BaseServiceImpl2<SysRoleMenuMapper, SysRoleMenuEntity, SysRoleMenuDo> implements ISysRoleMenuService {
+public class SysRoleMenuServiceImpl extends BaseVoServiceImpl<SysRoleMenuMapper, SysRoleMenuEntity, SysRoleMenuDo> implements ISysRoleMenuService {
 
 	@Override
 	public void save(Long roleId, List<Long> menuIds) {

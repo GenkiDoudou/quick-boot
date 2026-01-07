@@ -49,14 +49,8 @@ public class GenTableController {
 	@GetMapping("list")
 	public PageInfo<GenTableDo> page(GenTableDo genTableDo) {
 
-		return genTableService.page(genTableDo, new PageVoHandler<GenTableEntity, GenTableDo>() {
-			@Override
-			public void queryWrapperHandler(GenTableDo vo, GenTableEntity genTableEntity, LambdaQueryWrapper<GenTableEntity> queryWrapper) {
-				queryWrapper.orderByDesc(GenTableEntity::getCreateTime);
-			}
 
-
-		});
+		return  genTableService.page(genTableDo);
 	}
 
 
@@ -111,10 +105,25 @@ public class GenTableController {
 	 */
 	@SaCheckPermission("generator:gen:remove")
 	@DeleteMapping()
+
 	public Boolean deleteByIds(@RequestBody List<Long> ids) {
 		return genTableService.deleteByIds(ids);
 	}
 
+
+	/**
+	 * 根据ids 删除
+	 *
+	 * @param id 多个以英文逗号(,)分割
+	 * @return 是否成功
+	 * @since 2024/10/15
+	 */
+	@SaCheckPermission("generator:gen:remove")
+	@DeleteMapping("/{id}")
+	public Boolean deleteById(@PathVariable("id") Long id) {
+		genTableService.deleteByIds(Arrays.asList(id));
+		return true;
+	}
 
 	/**
 	 * 根据sql创建表

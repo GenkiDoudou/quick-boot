@@ -48,18 +48,8 @@ public class SysRoleController {
 	@SaCheckPermission("system:role:list")
 	@GetMapping("list")
 	public PageInfo<SysRoleDo> page(SysRoleDo sysRoleDo, HttpServletRequest request) {
+		return sysRoleService.page(sysRoleDo);
 
-		return sysRoleService.page(sysRoleDo, request, new PageVoHandler<SysRoleEntity, SysRoleDo>() {
-			@Override
-			public void queryWrapperHandler(SysRoleDo vo, SysRoleEntity sysRoleEntity, LambdaQueryWrapper<SysRoleEntity> queryWrapper) {
-				queryWrapper.orderByDesc(SysRoleEntity::getCreateTime);
-				queryWrapper.like(StrUtil.isNotBlank(sysRoleEntity.getRoleName()), SysRoleEntity::getRoleName, sysRoleEntity.getRoleName());
-				sysRoleEntity.setRoleName(null);
-
-				queryWrapper.like(StrUtil.isNotBlank(sysRoleEntity.getRoleKey()), SysRoleEntity::getRoleKey, sysRoleEntity.getRoleKey());
-				sysRoleEntity.setRoleKey(null);
-			}
-		});
 	}
 
 	/**

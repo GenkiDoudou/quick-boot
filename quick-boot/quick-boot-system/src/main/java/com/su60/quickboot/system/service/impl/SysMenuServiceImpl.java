@@ -1,11 +1,15 @@
 package com.su60.quickboot.system.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.lang.tree.Tree;
+import cn.hutool.core.lang.tree.TreeNode;
+import cn.hutool.core.lang.tree.TreeUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
 import com.su60.quickboot.common.exception.Assert;
 import com.su60.quickboot.core.security.LoginUserUtils;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
 import com.su60.quickboot.system.dos.*;
 import com.su60.quickboot.system.entity.SysMenuEntity;
 import com.su60.quickboot.system.entity.SysRoleMenuEntity;
@@ -14,16 +18,12 @@ import com.su60.quickboot.system.mapper.SysMenuMapper;
 import com.su60.quickboot.system.service.ISysMenuService;
 import com.su60.quickboot.system.service.ISysRoleMenuService;
 import com.su60.quickboot.system.service.ISysRoleService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class SysMenuServiceImpl extends BaseServiceImpl2<SysMenuMapper, SysMenuEntity, SysMenuDo> implements ISysMenuService {
+public class SysMenuServiceImpl extends BaseVoServiceImpl<SysMenuMapper, SysMenuEntity, SysMenuDo> implements ISysMenuService {
 
 	private final ISysRoleMenuService sysRoleMenuService;
 
@@ -128,6 +128,50 @@ public class SysMenuServiceImpl extends BaseServiceImpl2<SysMenuMapper, SysMenuE
 			findParent(ids, sysMenu);
 		}
 		return ids;
+	}
+
+	@Override
+	public List<Tree<Long>> treeList(SysMenuDo sysMenuDo, Long userId) {
+
+		//  根据用户id查询角色
+		List<Long> roleIds = sysRoleService.listByUserId(userId).stream().map(SysRoleDo::getId).toList();
+		List<SysMenuDo> sysMenuDos = this.listByRoleIds(roleIds);
+		if (CollectionUtil.isEmpty(sysMenuDos)) {
+			return new ArrayList<>();
+		}
+		List<TreeNode<Long>> nodeList = sysMenuDos.stream().map(a -> {
+			TreeNode<Long> node = new TreeNode<>();
+			node.setParentId(a.getParentId());
+			node.setId(a.getId());
+			node.setName(a.getMenuName());
+			node.setWeight(a.getOrderNum());
+			Map<String, Object> ext = new HashMap<>();
+			ext.put("path", a.getPath());
+			ext.put("menuName", a.getMenuName());
+			ext.put("component", a.getComponent());
+			ext.put("query", a.getQuery());
+			ext.put("routeName", a.getRouteName());
+			ext.put("isFrame", a.getIsFrame());
+			ext.put("isCache", a.getIsCache());
+			ext.put("menuType", a.getMenuType());
+			ext.put("visible", a.getVisible());
+			ext.put("status", a.getStatus());
+			ext.put("buttonPerms", a.getButtonPerms());
+			ext.put("apiPerms", a.getApiPerms());
+			ext.put("icon", a.getIcon());
+			ext.put("createBy", a.getCreateBy());
+			ext.put("createTime", a.getCreateTime());
+
+			node.setExtra(ext);
+			return node;
+		}).collect(Collectors.toList());
+
+		return TreeUtil.build(nodeList, 0L);
+	}
+
+	@Override
+	public SysMenuDo getVoById(Long id) {
+		return super.getVoById(id);
 	}
 
 	public void findParent(LinkedList<Long> ids, SysMenuEntity sysMenu) {
@@ -435,7 +479,7 @@ public class SysMenuServiceImpl extends BaseServiceImpl2<SysMenuMapper, SysMenuE
 	}
 
 	@Override
-	public boolean updateVoById(SysMenuDo sysMenuDo) {
+	public Boolean updateVoById(SysMenuDo sysMenuDo) {
 		// 保证菜单名称唯一
 		Assert.isTrue(this.count(new LambdaQueryWrapper<SysMenuEntity>()
 				.eq(SysMenuEntity::getMenuName, sysMenuDo.getMenuName())
@@ -447,6 +491,11 @@ public class SysMenuServiceImpl extends BaseServiceImpl2<SysMenuMapper, SysMenuE
 		// 判断父菜单不能是自己
 		Assert.isFalse(sysMenuDo.getId().equals(sysMenuDo.getParentId()), 200015);
 		return super.updateVoById(sysMenuDo);
+	}
+
+	@Override
+	public Boolean deleteById(Long id) {
+		return super.deleteById(id);
 	}
 
 	@Override

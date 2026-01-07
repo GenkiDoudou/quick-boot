@@ -10,6 +10,7 @@ import lombok.experimental.Accessors;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
@@ -71,6 +72,14 @@ public class SysRoleDo implements Serializable {
 	 * @since 2024/08/07
 	 */
 	private String dataScope;
+
+
+	/**
+	 * 自定义部门的时候部门id
+	 * @since 2026/1/6
+	 */
+
+	private List<Long> deptIds;
 
 
 	/**

@@ -6,4 +6,4 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
-    cn.t200.quickboot: debug
+    com.su60.quickboot: debug

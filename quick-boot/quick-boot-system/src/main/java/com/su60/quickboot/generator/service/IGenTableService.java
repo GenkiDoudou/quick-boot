@@ -4,7 +4,6 @@ import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.generator.dos.GenTablePreviewVo;
 import com.su60.quickboot.generator.entity.GenTableEntity;
 import com.su60.quickboot.generator.dos.GenTableDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
@@ -19,7 +18,7 @@ import java.util.List;
  * @since 2024/10/15
  */
 
-public interface IGenTableService extends IBaseService2<GenTableEntity, GenTableDo> {
+public interface IGenTableService {
 
 	/**
 	 * 根据sql生成表
@@ -77,4 +76,45 @@ public interface IGenTableService extends IBaseService2<GenTableEntity, GenTable
 	List<GenTablePreviewVo> preview(Long tableId);
 
 
+	/**
+	 * 分页查询
+	 * @since 2025/12/30
+	 * @param genTableDo
+	 * @return
+	 */
+	PageInfo<GenTableDo> page(GenTableDo genTableDo);
+
+	/**
+	 * 保存
+	 * @since 2025/12/30
+	 * @param genTableDo
+	 * @return
+	 */
+
+	Boolean saveVo(GenTableDo genTableDo);
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param genTableDo
+	 * @return
+	 */
+	Boolean updateVoById(GenTableDo genTableDo);
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	GenTableDo getVoById(Long id);
+
+	/**
+	 * 根据 id集合查询
+	 * @since 2025/12/30
+	 * @param ids  id集合
+	 * @return
+	 */
+
+	Boolean deleteByIds(List<Long> ids);
 }

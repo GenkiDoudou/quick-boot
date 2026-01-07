@@ -184,6 +184,11 @@ public class SysUserEntity implements Serializable {
 	 */
 	@TableField("remark")
 	private String remark;
+	/**
+	 * 部门id
+	 * @since 2025/12/24
+	 */
 
+	private Long deptId;
 
 }

@@ -1,6 +1,6 @@
 package com.su60.quickboot.system.service;
 
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
 import com.su60.quickboot.system.dos.SysRoleMenuDo;
 import com.su60.quickboot.system.entity.SysRoleMenuEntity;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * @since 2024/08/07
  */
 
-public interface ISysRoleMenuService extends IBaseService2<SysRoleMenuEntity, SysRoleMenuDo> {
+public interface ISysRoleMenuService  {
 
 	/**
 	 * 保存角色菜单关联关系

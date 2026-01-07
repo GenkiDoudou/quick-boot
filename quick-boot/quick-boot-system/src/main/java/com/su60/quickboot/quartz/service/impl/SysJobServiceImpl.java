@@ -2,9 +2,13 @@ package com.su60.quickboot.quartz.service.impl;
 
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.exception.WarningException;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.data.spring.SpringContextHolder;
 import com.su60.quickboot.quartz.dos.SysJobDo;
 import com.su60.quickboot.quartz.entity.SysJobEntity;
@@ -39,7 +43,7 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Service
-public class SysJobServiceImpl extends BaseServiceImpl2<SysJobMapper, SysJobEntity, SysJobDo> implements ISysJobService {
+public class SysJobServiceImpl extends BaseVoServiceImpl<SysJobMapper, SysJobEntity, SysJobDo> implements ISysJobService {
 	@Autowired
 	private Scheduler scheduler;
 
@@ -85,6 +89,21 @@ public class SysJobServiceImpl extends BaseServiceImpl2<SysJobMapper, SysJobEnti
 	}
 
 	@Override
+	public PageInfo<SysJobDo> page(SysJobDo sysJobDo) {
+		return super.page(sysJobDo, new PageVoHandler<SysJobEntity, SysJobDo>() {
+			@Override
+			public void queryWrapperHandler(SysJobDo vo, SysJobEntity sysJobEntity, LambdaQueryWrapper<SysJobEntity> queryWrapper) {
+
+
+				queryWrapper.like(StrUtil.isNotBlank(vo.getJobName()), SysJobEntity::getJobName, vo.getJobName());
+				sysJobEntity.setJobName(null);
+				queryWrapper.like(StrUtil.isNotBlank(vo.getInvokeTarget()), SysJobEntity::getInvokeTarget, vo.getInvokeTarget());
+				sysJobEntity.setInvokeTarget(null);
+			}
+		});
+	}
+
+	@Override
 	public Boolean saveVo(SysJobDo sysJobDo) {
 
 		// 校验cron表达式是否正确
@@ -120,7 +139,7 @@ public class SysJobServiceImpl extends BaseServiceImpl2<SysJobMapper, SysJobEnti
 
 
 	@Override
-	public boolean updateVoById(SysJobDo sysJobDo) {
+	public Boolean updateVoById(SysJobDo sysJobDo) {
 		// 校验cron表达式是否正确
 		if (!CronUtils.isValid(sysJobDo.getCronExpression())) {
 			throw new WarningException(300000);
@@ -152,9 +171,10 @@ public class SysJobServiceImpl extends BaseServiceImpl2<SysJobMapper, SysJobEnti
 		return b;
 	}
 
+
 	@SneakyThrows
 	@Override
-	public Boolean deleteByIds(Collection<? extends Serializable> ids) {
+	public Boolean deleteByIds(List<Long> ids) {
 
 		List<SysJobEntity> sysJobEntities = super.listByIds(ids);
 		Boolean b = super.deleteByIds(ids);
@@ -169,7 +189,7 @@ public class SysJobServiceImpl extends BaseServiceImpl2<SysJobMapper, SysJobEnti
 	}
 
 	@Override
-	public SysJobDo getVoById(Serializable id) {
+	public SysJobDo getVoById(Long id) {
 
 		SysJobDo sysJobDo = super.getVoById(id);
 		List<Date> nextExecutions = CronUtils.getNextExecutions(sysJobDo.getCronExpression(), 5);

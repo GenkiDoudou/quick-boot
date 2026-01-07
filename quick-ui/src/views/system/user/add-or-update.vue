@@ -6,16 +6,15 @@
 
 
       <el-row>
-        <el-col :span="20">
+        <el-col :span="12">
           <el-form-item label="用户账号" prop="userName">
             <el-input v-model="dataForm.userName" :disabled="(!dataForm.id)?false:true"
                       placeholder="请输入用户账号"/>
 
           </el-form-item>
         </el-col>
-      </el-row>
-      <el-row>
-        <el-col :span="20">
+
+        <el-col :span="12">
           <el-form-item label="用户昵称" prop="nickName">
             <el-input v-model="dataForm.nickName"
                       placeholder="请输入用户昵称"/>
@@ -26,18 +25,21 @@
 
 
       <el-row>
-        <el-col :span="20">
+        <el-col :span="12">
           <el-form-item label="用户邮箱" prop="email">
             <el-input v-model="dataForm.email"
                       placeholder="请输入用户邮箱"/>
 
           </el-form-item>
         </el-col>
-      </el-row>
+        <el-col :span="12">
+          <el-form-item label="部门" prop="deptId">
+            <c7-cascader v-model="dataForm.deptId" filterable :fetchData="listTreeDept" resultKey="data"
+                         labelKey="deptName" value-key="id" :checkStrictly="true" :result-type="3"></c7-cascader>
+          </el-form-item>
+        </el-col>
 
-
-      <el-row>
-        <el-col :span="20">
+        <el-col :span="12">
           <el-form-item label="手机号码" prop="phonenumber">
             <el-input v-model="dataForm.phonenumber"
                       placeholder="请输入手机号码"/>
@@ -113,8 +115,9 @@
 <script setup>
 import {ref, getCurrentInstance} from 'vue'
 
-import {C7Dialog, C7Radio} from "@/components/c7";
+import {C7Dialog, C7Radio, C7Cascader} from "@/components/c7";
 import baseService from "@/service/baseService.js";
+import {listTreeDept} from "@/api/system/dept.js";
 import {validateEmail, validatePassword, validatePhone} from "@/utils/validate.js";
 
 const visibleRef = ref(false)
@@ -145,6 +148,7 @@ const dataForm = ref({
 const rules = ref(
     {
       // xxx: [{required: true, message: '请输入xxx', trigger: 'blur'}]
+      deptId: [{required: true, message: '请输入部门', trigger: 'blur'}],
       userName: [{required: true, message: '请输入用户账号', trigger: 'blur'}],
       nickName: [{required: true, message: '请输入用户昵称', trigger: 'blur'}],
       password: [

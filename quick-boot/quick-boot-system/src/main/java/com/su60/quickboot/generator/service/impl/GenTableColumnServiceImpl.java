@@ -2,11 +2,14 @@ package com.su60.quickboot.generator.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.su60.quickboot.common.bean.BeanConvertUtils;
+import com.su60.quickboot.common.core.PageInfo;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.generator.entity.GenTableColumnEntity;
 import com.su60.quickboot.generator.dos.GenTableColumnDo;
 import com.su60.quickboot.generator.mapper.GenTableColumnMapper;
 import com.su60.quickboot.generator.service.IGenTableColumnService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 
-public class GenTableColumnServiceImpl extends BaseServiceImpl2<GenTableColumnMapper, GenTableColumnEntity, GenTableColumnDo> implements IGenTableColumnService {
+public class GenTableColumnServiceImpl extends BaseVoServiceImpl<GenTableColumnMapper, GenTableColumnEntity, GenTableColumnDo> implements IGenTableColumnService {
 
 	@Override
 	public void saveBatch(List<GenTableColumnEntity> tableColumnEntities) {
@@ -63,10 +66,20 @@ public class GenTableColumnServiceImpl extends BaseServiceImpl2<GenTableColumnMa
 				.in(GenTableColumnEntity::getTableId, tableIds));
 	}
 
-    @Override
-    public List<GenTableColumnEntity> listByTableId(Long tableId) {
+	@Override
+	public List<GenTableColumnEntity> listByTableId(Long tableId) {
 		return super.list(new LambdaQueryWrapper<GenTableColumnEntity>()
 				.eq(GenTableColumnEntity::getTableId, tableId));
-    }
+	}
+
+	@Override
+	public PageInfo<GenTableColumnDo> page(GenTableColumnDo genTableColumnDo) {
+		return super.page(genTableColumnDo, new PageVoHandler<>() {
+			@Override
+			public void queryWrapperHandler(GenTableColumnDo vo, GenTableColumnEntity genTableColumnEntity, LambdaQueryWrapper<GenTableColumnEntity> queryWrapper) {
+			}
+		});
+	}
+
 }
 

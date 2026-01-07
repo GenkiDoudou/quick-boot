@@ -46,28 +46,8 @@ public class SysLogininforController {
 	@SaCheckPermission("system:logininfor:list")
 	@GetMapping("list")
 	public PageInfo<SysLogininforDo> page(SysLogininforDo sysLogininforDo) {
+		return sysLogininforService.page(sysLogininforDo);
 
-		return sysLogininforService.page(sysLogininforDo, new PageVoHandler<SysLogininforEntity, SysLogininforDo>() {
-			@Override
-			public void queryWrapperHandler(SysLogininforDo vo, SysLogininforEntity sysLogininforEntity, LambdaQueryWrapper<SysLogininforEntity> queryWrapper) {
-
-
-				queryWrapper.like(StrUtil.isNotBlank(vo.getUserName()), SysLogininforEntity::getUserName, vo.getUserName());
-				sysLogininforEntity.setUserName(null);
-				queryWrapper.like(StrUtil.isNotBlank(vo.getIpaddr()), SysLogininforEntity::getIpaddr, vo.getIpaddr());
-				sysLogininforEntity.setIpaddr(null);
-
-				// 登录时间筛选
-				List<String> loginTimes = vo.getLoginTimes();
-				if (CollectionUtil.isNotEmpty(loginTimes) && loginTimes.size() == 2) {
-					queryWrapper.between(SysLogininforEntity::getLoginTime,
-							DateUtil.beginOfDay(DateUtil.parse(loginTimes.get(0), DatePattern.NORM_DATE_PATTERN)),
-							DateUtil.endOfDay(DateUtil.parse(loginTimes.get(1), DatePattern.NORM_DATE_PATTERN)));
-				}
-			}
-
-
-		});
 
 	}
 

@@ -3,8 +3,12 @@ package com.su60.quickboot.system.service.impl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.exception.WarningException;
 import com.su60.quickboot.data.excel.ExcelUtils2;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.system.dos.SysDictDataDo;
 import com.su60.quickboot.system.entity.SysDictTypeEntity;
 import com.su60.quickboot.system.dos.SysDictTypeDo;
@@ -12,7 +16,6 @@ import com.su60.quickboot.system.excel.SysDictExcelVo;
 import com.su60.quickboot.system.mapper.SysDictTypeMapper;
 import com.su60.quickboot.system.service.ISysDictDataService;
 import com.su60.quickboot.system.service.ISysDictTypeService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +38,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 
-public class SysDictTypeServiceImpl extends BaseServiceImpl2<SysDictTypeMapper, SysDictTypeEntity, SysDictTypeDo> implements ISysDictTypeService {
+public class SysDictTypeServiceImpl extends BaseVoServiceImpl<SysDictTypeMapper, SysDictTypeEntity, SysDictTypeDo> implements ISysDictTypeService {
 
 	private final ISysDictDataService sysDictDataService;
 
@@ -57,11 +60,7 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl2<SysDictTypeMapper, 
 	}
 
 
-	@Override
-	public boolean removeByIds(Collection<?> list) {
 
-		return super.removeByIds(list);
-	}
 
 	@Override
 	public List<SysDictTypeEntity> listAll() {
@@ -99,6 +98,42 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl2<SysDictTypeMapper, 
 						.build())
 
 				.export("字典表");
+	}
+
+	@Override
+	public PageInfo<SysDictTypeDo> page(SysDictTypeDo sysDictTypeDo) {
+		return super.page(sysDictTypeDo, new PageVoHandler<SysDictTypeEntity, SysDictTypeDo>() {
+			@Override
+			public void queryWrapperHandler(SysDictTypeDo vo, SysDictTypeEntity sysDictTypeEntity, LambdaQueryWrapper<SysDictTypeEntity> queryWrapper) {
+
+				queryWrapper.like(StrUtil.isNotBlank(sysDictTypeEntity.getDictName()), SysDictTypeEntity::getDictName, sysDictTypeEntity.getDictName());
+				sysDictTypeEntity.setDictName(null);
+				queryWrapper.like(StrUtil.isNotBlank(sysDictTypeEntity.getDictType()), SysDictTypeEntity::getDictType, sysDictTypeEntity.getDictType());
+				sysDictTypeEntity.setDictType(null);
+
+				queryWrapper.orderByDesc(SysDictTypeEntity::getCreateTime);
+			}
+		});
+	}
+
+	@Override
+	public SysDictTypeDo getVoById(Long id) {
+		return super.getVoById(id);
+	}
+
+	@Override
+	public Boolean saveVo(SysDictTypeDo sysDictTypeDo) {
+		return super.saveVo(sysDictTypeDo);
+	}
+
+	@Override
+	public Boolean updateVoById(SysDictTypeDo sysDictTypeDo) {
+		return super.updateVoById(sysDictTypeDo);
+	}
+
+	@Override
+	public Boolean deleteByIds(List<Long> ids) {
+		return super.deleteByIds(ids);
 	}
 }
 

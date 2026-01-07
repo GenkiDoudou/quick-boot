@@ -1,8 +1,8 @@
 package com.su60.quickboot.system.service;
 
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.system.entity.SysOperLogEntity;
 import com.su60.quickboot.system.dos.SysOperLogDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 
 /**
  * <p>
@@ -13,7 +13,7 @@ import com.su60.quickboot.data.mybatisplus.IBaseService2;
  * @since 2024/11/15
  */
 
-public interface ISysOperLogService extends IBaseService2<SysOperLogEntity, SysOperLogDo> {
+public interface ISysOperLogService {
 	/**
 	 * 保存日志
 	 * @since 2025/9/17 
@@ -21,4 +21,20 @@ public interface ISysOperLogService extends IBaseService2<SysOperLogEntity, SysO
 	 * @return
 	 */
 	void saveLog(SysOperLogDo sysOperLogDo);
+
+	/**
+	 * 分页查询
+	 * @since 2025/12/30
+	 * @param sysOperLogDo
+	 * @return
+	 */
+	PageInfo<SysOperLogDo> page(SysOperLogDo sysOperLogDo);
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	SysOperLogDo getVoById(Long id);
 }

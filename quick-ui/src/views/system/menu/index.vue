@@ -346,7 +346,7 @@
 </template>
 
 <script setup name="Menu">
-import { addMenu, delMenu, getMenu, listMenu, updateMenu } from "@/api/system/menu";
+import { addMenu, delMenu, getMenu, listMenu, updateMenu ,listMenuTree} from "@/api/system/menu";
 import { C7Button, C7ButtonGroup } from '@/components/c7';
 import SvgIcon from "@/components/SvgIcon";
 import IconSelect from "@/components/IconSelect";
@@ -421,8 +421,10 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询菜单列表 */
 function getList() {
   loading.value = true;
-  listMenu().then(response => {
-    menuList.value = proxy.handleTree(response.data, "id");
+  listMenuTree().then(response => {
+    // menuList.value = proxy.handleTree(response.data, "id");
+    menuList.value = response.data;
+    console.log('菜单列表:', menuList)
     loading.value = false;
   }).catch(() => {
     loading.value = false;
@@ -432,9 +434,10 @@ function getList() {
 /** 查询菜单下拉树结构 */
 function getTreeselect() {
   menuOptions.value = [];
-  listMenu().then(response => {
-    const menu = { id: 0, menuName: "主类目", children: [] };
-    menu.children = proxy.handleTree(response.data, "id");
+  listMenuTree().then(response => {
+    const menu = { id: '0', menuName: "主类目", children: [] };
+    // menu.children = proxy.handleTree(response.data, "id");
+    menu.children = response.data;
     menuOptions.value.push(menu);
   });
 }

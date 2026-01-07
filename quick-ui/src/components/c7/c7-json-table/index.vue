@@ -473,11 +473,6 @@ const handleEdit = () => {
 
 /** 删除按钮点击事件 - 需要选中数据 */
 const handleDelete = async (id) => {
-  // console.log("handleDelete")
-  // if (selectedRows.value.length > 0) {
-  //   emit('deleteBtnHandle', selectedRows.value)
-  // }
-
   try {
     let ids = [];
     let message = '';
@@ -532,7 +527,6 @@ const handleExport = async () => {
 
   try {
     const data = await props.exportFunction(payload)
-    console.log('Export response:', data)
 
     let fname = data?.filename || `export_${new Date().getTime()}.xlsx`
     const isBlob = blobValidate(data)
@@ -548,7 +542,6 @@ const handleExport = async () => {
       ElMessage.error(errMsg)
     }
   } catch (error) {
-    console.error('Export error:', error)
     ElMessage.error(error?.message || '下载文件出现错误，请联系管理员！')
   } finally {
     downloadLoadingInstance?.close()

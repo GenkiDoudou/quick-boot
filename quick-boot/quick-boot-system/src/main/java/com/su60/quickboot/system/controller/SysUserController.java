@@ -1,6 +1,7 @@
 package com.su60.quickboot.system.controller;
 
 import cn.dev33.satoken.annotation.SaIgnore;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.common.core.R;
@@ -9,8 +10,10 @@ import com.su60.quickboot.common.validation.AddGroup;
 import com.su60.quickboot.common.validation.UpdateGroup;
 import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.data.spring.restful.annotation.NoRestFul;
+import com.su60.quickboot.system.dos.SysDeptDo;
 import com.su60.quickboot.system.dos.SysUserDo;
 import com.su60.quickboot.system.entity.SysUserEntity;
+import com.su60.quickboot.system.service.ISysDeptService;
 import com.su60.quickboot.system.service.ISysRoleService;
 import com.su60.quickboot.system.service.ISysUserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -46,6 +49,8 @@ public class SysUserController {
 
 	private final ISysRoleService sysRoleService;
 
+	private final ISysDeptService sysDeptService;
+
 	/**
 	 * 用户分页
 	 *
@@ -56,45 +61,7 @@ public class SysUserController {
 	@SaCheckPermission("system:user:list")
 	@GetMapping("page")
 	public PageInfo<SysUserDo> page(SysUserDo sysUserDo) {
-
-		return sysUserService.page(sysUserDo, new PageVoHandler<SysUserEntity, SysUserDo>() {
-			@Override
-			public void queryWrapperHandler(SysUserDo vo, SysUserEntity sysUserEntity, LambdaQueryWrapper<SysUserEntity> queryWrapper) {
-				queryWrapper.orderByDesc(SysUserEntity::getCreateTime);
-				//  用户名搜索
-
-				queryWrapper.like(StrUtil.isNotBlank(vo.getUserName()), SysUserEntity::getUserName, vo.getUserName());
-				sysUserEntity.setUserName(null);
-				// 姓名搜索
-				queryWrapper.like(StrUtil.isNotBlank(vo.getNickName()), SysUserEntity::getNickName, vo.getNickName());
-				sysUserEntity.setNickName(null);
-
-
-			}
-
-			@Override
-			public void recordsHandler(List<SysUserEntity> sysUserEntities, List<SysUserDo> sysUserDos) {
-				Map<Long, List<Long>> userRoleIdsMap = new HashMap<>();
-				Set<Long> allRoleIds = new HashSet<>();
-				for (SysUserDo userDo : sysUserDos) {
-					userDo.setPassword(null);
-					// 查询关联的角色
-					List<Long> roleIds = sysRoleService.listRoleIdUserId(userDo.getId());
-					allRoleIds.addAll(roleIds);
-					userRoleIdsMap.put(userDo.getId(), roleIds);
-				}
-
-				Map<Long, String> roleMap = sysRoleService.getVoByIds(allRoleIds).stream().collect(Collectors.toMap(k -> k.getId(), v -> v.getRoleName()));
-				for (SysUserDo userDo : sysUserDos) {
-					List<Long> roleIds = userRoleIdsMap.get(userDo.getId());
-					// 设置角色名称
-					userDo.setRoleIds(roleIds);
-					userDo.setRoleNames(roleIds.stream().map(roleMap::get).collect(Collectors.joining(",")));
-				}
-
-			}
-		});
-
+		return sysUserService.page(sysUserDo);
 	}
 
 

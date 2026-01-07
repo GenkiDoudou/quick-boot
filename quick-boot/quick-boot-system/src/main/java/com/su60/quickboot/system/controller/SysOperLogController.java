@@ -46,48 +46,8 @@ public class SysOperLogController {
 	@SaCheckPermission("system:operlog:list")
 	@GetMapping("list")
 	public PageInfo<SysOperLogDo> page(SysOperLogDo sysOperLogDo) {
+		return sysOperLogService.page(sysOperLogDo);
 
-		return sysOperLogService.page(sysOperLogDo, new PageVoHandler<SysOperLogEntity, SysOperLogDo>() {
-			@Override
-			public void queryWrapperHandler(SysOperLogDo vo, SysOperLogEntity sysOperLogEntity, LambdaQueryWrapper<SysOperLogEntity> queryWrapper) {
-
-
-				queryWrapper.like(StrUtil.isNotBlank(vo.getMethod()), SysOperLogEntity::getMethod, vo.getMethod());
-				sysOperLogEntity.setMethod(null);
-				queryWrapper.like(StrUtil.isNotBlank(vo.getRequestMethod()), SysOperLogEntity::getRequestMethod, vo.getRequestMethod());
-				sysOperLogEntity.setRequestMethod(null);
-				queryWrapper.like(StrUtil.isNotBlank(vo.getOperName()), SysOperLogEntity::getOperName, vo.getOperName());
-				sysOperLogEntity.setOperName(null);
-				queryWrapper.like(StrUtil.isNotBlank(vo.getOperUrl()), SysOperLogEntity::getOperUrl, vo.getOperUrl());
-				sysOperLogEntity.setOperUrl(null);
-
-				// 主机地址
-				queryWrapper.like(StrUtil.isNotBlank(vo.getOperIp()), SysOperLogEntity::getOperIp, vo.getOperIp());
-				sysOperLogEntity.setOperIp(null);
-				queryWrapper.orderByDesc(SysOperLogEntity::getOperTime);
-				Integer status = vo.getStatus();
-				if (null != status) {
-					if (status == 0) {
-						queryWrapper.eq(SysOperLogEntity::getStatus, 200);
-					} else {
-						queryWrapper.ne(SysOperLogEntity::getStatus, 200);
-					}
-				}
-				sysOperLogEntity.setStatus(null);
-
-				// 操作时间区间筛选
-				List<String> operTimes =
-						vo.getOperTimes();
-
-				if (CollectionUtil.isNotEmpty(operTimes) && operTimes.size() == 2) {
-					queryWrapper.between(SysOperLogEntity::getOperTime,
-							DateUtil.beginOfDay(DateUtil.parse(operTimes.get(0), DatePattern.NORM_DATE_PATTERN)),
-							DateUtil.endOfDay(DateUtil.parse(operTimes.get(1), DatePattern.NORM_DATE_PATTERN)));
-				}
-			}
-
-
-		});
 
 	}
 

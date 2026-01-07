@@ -1,8 +1,8 @@
 package com.su60.quickboot.quartz.service;
 
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.quartz.entity.SysJobLogEntity;
 import com.su60.quickboot.quartz.dos.SysJobLogDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 
 /**
  * <p>
@@ -13,7 +13,7 @@ import com.su60.quickboot.data.mybatisplus.IBaseService2;
  * @since 2024/11/07
  */
 
-public interface ISysJobLogService extends IBaseService2<SysJobLogEntity, SysJobLogDo> {
+public interface ISysJobLogService {
 
 	/**
 	 * 添加任务
@@ -31,4 +31,20 @@ public interface ISysJobLogService extends IBaseService2<SysJobLogEntity, SysJob
 	 * @since 2024/11/14
 	 */
 	Boolean clean(Long jobId);
+
+	/**
+	 * 分页
+	 * @since 2025/12/30
+	 * @param sysJobLogDo
+	 * @return
+	 */
+	PageInfo<SysJobLogDo> page(SysJobLogDo sysJobLogDo);
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	SysJobLogDo getVoById(Long id);
 }

@@ -1,12 +1,15 @@
 package com.su60.quickboot.system.service.impl;
 
 import com.su60.quickboot.common.bean.BeanConvertUtils;
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.data.cache.CacheUtils;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.system.entity.SysDictDataEntity;
 import com.su60.quickboot.system.dos.SysDictDataDo;
 import com.su60.quickboot.system.mapper.SysDictDataMapper;
 import com.su60.quickboot.system.service.ISysDictDataService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class SysDictDataServiceImpl extends BaseServiceImpl2<SysDictDataMapper, SysDictDataEntity, SysDictDataDo> implements ISysDictDataService {
+public class SysDictDataServiceImpl extends BaseVoServiceImpl<SysDictDataMapper, SysDictDataEntity, SysDictDataDo> implements ISysDictDataService {
 
 
 	public static final String CACHE_NAME = "dict_data:";
@@ -63,6 +66,37 @@ public class SysDictDataServiceImpl extends BaseServiceImpl2<SysDictDataMapper, 
 	@Override
 	public void clear() {
 		CacheUtils.clearCache(CACHE_NAME);
+	}
+
+	@Override
+	public PageInfo<SysDictDataDo> page(SysDictDataDo sysDictDataDo) {
+		return super.page(sysDictDataDo, new PageVoHandler<>() {
+			@Override
+			public void queryWrapperHandler(SysDictDataDo vo, SysDictDataEntity sysDictDataEntity, LambdaQueryWrapper<SysDictDataEntity> queryWrapper) {
+				queryWrapper.eq(SysDictDataEntity::getDictType, sysDictDataDo.getDictType());
+				queryWrapper.orderByAsc(SysDictDataEntity::getDictSort);
+			}
+		});
+	}
+
+	@Override
+	public Boolean saveVo(SysDictDataDo sysDictDataDo) {
+		return super.saveVo(sysDictDataDo);
+	}
+
+	@Override
+	public Boolean updateVoById(SysDictDataDo sysDictDataDo) {
+		return super.updateVoById(sysDictDataDo);
+	}
+
+	@Override
+	public Boolean deleteByIds(List<Long> ids) {
+		return super.deleteByIds(ids);
+	}
+
+	@Override
+	public SysDictDataDo getVoById(Long id) {
+		return super.getVoById(id);
 	}
 }
 

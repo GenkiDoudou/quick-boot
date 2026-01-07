@@ -1,8 +1,6 @@
 package com.su60.quickboot.system.service;
 
 import com.su60.quickboot.system.entity.SysUserRoleEntity;
-import com.su60.quickboot.system.dos.SysUserRoleDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -17,7 +15,7 @@ import java.util.List;
  * @since 2024/08/07
  */
 
-public interface ISysUserRoleService extends IBaseService2<SysUserRoleEntity, SysUserRoleDo> {
+public interface ISysUserRoleService  {
 
 	/**
 	 * 根据条件查询

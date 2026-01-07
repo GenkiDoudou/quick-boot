@@ -1,11 +1,11 @@
 package com.su60.quickboot.system.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
+import com.su60.quickboot.data.mybatisplus.BaseVoServiceImpl;
 import com.su60.quickboot.system.entity.SysUserRoleEntity;
 import com.su60.quickboot.system.dos.SysUserRoleDo;
 import com.su60.quickboot.system.mapper.SysUserRoleMapper;
 import com.su60.quickboot.system.service.ISysUserRoleService;
-import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 
-public class SysUserRoleServiceImpl extends BaseServiceImpl2<SysUserRoleMapper, SysUserRoleEntity, SysUserRoleDo> implements ISysUserRoleService {
+public class SysUserRoleServiceImpl extends BaseVoServiceImpl<SysUserRoleMapper, SysUserRoleEntity, SysUserRoleDo> implements ISysUserRoleService {
 
 	@Override
 	public List<SysUserRoleEntity> list(SysUserRoleEntity sysUserRoleEntity) {

@@ -1,8 +1,8 @@
 package com.su60.quickboot.generator.service;
 
+import com.su60.quickboot.common.core.PageInfo;
 import com.su60.quickboot.generator.entity.GenTableColumnEntity;
 import com.su60.quickboot.generator.dos.GenTableColumnDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -17,7 +17,7 @@ import java.util.List;
  * @since 2024/10/24
  */
 
-public interface IGenTableColumnService extends IBaseService2<GenTableColumnEntity, GenTableColumnDo> {
+public interface IGenTableColumnService {
 
 	/**
 	 * 批量插入
@@ -60,4 +60,14 @@ public interface IGenTableColumnService extends IBaseService2<GenTableColumnEnti
 	 * @since 2024/10/30
 	 */
 	List<GenTableColumnEntity> listByTableId(Long tableId);
+
+	/**
+	 * 分页查询
+	 * @since 2025/12/30
+	 * @param genTableColumnDo
+	 * @return
+	 */
+
+	PageInfo<GenTableColumnDo> page(GenTableColumnDo genTableColumnDo);
+
 }

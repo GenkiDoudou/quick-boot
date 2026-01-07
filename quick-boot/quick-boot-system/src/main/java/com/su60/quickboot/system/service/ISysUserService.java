@@ -1,11 +1,14 @@
 package com.su60.quickboot.system.service;
 
+import com.su60.quickboot.common.core.ImportResult;
+import com.su60.quickboot.common.core.PageInfo;
+import com.su60.quickboot.data.mybatisplus.PageVoHandler;
 import com.su60.quickboot.system.entity.SysUserEntity;
 import com.su60.quickboot.system.dos.SysUserDo;
-import com.su60.quickboot.data.mybatisplus.IBaseService2;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * <p>
@@ -16,7 +19,7 @@ import java.io.IOException;
  * @since 2024/08/07
  */
 
-public interface ISysUserService extends IBaseService2<SysUserEntity, SysUserDo> {
+public interface ISysUserService {
 
 	/**
 	 * 根据用户名查询
@@ -70,7 +73,7 @@ public interface ISysUserService extends IBaseService2<SysUserEntity, SysUserDo>
 	 * @param sysUserDo
 	 * @return
 	 */
-	void exportExcel(HttpServletResponse response,SysUserDo sysUserDo) throws Exception;
+	void exportExcel(HttpServletResponse response, SysUserDo sysUserDo) throws Exception;
 
 	/**
 	 * 用户导入
@@ -79,5 +82,23 @@ public interface ISysUserService extends IBaseService2<SysUserEntity, SysUserDo>
 	 * @param updateSupport 是否更新已存在的数据
 	 * @return 导入结果
 	 */
-	com.su60.quickboot.common.core.ImportResult importExcel(org.springframework.web.multipart.MultipartFile file, Boolean updateSupport) throws IOException;
+	ImportResult importExcel(org.springframework.web.multipart.MultipartFile file, Boolean updateSupport) throws IOException;
+
+	/**
+	 * 根据id查询
+	 * @since 2025/12/30
+	 * @param id  id
+	 * @return
+	 */
+	SysUserDo getVoById(Long id);
+
+	PageInfo<SysUserDo> page(SysUserDo sysUserDo);
+
+	/**
+	 * 根据id集合查询
+	 * @since 2025/12/30
+	 * @param ids  id集合
+	 * @return
+	 */
+	Boolean deleteByIds(List<Long> ids);
 }
