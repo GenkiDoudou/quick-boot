@@ -1,120 +1,187 @@
 <template>
+    <c7-dialog
+            :visible="visibleRef"
+            mode="dialog"
+            :title="(!dataForm.${keyField}) ? '新增' : '修改'"
+            @submit="submit"
+            @close="handleClose"
+    >
+        <el-form
+                :model="dataForm"
+                :rules="rules"
+                ref="dataFormRef"
+                label-width="100px"
+        >
+            <el-row :gutter="20">
 
-    <q-modal :visible="visibleRef" mode="dialog" :title="(!dataForm.id)?'新增':'修改'"
-             @close="handleClose" @submit="submit">
+                <#list addOrUpdateFields as field>
+                    <el-col :span="12">
+                        <el-form-item
+                                label="${field.columnComment}"
+                                prop="${field.javaField}"
+                        >
 
+                            <#-- ===== 字典字段 ===== -->
+                            <#if field.dictType?? && field.dictType != ''>
+                                <#if field.htmlType == 'radio'>
+                                    <c7-radio
+                                            v-model="dataForm.${field.javaField}"
+                                            :data-list="${field.dictType}"
+                                    />
+                                <#else>
+                                    <c7-select
+                                            v-model="dataForm.${field.javaField}"
+                                            :data-list="${field.dictType}"
+                                    />
+                                </#if>
 
-        <el-form :model="dataForm" :rules="rules" ref="dataFormRef" label-width="100px">
-
-            <#list addOrUpdateFields as field>
-
-                <el-row>
-                    <el-col :span="20">
-                        <el-form-item label="${field.columnComment}" prop="${field.javaField}">
-                            <#if field.htmlType == 'select' || field.htmlType == 'radio' || field.htmlType == 'checkbox' >
-                                <q-dict-select v-model="dataForm.${field.javaField}" dictType="${field.dictType}"
-                                               type="${field.htmlType}">
-                                </q-dict-select>
-                            <#elseif  field.htmlType == 'textarea' >
-                                <el-input v-model="dataForm.${field.javaField}" type="textarea"
-                                          placeholder="请输入${field.columnComment}"/>
-
-                            <#elseif  field.htmlType == 'datetime' >
+                            <#-- ===== 日期 ===== -->
+                            <#elseif field.htmlType == 'datetime'>
                                 <el-date-picker
                                         v-model="dataForm.${field.javaField}"
                                         type="date"
-                                        placeholder="请输入${field.columnComment}"
-
+                                        placeholder="请选择${field.columnComment}"
                                 />
-                            <#else >
-                                <el-input v-model="dataForm.${field.javaField}"
-                                          placeholder="请输入${field.columnComment}"/>
+
+                            <#-- ===== 文本域 ===== -->
+                            <#elseif field.htmlType == 'textarea'>
+                                <el-input
+                                        v-model="dataForm.${field.javaField}"
+                                        type="textarea"
+                                        placeholder="请输入${field.columnComment}"
+                                />
+
+                            <#-- ===== 默认输入框 ===== -->
+                            <#else>
+                                <el-input
+                                        v-model="dataForm.${field.javaField}"
+                                        placeholder="请输入${field.columnComment}"
+                                />
                             </#if>
 
                         </el-form-item>
                     </el-col>
-                </el-row>
+                </#list>
 
-            </#list>
+            </el-row>
         </el-form>
-    </q-modal>
+    </c7-dialog>
 </template>
-
 <script setup>
-    import qModal from '@/components/qModal/index.vue'
-    import {reactive, ref} from "vue";
-    import baseService from "@/service/baseService.ts";
+    import { ref, getCurrentInstance } from "vue"
+    import { C7Dialog, C7Select, C7Radio } from "@/components/c7"
 
+    /**
+     * ================= API 引入（关键点）
+     * 与你给的 dict 示例完全一致
+     */
+    import {
+        get${className},
+        add${className},
+        update${className}
+    } from "@/api/${moduleName!}/${className?lower_case}.js"
 
-    const {proxy} = getCurrentInstance();
-    const emit = defineEmits(["refreshDataList"]);
-    const visibleRef = ref(false);
+    const { proxy } = getCurrentInstance()
+    const emit = defineEmits(["refreshDataList"])
+
+    <#-- ================= 字典自动收集 ================= -->
+
+    <#assign dictTypes = []>
+    <#list addOrUpdateFields as field>
+    <#if field.dictType?? && field.dictType != ''>
+    <#if !(dictTypes?seq_contains(field.dictType))>
+    <#assign dictTypes = dictTypes + [field.dictType]>
+    </#if>
+    </#if>
+    </#list>
+
+    <#if dictTypes?size gt 0>
+    const {
+        <#list dictTypes as dict>
+        ${dict}<#if dict_has_next>,</#if>
+        </#list>
+    } = proxy.useDict(
+        <#list dictTypes as dict>
+        "${dict}"<#if dict_has_next>,</#if>
+        </#list>
+    )
+    </#if>
+
+    <#-- ================= 弹窗 & 表单 ================= -->
+
+    const visibleRef = ref(false)
+    const dataFormRef = ref()
+
     const dataForm = ref({
-        id: "",
+        ${keyField}: "",
         <#list addOrUpdateFields as field>
         ${field.javaField}: "",
         </#list>
-
-
     })
+
+    <#-- ================= 校验规则 ================= -->
+
+    const rules = ref({
+        <#list addOrUpdateFields as field>
+        <#if field.isRequired == '1'>
+        ${field.javaField}: [
+            { required: true, message: '请输入${field.columnComment}', trigger: 'blur' }
+        ],
+        </#if>
+        </#list>
+    })
+
+    <#-- ================= 弹窗控制 ================= -->
+
     const handleClose = () => {
-        visibleRef.value = false;
-    };
-    //  校验
-    const rules = ref(
-        {
-            // xxx: [{required: true, message: '请输入xxx', trigger: 'blur'}]
-            <#list addOrUpdateFields as field>
-            <#if  field.isRequired == '1' >
-            ${field.javaField}: [{required: true, message: '请输入${field.columnComment}', trigger: 'blur'}],
-            </#if >
-            </#list>
-
-
-        }
-    );
-
-    // 初始化方法
-    const init = ( id) => {
-        visibleRef.value = true;
-        if (id) {
-            dataForm.value.id = id;
-            getInfo(id);
-        }
-
+        visibleRef.value = false
     }
-    // 根据id查询详情
-    const getInfo = (id) => {
-        baseService.get("/${moduleName!}/${className ?lower_case}/" + id).then(res => {
-            dataForm.value = res.data;
+
+    const init = (${keyField}) => {
+        // 防止新增 / 编辑串数据
+        if (dataFormRef.value) {
+            dataFormRef.value.resetFields()
+        }
+
+        visibleRef.value = true
+        dataForm.value.${keyField} = ${keyField} || ""
+
+        if (${keyField}) {
+            getInfo(${keyField})
+        }
+    }
+
+    <#-- ================= 查询详情 ================= -->
+
+    const getInfo = (${keyField}) => {
+        get${className}(${keyField}).then(res => {
+            dataForm.value = res.data
         })
     }
-    const dataFormRef = ref()
-    // 提交
+
+    <#-- ================= 提交 ================= -->
+
     const submit = () => {
         dataFormRef.value.validate(valid => {
-            if (valid) {
-                console.log(dataForm.value)
-                if (dataForm.value.id != undefined) {
-                    // 修改
-                    baseService.put("/${moduleName!}/${className ?lower_case}", dataForm.value).then(res => {
-                        proxy.$modal.msgSuccess("修改成功");
-                        visibleRef.value = false;
-                        emit("refreshDataList");
-                    })
-                } else {
-                    //保存
-                    baseService.post("/${moduleName!}/${className ?lower_case}", dataForm.value).then(res => {
-                        proxy.$modal.msgSuccess("新增成功");
-                        visibleRef.value = false;
-                        emit("refreshDataList");
-                    })
-                }
+            if (!valid) return
+
+            if (dataForm.value.${keyField}) {
+                // 修改
+                update${className}(dataForm.value).then(() => {
+                    proxy.$modal.msgSuccess("修改成功")
+                    visibleRef.value = false
+                    emit("refreshDataList")
+                })
+            } else {
+                // 新增
+                add${className}(dataForm.value).then(() => {
+                    proxy.$modal.msgSuccess("新增成功")
+                    visibleRef.value = false
+                    emit("refreshDataList")
+                })
             }
-        });
+        })
     }
 
-    defineExpose({
-        init
-    })
+    defineExpose({ init })
 </script>

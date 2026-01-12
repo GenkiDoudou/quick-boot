@@ -27,17 +27,11 @@
       <el-row>
         <el-col :span="20">
           <el-form-item label="状态" prop="status">
-            <!--            <q-dict-select v-model="dataForm.status" dictType="sys_normal_disable" type="radio" width="340px"-->
-            <!--                           placeholder="请选择状态"/>-->
             <c7-radio :data-list="sys_normal_disable" v-model="dataForm.status" placeholder="请选择状态"></c7-radio>
           </el-form-item>
         </el-col>
       </el-row>
 
-      <!--      <el-form-item label="状态" prop="status2">-->
-      <!--        <q-dict-select v-model="dataForm.status2" dictType="sys_normal_disable" type="checkbox" width="340px"-->
-      <!--                       placeholder="请选择状态"/>-->
-      <!--      </el-form-item>-->
       <el-row>
         <el-col :span="20">
           <el-form-item label="备注" prop="remark">
@@ -48,12 +42,6 @@
 
 
     </el-form>
-    <!--    <template #footer>-->
-    <!--      <div class="dialog-footer">-->
-    <!--        <el-button type="primary" @click="submit">确 定</el-button>-->
-    <!--        <el-button @click="handleClose">取 消</el-button>-->
-    <!--      </div>-->
-    <!--    </template>-->
 
   </c7-dialog>
 
@@ -65,7 +53,7 @@
 import {reactive, ref} from "vue";
 import {C7Dialog, C7Radio} from "@/components/c7"
 import baseService from "@/service/baseService.js";
-
+import {getType, addType, updateType} from "@/api/system/dict/type.js"
 
 const {proxy} = getCurrentInstance();
 
@@ -94,39 +82,44 @@ const rules = ref(
       status: [{required: true, message: '请输入状态', trigger: 'blur'}],
     }
 );
-const handleClose = () => {
-  visibleRef.value = false;
-};
+
 
 
 const init = (id) => {
+  console.log(id)
+
+  // 重置表单数据
+  if (dataFormRef.value) {
+    dataFormRef.value.resetFields();
+  }
   visibleRef.value = true;
   dataForm.value.id = id;
   if (id) {
     getInfo(id);
   }
-
 }
 
 const getInfo = (id) => {
 
-  baseService.get("/system/dict/type/info/" + id).then(res => {
+  getType(id).then(res => {
     dataForm.value = res.data;
+   console.log(dataForm.value)
   })
+
 }
 const submit = () => {
   dataFormRef.value.validate(valid => {
     if (valid) {
       if (dataForm.value.id != undefined) {
         // 修改
-        baseService.put("/system/dict/type", dataForm.value).then(res => {
+        updateType(dataForm.value).then(res => {
           proxy.$modal.msgSuccess("修改成功");
           visibleRef.value = false;
           emit("refreshDataList");
         })
       } else {
         //保存
-        baseService.post("/system/dict/type", dataForm.value).then(res => {
+        addType(dataForm.value).then(res => {
           proxy.$modal.msgSuccess("新增成功");
           visibleRef.value = false;
           emit("refreshDataList");

@@ -96,7 +96,7 @@ public class DataMap extends Dict {
 	/**
 	 * 父包路径
 	 *
-	 * @return  父包路径
+	 * @return 父包路径
 	 * @since 2024/10/28
 	 */
 	public String getParentPackage() {
@@ -127,7 +127,7 @@ public class DataMap extends Dict {
 	/**
 	 * 获取包路径
 	 *
-	 * @return  获取包路径
+	 * @return 获取包路径
 	 * @author luyanan
 	 * @since 2024/10/28
 	 */
@@ -249,7 +249,7 @@ public class DataMap extends Dict {
 	/**
 	 * 获取类名称
 	 *
-	 * @return  类名称
+	 * @return 类名称
 	 * @since 2024/10/28
 	 */
 	public String getClassName() {
@@ -367,7 +367,7 @@ public class DataMap extends Dict {
 	 * 设置 导入package
 	 *
 	 * @param importPackage 导入package
-	 * @return 	 DataMap
+	 * @return DataMap
 	 * @since 2024/10/28
 	 */
 	public DataMap setImportPackage(Set<String> importPackage) {
@@ -404,6 +404,7 @@ public class DataMap extends Dict {
 		super.put("templateName", templateName);
 		return this;
 	}
+
 
 
 }

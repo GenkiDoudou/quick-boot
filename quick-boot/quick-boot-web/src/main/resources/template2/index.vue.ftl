@@ -1,115 +1,181 @@
 <template>
     <div class="app-container">
-        <qtable-search :columns="searchColumns" :modelValue="state.dataForm" @handle-reset="state.handleReset"
-                       @handle-search="state.getDataList"
-                       @add-btn-handle="addOrUpdateHandle()"
-                       @deleteHandle="state.deleteHandle"
-                <#if  tableEntity.verifyPermission == 'Y' >
-                    add-btn-perms="${moduleName!}:${className ?lower_case}:add"
-                    del-btn-perms="${moduleName!}:${className ?lower_case}:remove"
-                </#if>
+        <c7-json-table
+                ref="tableRef"
+                :listFunction="list${className}"
+                :tableColumns="tableColumns"
+                :delete-function="del${className}"
+                :searchColumns="searchColumns"
+                :tableProps="tableProps"
+                rowsKey="data.records"
+                totalKey="data.total"
+        >
+            <!-- 操作列 -->
+            <template #table-operate="{ row }">
+                <C7ButtonGroup>
+                    <C7Button
+                            type="primary"
+                            link
+                            icon="Edit"
+                            @click="handleEdit(row)"
+                            <#if tableEntity.verifyPermission == 'Y'>
+                                v-hasPermi="['${moduleName!}:${className?lower_case}:edit']"
+                            </#if>
+                    >
+                        编辑
+                    </C7Button>
 
-        ></qtable-search>
-        <qtable v-loading="state.dataListLoading" :tableData="state.dataList" :columns="jsonColumns"
-                :page="state.page" :limit="state.limit" :total="state.total"
-                @pageSizeChangeHandle="state.pageSizeChangeHandle"
-                @pageCurrentChangeHandle="state.pageCurrentChangeHandle"
-                @selection-change="state.dataListSelectionChangeHandle" :table-props={selection:true}>
-            <!-- 自定义列, 可以通过 order 配置列的顺序 -->
-            <el-table-column label="操作" order="99" width="150px">
-                <template #default="scope">
-                    <el-tooltip content="修改" placement="top">
-                        <el-button link type="primary" icon="Edit" @click="addOrUpdateHandle(scope.row.id)"
-                                <#if  tableEntity.verifyPermission == 'Y' >
-                                   v-hasPermi="['${moduleName!}:${className ?lower_case}:edit']"
-                                   </#if>
-                        >编辑
-                        </el-button>
-                    </el-tooltip>
-                    <el-tooltip content="删除" placement="top">
-                        <el-button link type="primary" icon="Delete" @click="state.deleteHandle(scope.row.id)"
-                                <#if  tableEntity.verifyPermission == 'Y' >
-                                   v-hasPermi="['${moduleName!}:${className ?lower_case}:remove']"
-                                   </#if>
-                        >删除
-                        </el-button>
-                    </el-tooltip>
-                </template>
-            </el-table-column>
-        </qtable>
+                    <C7Button
+                            type="danger"
+                            link
+                            icon="Delete"
+                            @click="tableRef.handleDelete(row.${keyField})"
+                            <#if tableEntity.verifyPermission == 'Y'>
+                                v-hasPermi="['${moduleName!}:${className?lower_case}:remove']"
+                            </#if>
+                    >
+                        删除
+                    </C7Button>
+                </C7ButtonGroup>
+            </template>
+        </c7-json-table>
 
-        <!-- 弹窗, 新增 / 修改 -->
-        <add-or-update :key="addKey" ref="addOrUpdateRef" @refreshDataList="state.getDataList"></add-or-update>
-
-
+        <!-- 新增 / 修改 -->
+        <add-or-update
+                :key="addKey"
+                ref="addOrUpdateRef"
+                @refreshDataList="tableRef.refreshData()"
+        />
     </div>
 </template>
 
+<script setup name="${className?lower_case}">
+    import { ref, getCurrentInstance, nextTick } from 'vue'
+    import { ElMessage, ElMessageBox } from 'element-plus'
 
-<script setup name="${className ?lower_case}">
-    import tableView from "@/hooks/tableView";
-    import {reactive, ref, toRefs} from "vue";
+    import AddOrUpdate from './add-or-update.vue'
+    import {
+        list${className},
+        del${className},
+        export${className}
+    } from '@/api/${moduleName!}/${className?lower_case}'
 
-    import AddOrUpdate from "./add-or-update.vue";
+    import { C7JsonTable, C7Button, C7ButtonGroup } from '@/components/c7'
 
-    const view = reactive({
-        getDataListURL: "/${moduleName!}/${className ?lower_case}/list",
-        getDataListIsPage: true,
-        deleteURL: "/${moduleName!}/${className ?lower_case}",
-        deleteIsBatch: true,
-        exportURL: "/${moduleName!}/${className ?lower_case}/export",
-        dataForm: {}
-    });
-    const {proxy} = getCurrentInstance();
+    const { proxy } = getCurrentInstance()
 
-    const state = reactive({...tableView(view), ...toRefs(view)});
+    /* =====================================================
+     *  dictType 自动收集（listFields + searchFields）
+     * ===================================================== */
+    <#assign dictTypes = []>
+    <#list listFields as field>
+    <#if field.dictType?? && field.dictType != ''>
+    <#if !(dictTypes?seq_contains(field.dictType))>
+    <#assign dictTypes = dictTypes + [field.dictType]>
+    </#if>
+    </#if>
+    </#list>
+    <#list searchFields as field>
+    <#if field.dictType?? && field.dictType != ''>
+    <#if !(dictTypes?seq_contains(field.dictType))>
+    <#assign dictTypes = dictTypes + [field.dictType]>
+    </#if>
+    </#if>
+    </#list>
 
+    <#-- useDict 自动生成 -->
+    <#if dictTypes?size gt 0>
+    const {
+        <#list dictTypes as dict>
+        ${dict}<#if dict_has_next>,</#if>
+        </#list>
+    } = proxy.useDict(
+        <#list dictTypes as dict>
+        "${dict}"<#if dict_has_next>,</#if>
+        </#list>
+    )
+    </#if>
 
-    // 列表字段配置
-    const jsonColumns = ref([
+    /* =====================================================
+     * refs
+     * ===================================================== */
+    const tableRef = ref()
+    const addOrUpdateRef = ref()
+    const addKey = ref(0)
 
+    /* =====================================================
+     * searchColumns
+     * ===================================================== */
+    const searchColumns = ref([
+        <#list searchFields as field>
+        {
+            prop: "${field.javaField}",
+            label: "${field.columnComment}",
+            <#if field.dictType?? && field.dictType != ''>
+            type: "select",
+            dataList: ${field.dictType}
+            <#else>
+            type: "input"
+            </#if>
+        }<#if field_has_next>,</#if>
+        </#list>
+    ])
+
+    /* =====================================================
+     * tableColumns
+     * ===================================================== */
+    const tableColumns = ref([
         <#list listFields as field>
         {
             label: "${field.columnComment}",
             prop: "${field.javaField}",
-            <#if field.dictType != ''>
-            dictType: "${field.dictType}",
+            showOverflowTooltip: true
+            <#if field.dictType?? && field.dictType != ''>,
+            columnType: 'tag',
+            dictList: ${field.dictType}
             </#if>
-
         },
-
-
         </#list>
-    ]);
-
-    // 搜索字段配置
-    const searchColumns = ref([
-
-        <#list searchFields as field>
         {
-            label: "${field.columnComment}",
-            prop: "${field.javaField}",
-            <#if field.htmlType == 'select' ||  field.htmlType == 'radio' ||  field.htmlType == 'checkbox' >
-            dictType: "${field.dictType}",
-            type: "dict",
-            <#else >
-            type: "input",
-            </#if>
-            placeholder: "请输入${field.columnComment}"
-        },
+            label: "操作",
+            prop: "table-operate",
+            width: 160,
+            fixed: "right"
+        }
+    ])
 
+    /* =====================================================
+     * tableProps
+     * ===================================================== */
+    const tableProps = ref({
+        selection: true,
+        border: true,
+        stripe: true,
+        height: 'auto',
+        showRefresh: true,
+        <#if tableEntity.verifyPermission == 'Y'>
+        showAdd: proxy.checkPermission('${moduleName!}:${className?lower_case}:add'),
+        showEdit: proxy.checkPermission('${moduleName!}:${className?lower_case}:edit'),
+        showDelete: proxy.checkPermission('${moduleName!}:${className?lower_case}:remove'),
+        showExport: proxy.checkPermission('${moduleName!}:${className?lower_case}:export')
+        </#if>
+    })
 
-        </#list>
-
-    ]);
-
-    const addKey = ref(0);
-    const addOrUpdateRef = ref();
-    const addOrUpdateHandle = (id) => {
-
-        addKey.value++;
+    /* =====================================================
+     * handlers
+     * ===================================================== */
+    const handleAdd = () => {
+        addKey.value++
         nextTick(() => {
-            addOrUpdateRef.value.init(id);
-        });
-    };
+            addOrUpdateRef.value.init()
+        })
+    }
+
+    const handleEdit = (row) => {
+        addKey.value++
+        nextTick(() => {
+            addOrUpdateRef.value.init(row.${keyField})
+        })
+    }
+
 </script>

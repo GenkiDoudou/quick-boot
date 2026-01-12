@@ -4,7 +4,7 @@ import ${package}.entity.${className}Entity;
 import ${package}.dos.${className}Do;
 import ${package}.mapper.${className}Mapper;
 import ${package}.service.I${className}Service;
-import cn.t200.quickboot.data.mybatisplus.BaseServiceImpl2;
+import com.su60.quickboot.data.mybatisplus.BaseServiceImpl2;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 /**

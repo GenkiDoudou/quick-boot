@@ -23,10 +23,12 @@
 <script setup>
 
 import baseService from "@/service/baseService.js";
+import {getCurrentInstance} from "vue";
 
 const activeName = ref('');
 const dataList = ref([]);
 
+const {proxy} = getCurrentInstance();
 
 const init = (tableId) => {
   dataList.value = [];
@@ -35,6 +37,10 @@ const init = (tableId) => {
     activeName.value = dataList.value[0].name;
 
   })
+}
+
+const  copyTextSuccess = (va)=>{
+  proxy.$modal.msgSuccess("复制成功");
 }
 defineExpose({
   init

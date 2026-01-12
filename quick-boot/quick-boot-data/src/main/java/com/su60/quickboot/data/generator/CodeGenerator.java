@@ -401,6 +401,14 @@ public class CodeGenerator {
 					.setImportPackage(importPackage)
 					.setTemplateName(tableInfo.getClassName());
 
+			// 主键字段
+			TableField tableField = tableFields.stream().filter(a -> a.getIsPk().equals("0")).findFirst().orElse(null);
+			dataMap.put("keyTableField", tableField);
+
+			dataMap.put("keyField", Optional.ofNullable(tableField).map(TableField::getAttrName).stream().findFirst().orElse(null));
+
+			// 主键类型
+			dataMap.put("keyFieldType", Optional.ofNullable(tableField).map(TableField::getAttrType).stream().findFirst().orElse(null));
 			String savePath = null;
 			// savePath
 			if (StrUtil.isBlank(codeTemplate.getPackagePath())) {
@@ -416,10 +424,12 @@ public class CodeGenerator {
 			}
 
 			codeTemplateResult.setSavePath(savePath);
+
+			codeTemplateResult.setFileName(StrUtil.format(codeTemplate.getFileName(), dataMap));
 			codeTemplate.setParentPackagePath(packagePath);
 
 
-			codeTemplateResult.setFileName(String.format(codeTemplate.getFileName(), tableInfo.getClassName()));
+//			codeTemplateResult.setFileName(String.format(codeTemplate.getFileName(), tableInfo.getClassName()));
 
 			// 拦截器
 			GeneratorInterceptor interceptor = codeTemplate.getInterceptor();

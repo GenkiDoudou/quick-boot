@@ -103,6 +103,7 @@ import {reactive, ref, getCurrentInstance, nextTick} from "vue";
 import C7Select from "@/components/c7/c7-select/index.vue";
 import C7TreeSelect from "@/components/c7/c7-tree-select/index.vue";
 import {listTreeDept} from "@/api/system/dept.js";
+import {addRole, getRole, roleMenuTreeselect, treeselect, updateRole} from '@/api/system/role.js';
 
 const {proxy} = getCurrentInstance();
 const emit = defineEmits(["refreshDataList"]);
@@ -170,7 +171,7 @@ const init = (id) => {
  * 根据角色id查询菜单树结构
  */
 const getRoleMenuTreeselect = (roleId) => {
-  return baseService.get(`system/menu/roleMenuTreeselect/${roleId}`).then(res => {
+  return roleMenuTreeselect(roleId).then(res => {
     menuOptions.value = res.data.menus
     return res;
   })
@@ -179,7 +180,7 @@ const getRoleMenuTreeselect = (roleId) => {
 
 const getInfo = (id) => {
   const roleMenu = getRoleMenuTreeselect(id);
-  baseService.get(`system/role/${id}`).then(res => {
+  getRole(id).then(res => {
     Object.assign(dataForm.value, res.data)
     dataForm.value.roleSort = Number(dataForm.value.roleSort);
     if (dataForm.value.menuCheckStrictly == 0) {
@@ -231,14 +232,14 @@ const submitDataScope = () => {
       dataForm.value.menuIds = getMenuAllCheckedKeys();
       if (dataForm.value.id != undefined) {
         // 修改
-        baseService.put("/system/role", dataForm.value).then(res => {
+        updateRole(dataForm.value).then(res => {
           proxy.$modal.msgSuccess("修改成功");
           visibleRef.value = false;
           emit("refreshDataList");
         })
       } else {
         // 保存
-        baseService.post("/system/role", dataForm.value).then(res => {
+        addRole(dataForm.value).then(res => {
           proxy.$modal.msgSuccess("新增成功");
           visibleRef.value = false;
           emit("refreshDataList");
@@ -290,7 +291,7 @@ const handleCheckedTreeConnect = (value) => {
  * 查询菜单树结构
  */
 const getMenuTreeselect = () => {
-  baseService.get("/system/menu/treeselect").then(res => {
+  treeselect().then(res => {
     menuOptions.value = res.data
   })
 }

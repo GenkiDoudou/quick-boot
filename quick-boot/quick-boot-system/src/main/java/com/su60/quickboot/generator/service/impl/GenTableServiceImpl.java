@@ -23,6 +23,7 @@ import com.su60.quickboot.generator.entity.GenTableEntity;
 import com.su60.quickboot.generator.mapper.GenTableMapper;
 import com.su60.quickboot.generator.service.IGenTableColumnService;
 import com.su60.quickboot.generator.service.IGenTableService;
+import com.su60.quickboot.system.utils.SysConfigUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.IOUtils;
@@ -125,7 +126,8 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 			GenTableEntity genTableEntity = converTableInfo(info);
 			this.save(genTableEntity);
 
-			List<GenTableColumnEntity> tableColumnEntities = tableFields.stream().map(a -> converTableField(a, genTableEntity)).collect(Collectors.toList());
+			List<GenTableColumnEntity> tableColumnEntities = tableFields.stream()
+					.map(a -> converTableField(a, genTableEntity)).collect(Collectors.toList());
 			genTableColumnService.saveBatch(tableColumnEntities);
 		}
 
@@ -144,8 +146,8 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 				.setTableName(tableInfo.getTableName())
 				.setTableComment(tableInfo.getTableComment())
 				.setClassName(tableInfo.getClassName())
-				.setFunctionAuthor("luyanan")
-				.setPackageName("com.su60.quickboot")
+				.setFunctionAuthor(SysConfigUtils.getConfig(SysConfigUtils.GEN_AUTHOR))
+				.setPackageName(SysConfigUtils.getConfig(SysConfigUtils.GEN_PARENT_PACKAGE))
 				.setGenType("1")
 				.setGenPath(System.getProperty("user.dir") + "/generaotorcode");
 	}
@@ -172,8 +174,35 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 		genTableColumnDo.setHtmlType(getHtmlType(tableField.getAttrType(), tableField.getColumnName()));
 		// 查询方式默认为=
 		genTableColumnDo.setQueryType("EQ");
-		// 这里做一些常规的转换
-//				genTableColumnDo.setIsIncrement(tableField.getIsIncrement())
+
+		// 这里做一些基本的处理
+		// 1. 主键的话 不列表、不查询、
+		if (StrUtil.isNotBlank(genTableColumnDo.getIsPk()) && genTableColumnDo.getIsPk().equals("1")) {
+			genTableColumnDo.setIsList("0");
+			genTableColumnDo.setIsQuery("0");
+			genTableColumnDo.setIsEdit("1");
+		} else if (StrUtil.isNotBlank(tableField.getColumnName()) && tableField.getColumnName().equals("remark")) {
+			// 2. 当为备注的时候 不列表,不查询
+			genTableColumnDo.setIsList("");
+			genTableColumnDo.setIsQuery("0");
+			genTableColumnDo.setIsEdit("1");
+		} else if (StrUtil.isNotBlank(tableField.getColumnName()) && (tableField.getColumnName().equals("create_by") || tableField.getColumnName().equals("update_time") || tableField.getColumnName().equals("update_by"))) {
+			// 3. 当字段为 create_by update_time  update_by的时候  不查询、不搜索、不列表
+			genTableColumnDo.setIsList("0");
+			genTableColumnDo.setIsQuery("0");
+			genTableColumnDo.setIsEdit("0");
+		} else if (StrUtil.isNotBlank(tableField.getColumnName()) && tableField.getColumnName().equals("del_flag")) {
+			// 4 当字段为del_flag的时候  不查询、不编辑、不搜索
+			genTableColumnDo.setIsList("0");
+			genTableColumnDo.setIsEdit("0");
+			genTableColumnDo.setIsQuery("0");
+		} else {
+			// 5. 其他的字段都选中
+			genTableColumnDo.setIsList("1");
+			genTableColumnDo.setIsEdit("1");
+			genTableColumnDo.setIsQuery("1");
+		}
+
 
 		return genTableColumnDo;
 	}
@@ -335,13 +364,13 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 							.setTemplateFilePath("template2/entity.java.ftl")
 							.setSavePath("src/main/java")
 							.setPackagePath("entity")
-							.setFileName("%sEntity.java"));
+							.setFileName("{className}Entity.java"));
 
 					list.add(new CodeTemplate()
 							.setTemplateFilePath("template2/do.java.ftl")
 							.setSavePath("src/main/java")
 							.setPackagePath("dos")
-							.setFileName("%sDo.java")
+							.setFileName("{className}Do.java")
 							.setInterceptor(new GeneratorInterceptor() {
 								@Override
 								public void execute(TableInfo tableInfo, DataMap dataMap) {
@@ -363,32 +392,27 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 							.setTemplateFilePath("template2/mapper.java.ftl")
 							.setSavePath("src/main/java")
 							.setPackagePath("mapper")
-							.setFileName("%sMapper.java"));
+							.setFileName("{className}Mapper.java"));
 					list.add(new CodeTemplate()
 							.setTemplateFilePath("template2/mapper.xml.ftl")
 							.setSavePath("resource/mapper/{moduleName}")
-							.setFileName("%sMapper.xml"));
+							.setFileName("{className}Mapper.xml"));
 					list.add(new CodeTemplate()
 							.setTemplateFilePath("template2/service.java.ftl")
 							.setSavePath("src/main/java")
 							.setPackagePath("service")
-							.setFileName("I%sService.java"));
+							.setFileName("I{className}Service.java"));
 
 					list.add(new CodeTemplate()
 							.setTemplateFilePath("template2/serviceImpl.java.ftl")
 							.setSavePath("src/main/java")
 							.setPackagePath("service.impl")
-							.setFileName("%sServiceImpl.java"));
-//
-					list.add(new CodeTemplate()
-							.setTemplateFilePath("template2/controller.java.ftl")
-							.setSavePath("src/main/java")
-							.setPackagePath("controller")
-							.setFileName("%sController.java")
+							.setFileName("{className}ServiceImpl.java")
+
+
 							.setInterceptor(new GeneratorInterceptor() {
 								@Override
 								public void execute(TableInfo tableInfo, DataMap dataMap) {
-									List<TableField> tableFields = dataMap.getTableFields();
 									// 找出来需要搜索的字段
 									List<GenTableColumnEntity> searchFields = tableColumnEntities
 											.stream()
@@ -398,6 +422,22 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 									dataMap.put("searchFields", searchFields);
 									dataMap.put("tableEntity", tableEntity);
 								}
+							}));
+//
+					list.add(new CodeTemplate()
+							.setTemplateFilePath("template2/controller.java.ftl")
+							.setSavePath("src/main/java")
+							.setPackagePath("controller")
+							.setFileName("{className}Controller.java")
+							.setInterceptor((tableInfo, dataMap) -> {
+								// 找出来需要搜索的字段
+								List<GenTableColumnEntity> searchFields = tableColumnEntities
+										.stream()
+										.filter(a -> StrUtil.isNotBlank(a.getIsQuery())
+												&& a.getIsQuery().equals("1"))
+										.collect(Collectors.toList());
+								dataMap.put("searchFields", searchFields);
+								dataMap.put("tableEntity", tableEntity);
 							}));
 //
 					// index.vue
@@ -442,11 +482,30 @@ public class GenTableServiceImpl extends BaseVoServiceImpl<GenTableMapper, GenTa
 								}
 							}));
 
-					//  sql
+					// api
 					list.add(new CodeTemplate()
-							.setTemplateFilePath("template2/sql.ftl")
-							.setSavePath("sql/{moduleName}")
-							.setFileName("%s.sql").setInterceptor((tableInfo, dataMap) -> dataMap.put("tableEntity", tableEntity)));
+							.setTemplateFilePath("template2/api.js.ftl")
+							.setSavePath("api/{moduleName}/")
+							.setFileName("{classNameLower}.js")
+							.setInterceptor(new GeneratorInterceptor() {
+								@Override
+								public void execute(TableInfo tableInfo, DataMap dataMap) {
+									List<GenTableColumnEntity> addOrUpdateFields = tableColumnEntities
+											.stream()
+											.filter(a -> StrUtil.isNotBlank(a.getIsEdit()) && a.getIsEdit().equals("1"))
+											.collect(Collectors.toList());
+									dataMap.put("addOrUpdateFields", addOrUpdateFields);
+
+								}
+							}));
+					Long parentId = tableEntity.getParentId();
+					if (null != parentId) {
+						//  sql
+						list.add(new CodeTemplate()
+								.setTemplateFilePath("template2/sql.ftl")
+								.setSavePath("sql/{moduleName}")
+								.setFileName("{className}.sql").setInterceptor((tableInfo, dataMap) -> dataMap.put("tableEntity", tableEntity)));
+					}
 
 
 				})

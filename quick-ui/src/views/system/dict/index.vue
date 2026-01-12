@@ -9,8 +9,9 @@
         <!-- 字典管理表格 -->
         <c7-json-table
             ref="tableRef"
-            :listFunction="listDict"
+            :listFunction="listType"
             :tableColumns="tableColumns"
+            :delete-function ="delType"
             :searchColumns="searchColumns"
             :tableProps="tableProps"
             rowsKey="data.records"
@@ -18,8 +19,6 @@
             :export-function="exportDict"
             @addBtnHandle="handleAdd"
             @editBtnHandle="handleEdit"
-            @deleteBtnHandle="handleDelete"
-            @refreshDataList="refreshData"
         >
           <template #dictType="scope">
             <el-link type="primary" @click="toData(scope.row)">{{ scope.row.dictType }}</el-link>
@@ -37,7 +36,7 @@
                 btnType="delete" 
                 :confirm="true"
                 :confirmMessage="`确定删除字典类型${scope.row.dictType}吗？`"
-                @click="handleDelete(scope.row.id)" 
+                @click="tableRef.handleDelete(scope.row.id)"
                 v-hasPermi="['system:dict:remove']"
               />
 
@@ -64,7 +63,7 @@ import {C7JsonTable, C7Button, C7SwitchForm, C7ButtonGroup} from "@/components/c
 import {reactive, ref, toRefs, nextTick, getCurrentInstance} from "vue";
 import {ElMessage, ElMessageBox} from 'element-plus';
 import AddOrUpdate from "./add-or-update.vue";
-import {listType as listDict, delType as delDict,exportDict} from '@/api/system/dict/type.js';
+import {listType,delType,exportDict} from '@/api/system/dict/type.js';
 import DataList from "@/views/system/dict/data.vue";
 // 搜索字段
 const searchColumns = ref([
@@ -165,45 +164,9 @@ const handleEdit = (row) => {
   });
 };
 
-const handleDelete = async (dictIdOrRows) => {
-  try {
-    let ids = [];
-    let message = '';
 
-    // 判断参数类型
-    if (Array.isArray(dictIdOrRows)) {
-      // 来自表格组件的批量删除
-      ids = dictIdOrRows.map(row => row.id);
-      message = `是否确认删除选中的${ids.length}个字典？`;
-    } else {
-      // 来自操作列的单个删除
-      ids = [dictIdOrRows];
-      message = `是否确认删除字典编号为"${dictIdOrRows}"的数据项？`;
-    }
 
-    await ElMessageBox.confirm(message, '系统提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
 
-    // 批量删除
-    for (const id of ids) {
-      await delDict(id);
-    }
-
-    ElMessage.success('删除成功');
-    refreshData();
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败');
-    }
-  }
-};
-
-const refreshData = () => {
-  tableRef.value?.getDataList();
-};
 
 // 查看字典详情
 const handleView = (row) => {

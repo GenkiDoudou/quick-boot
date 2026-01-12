@@ -24,6 +24,9 @@ public class MysqlTableQuery implements ITableQuery {
 		if (StrUtil.isNotBlank(tableName)) {
 			sql.append("and table_name = '").append(tableName).append("' ");
 		}
+
+		// 排除定时任务表和flyway表
+		sql.append(" and table_name not  like  'QRTZ_%' and TABLE_NAME not like 'flyway_%' ");
 		sql.append("order by table_name asc");
 		return sql.toString();
 	}

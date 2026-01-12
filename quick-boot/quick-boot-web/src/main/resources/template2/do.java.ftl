@@ -1,14 +1,14 @@
 package ${packag}.dos;
 
-import cn.t200.quickboot.common.validation.AddGroup;
-import cn.t200.quickboot.common.validation.UpdateGroup;
+import com.su60.quickboot.common.validation.AddGroup;
+import com.su60.quickboot.common.validation.UpdateGroup;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import java.io.Serial;
 import java.io.Serializable;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 <#list importPackage as pkg>
 import ${pkg};

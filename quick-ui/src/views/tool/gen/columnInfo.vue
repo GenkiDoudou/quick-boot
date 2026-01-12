@@ -75,7 +75,7 @@
 
       <el-table-column label="显示类型" min-width="13%">
         <template #default="scope">
-          <c7-select dict-type="GEN_HTML_TYPE" v-model="scope.row.htmlType"></c7-select>
+          <c7-select :data-list="GEN_HTML_TYPE" v-model="scope.row.htmlType"></c7-select>
           <!--          <el-input v-model="scope.row.htmlType"></el-input>-->
         </template>
       </el-table-column>
@@ -104,6 +104,7 @@ import baseService from "@/service/baseService.js";
 
 const {proxy} = getCurrentInstance();
 const dataList = ref();
+const {GEN_HTML_TYPE} = proxy.useDict("GEN_HTML_TYPE");
 
 const queryTypeDictData = ref([
   {

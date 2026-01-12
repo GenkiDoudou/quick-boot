@@ -134,8 +134,9 @@ public class SysMenuServiceImpl extends BaseVoServiceImpl<SysMenuMapper, SysMenu
 	public List<Tree<Long>> treeList(SysMenuDo sysMenuDo, Long userId) {
 
 		//  根据用户id查询角色
-		List<Long> roleIds = sysRoleService.listByUserId(userId).stream().map(SysRoleDo::getId).toList();
-		List<SysMenuDo> sysMenuDos = this.listByRoleIds(roleIds);
+//		List<Long> roleIds = sysRoleService.listByUserId(userId).stream().map(SysRoleDo::getId).toList();
+//		List<SysMenuDo> sysMenuDos = this.listByRoleIds(roleIds);
+		List<SysMenuDo> sysMenuDos = BeanConvertUtils.convertListTo(super.list(new LambdaQueryWrapper<>()), SysMenuDo::new);
 		if (CollectionUtil.isEmpty(sysMenuDos)) {
 			return new ArrayList<>();
 		}

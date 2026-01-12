@@ -7,6 +7,7 @@
       :tableColumns="tableColumns"
       :searchColumns="searchColumns"
       :tableProps="tableProps"
+      :delete-function="delRole"
       rowsKey="data.records"
       totalKey="data.total"
       @addBtnHandle="handleAdd"
@@ -29,7 +30,7 @@
             type="danger" 
             link 
             icon="Delete" 
-            @click="handleDelete(scope.row.id)"
+            @click="tableRef.handleDelete(scope.row.id)"
             v-hasPermi="['system:role:remove']"
           >
             删除
@@ -42,7 +43,7 @@
     <add-or-update
       :key="addKey"
       ref="addOrUpdateRef"
-      @refreshDataList="refreshData"
+      @refreshDataList="tableRef.refreshData()"
     />
   </div>
 </template>
@@ -57,8 +58,7 @@ import { C7JsonTable, C7Button, C7ButtonGroup } from '@/components/c7';
 
 // 获取当前实例和字典数据
 const { proxy } = getCurrentInstance();
-const dictData = proxy.useDict("sys_normal_disable");
-const sys_normal_disable = dictData.sys_normal_disable;
+const {sys_normal_disable,role_data_scope} = proxy.useDict("sys_normal_disable","role_data_scope");
 
 // 表格引用
 const tableRef = ref();
@@ -96,6 +96,13 @@ const tableColumns = ref([
     label: "权限字符",
     prop: "roleKey",
     showOverflowTooltip: true
+  },
+  {
+    label: "数据权限",
+    prop: "dataScope",
+    showOverflowTooltip: true,
+    columnType: 'tag',
+    dictList: role_data_scope
   },
   {
     label: "显示顺序",
@@ -148,40 +155,6 @@ const handleEdit = (row) => {
   });
 };
 
-const handleDelete = async (roleIdOrRows) => {
-  try {
-    let ids = [];
-    let message = '';
 
-    // 判断参数类型
-    if (Array.isArray(roleIdOrRows)) {
-      // 来自表格组件的批量删除
-      ids = roleIdOrRows.map(row => row.id);
-      message = `是否确认删除选中的${ids.length}个角色？`;
-    } else {
-      // 来自操作列的单个删除
-      ids = [roleIdOrRows];
-      message = `是否确认删除角色编号为"${roleIdOrRows}"的数据项？`;
-    }
-
-    await ElMessageBox.confirm(message, '系统提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    // 批量删除
-    for (const id of ids) {
-      await delRole(id);
-    }
-
-    ElMessage.success('删除成功');
-    refreshData();
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败');
-    }
-  }
-};
 
 </script>

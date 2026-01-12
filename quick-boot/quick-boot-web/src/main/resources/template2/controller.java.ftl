@@ -1,21 +1,20 @@
 package ${packag}.controller;
 
-import cn.t200.quickboot.common.core.PageInfo;
-import cn.t200.quickboot.common.core.PageRequest;
-import cn.t200.quickboot.data.mybatisplus.PageVoHandler;
-import cn.t200.quickboot.common.validation.AddGroup;
-import cn.t200.quickboot.common.validation.UpdateGroup;
+import  com.su60.quickboot.common.core.PageInfo;
+import  com.su60.quickboot.common.core.PageRequest;
+import  com.su60.quickboot.data.mybatisplus.PageVoHandler;
+import  com.su60.quickboot.common.validation.AddGroup;
+import  com.su60.quickboot.common.validation.UpdateGroup;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import ${packag}.dos.${className}Do;
 import ${packag}.entity.${className}Entity;
 import ${packag}.service.I${className}Service;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
 import java.util.Arrays;
 import java.util.List;
-
+import org.springframework.validation.annotation.Validated;
 /**
 *
 *${tableComment!}
@@ -47,22 +46,7 @@ import java.util.List;
     @GetMapping("list")
     public PageInfo<${className}Do> page(${className}Do ${className?uncap_first}Do) {
 
-        return ${className?uncap_first}Service.page(${className?uncap_first}Do, new PageVoHandler<${className}Entity, ${className}Do>() {
-        @Override
-        public void queryWrapperHandler(${className}Do vo, ${className}Entity ${className?uncap_first}Entity, LambdaQueryWrapper<${className}Entity> queryWrapper) {
-
-
-        <#list searchFields as searchField >
-            <#if  searchField.queryType == 'LIKE' >
-                queryWrapper.like(StrUtil.isNotBlank(vo.get${searchField.javaField?cap_first}()),${className}Entity::get${searchField.javaField?cap_first}, vo.get${searchField.javaField?cap_first}());
-                ${className?uncap_first}Entity.set${searchField.javaField?cap_first}(null);
-            </#if>
-        </#list>
-}
-
-
-
-        });
+                 return ${className?uncap_first}Service.page(${className?uncap_first}Do);
 
         }
 
@@ -78,7 +62,7 @@ import java.util.List;
         </#if>
                     @PostMapping()
                     public Boolean save(@RequestBody @Validated(AddGroup.class) ${className}Do ${className?uncap_first}Do) {
-                    return ${className?uncap_first}Service.saveVo(${className?uncap_first}Do);
+                    return ${className?uncap_first}Service.save(${className?uncap_first}Do);
                     }
 
 
@@ -94,7 +78,7 @@ import java.util.List;
         </#if>
                     @PutMapping
                     public Boolean updateById(@RequestBody @Validated(UpdateGroup.class) ${className}Do ${className?uncap_first}Do) {
-                    return ${className?uncap_first}Service.updateVoById(${className?uncap_first}Do);
+                    return ${className?uncap_first}Service.updateById(${className?uncap_first}Do);
                     }
 
 
@@ -117,13 +101,13 @@ import java.util.List;
                     /**
                     * 根据ids 删除
                     *
-                    * @param ids 多个以英文逗号(,)分割
+                    * @param ids 集合
                     * @return 是否成功
                     * @since  ${date}
                     */
-        <#if  tableEntity.verifyPermission == 'Y' >
-                    @SaCheckPermission("${moduleName!}:${className ?lower_case}:remove")
-        </#if>
+                <#if  tableEntity.verifyPermission == 'Y' >
+                            @SaCheckPermission("${moduleName!}:${className ?lower_case}:remove")
+                </#if>
                     @DeleteMapping()
                     public Boolean deleteByIds(@RequestBody List<Long> ids) {
                     return ${className?uncap_first}Service.deleteByIds(ids);

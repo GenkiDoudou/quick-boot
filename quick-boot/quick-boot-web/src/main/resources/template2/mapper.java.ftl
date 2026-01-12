@@ -1,7 +1,7 @@
 package ${packag}.mapper;
 
 import ${packag}.entity.${className}Entity;
-import cn.t200.quickboot.data.mybatisplus.BaseBaseMapper;
+ import com.su60.quickboot.data.mybatisplus.BaseBaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 /**
  * <p>
