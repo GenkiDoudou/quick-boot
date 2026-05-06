@@ -1,0 +1,11 @@
+io.github.genkidoudou.common.cache.QuickbootCacheAutoConfiguration
+io.github.genkidoudou.common.desensitization.SensitiveJacksonAutoConfiguration
+io.github.genkidoudou.common.file.FileStorageAutoConfiguration
+io.github.genkidoudou.common.security.firewall.cors.FirewallCorsAutoConfiguration
+io.github.genkidoudou.common.security.firewall.headers.FirewallSecurityHeadersAutoConfiguration
+io.github.genkidoudou.common.security.firewall.idempotent.IdempotentAutoConfiguration
+io.github.genkidoudou.common.security.firewall.methodandhost.MethodAndHostFirewallAutoConfiguration
+io.github.genkidoudou.common.security.firewall.password.FirewallPasswordCodecAutoConfiguration
+io.github.genkidoudou.common.security.firewall.xss.XssFirewallAutoConfiguration
+io.github.genkidoudou.common.security.firewall.sqlinjection.SqlInjectionFirewallAutoConfiguration
+io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordFirewallAutoConfiguration

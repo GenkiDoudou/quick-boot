@@ -1,0 +1,94 @@
+package io.github.genkidoudou.common.security.firewall.cors;
+
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * {@code qc.security.firewall.cors.enabled=true} 时注册 CORS Filter。
+ */
+@AutoConfiguration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@EnableConfigurationProperties(FirewallCorsProperties.class)
+@ConditionalOnProperty(prefix = "qc.security.firewall.cors", name = "enabled", havingValue = "true")
+public class FirewallCorsAutoConfiguration {
+
+    /**
+     * 需要尽量早于可能写出拦截响应的防火墙 Filter，确保跨域时拦截响应也携带 CORS 响应头。
+     */
+    private static final int ORDER = Ordered.HIGHEST_PRECEDENCE;
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> firewallCorsFilterRegistration(FirewallCorsProperties properties) {
+        CorsConfiguration cors = buildCorsConfiguration(properties);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration(properties.getPathPattern(), cors);
+
+        FilterRegistrationBean<CorsFilter> reg = new FilterRegistrationBean<>(new CorsFilter(source));
+        reg.setOrder(ORDER);
+        reg.addUrlPatterns("/*");
+        return reg;
+    }
+
+    static CorsConfiguration buildCorsConfiguration(FirewallCorsProperties properties) {
+        CorsConfiguration cors = new CorsConfiguration();
+        cors.setAllowCredentials(properties.isAllowCredentials());
+        cors.setMaxAge(properties.getMaxAge());
+
+        cors.setAllowedMethods(copyOrNull(properties.getAllowedMethods()));
+        cors.setAllowedHeaders(copyOrNull(properties.getAllowedHeaders()));
+
+        if (!CollectionUtils.isEmpty(properties.getExposedHeaders())) {
+            cors.setExposedHeaders(copyOrNull(properties.getExposedHeaders()));
+        }
+
+        // allowedOrigins 为空时视为允许 "*"，便于默认可用（与 spec 的“实现定义默认行为”一致）。
+        List<String> origins = normalizeOrigins(properties.getAllowedOrigins());
+
+        boolean containsWildcard = origins.stream().anyMatch(s -> "*".equals(s));
+        if (properties.isAllowCredentials() && containsWildcard) {
+            // 规范限制：credentials=true 时不允许 ACAO="*"
+            cors.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            cors.setAllowedOrigins(origins);
+        }
+        return cors;
+    }
+
+    private static List<String> normalizeOrigins(List<String> configured) {
+        if (CollectionUtils.isEmpty(configured)) {
+            return List.of("*");
+        }
+        List<String> out = new ArrayList<>();
+        for (String s : configured) {
+            if (s == null) {
+                continue;
+            }
+            String t = s.trim();
+            if (t.isEmpty()) {
+                continue;
+            }
+            out.add(t);
+        }
+        return out.isEmpty() ? List.of("*") : out;
+    }
+
+    private static List<String> copyOrNull(List<String> src) {
+        if (src == null) {
+            return null;
+        }
+        return new ArrayList<>(src);
+    }
+}
+

@@ -1,0 +1,25 @@
+{
+    "version": 1,
+    "hooks": {
+        "stop": [
+            {
+                "command": "node .cursor/hooks/auto-retry.js"
+            }
+        ],
+//         "afterFileEdit": [
+//             {
+//                 "command": "node .cursor/hooks/track-edits.js"
+//             }
+//         ],
+//         "sessionStart": [
+//             {
+//                 "command": "node .cursor/hooks/session-start.js"
+//             }
+//         ],
+//         "sessionEnd": [
+//             {
+//                 "command": "node .cursor/hooks/session-summary.js"
+//             }
+//         ]
+    }
+}
