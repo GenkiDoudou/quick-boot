@@ -73,6 +73,18 @@ export const constantRoutes = [
     meta: { title: 'C7DatePicker Dev' }
   },
   {
+    path: '/dev/c7-timepicker-e2e',
+    component: () => import('@/views/dev/C7TimePickerE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7TimePicker Dev' }
+  },
+  {
+    path: '/dev/c7-title-e2e',
+    component: () => import('@/views/dev/C7TitleE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Title Dev' }
+  },
+  {
     path: '/dev/c7-dialog-e2e',
     component: () => import('@/views/dev/C7DialogE2E.vue'),
     hidden: true,

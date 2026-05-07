@@ -14,8 +14,10 @@ import C7DictTag from './C7DictTag/index.vue'
 import C7Dialog from './C7Dialog/index.vue'
 import C7Descriptions from './C7Descriptions/index.vue'
 import C7DatePicker from './C7DatePicker/index.vue'
+import C7TimePicker from './C7TimePicker/index.vue'
+import C7Title from './C7Title/index.vue'
 
-export { C7Button, C7ButtonGroup, C7Select, C7Pagination, C7Card, C7Copy, C7Checkbox, C7Radio, C7Switch, C7DictTag, C7Dialog, C7Descriptions, C7DatePicker }
+export { C7Button, C7ButtonGroup, C7Select, C7Pagination, C7Card, C7Copy, C7Checkbox, C7Radio, C7Switch, C7DictTag, C7Dialog, C7Descriptions, C7DatePicker, C7TimePicker, C7Title }
 
 /**
  * 注册 packages 内全局组件（名称与组件一致，如 C7Button）。
@@ -36,4 +38,6 @@ export function installPackages(app) {
   app.component('C7Dialog', C7Dialog)
   app.component('C7Descriptions', C7Descriptions)
   app.component('C7DatePicker', C7DatePicker)
+  app.component('C7TimePicker', C7TimePicker)
+  app.component('C7Title', C7Title)
 }
