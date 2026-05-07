@@ -25,6 +25,66 @@ export const constantRoutes = [
     meta: { title: 'C7Button E2E' }
   },
   {
+    path: '/dev/c7-select-e2e',
+    component: () => import('@/views/dev/C7SelectE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Select Dev' }
+  },
+  {
+    path: '/dev/c7-pagination-e2e',
+    component: () => import('@/views/dev/C7PaginationE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Pagination Dev' }
+  },
+  {
+    path: '/dev/c7-copy-e2e',
+    component: () => import('@/views/dev/C7CopyE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Copy Dev' }
+  },
+  {
+    path: '/dev/c7-card-e2e',
+    component: () => import('@/views/dev/C7CardE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Card Dev' }
+  },
+  {
+    path: '/dev/c7-checkbox-e2e',
+    component: () => import('@/views/dev/C7CheckboxE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Checkbox Dev' }
+  },
+  {
+    path: '/dev/c7-radio-e2e',
+    component: () => import('@/views/dev/C7RadioE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Radio Dev' }
+  },
+  {
+    path: '/dev/c7-switch-e2e',
+    component: () => import('@/views/dev/C7SwitchE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Switch Dev' }
+  },
+  {
+    path: '/dev/c7-datepicker-e2e',
+    component: () => import('@/views/dev/C7DatePickerE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7DatePicker Dev' }
+  },
+  {
+    path: '/dev/c7-dialog-e2e',
+    component: () => import('@/views/dev/C7DialogE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Dialog Dev' }
+  },
+  {
+    path: '/dev/c7-dict-tag-e2e',
+    component: () => import('@/views/dev/C7DictTagE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7DictTag Dev' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404'),
     hidden: true
