@@ -1,8 +1,8 @@
 # C7TimePicker（C7 时间选择器）设计说明
 
 **日期**：2026-05-07  
-**状态**：已定稿（经 brainstorming 澄清：四题均为推荐项 A）  
-**依据**：`原始需求/前端/C7时间选择器.md` + 与 **`C7DatePicker`** 行为对齐约定
+**状态**：已定稿（brainstorming 澄清：**1B** 交付含与现实现状**一致性 / 差异**说明；**2A** 仅默认 **`HH:mm:ss`**，父级显式传入则**不覆盖**；**3A** **`mergeDelimiter` 与 EP `range-separator` 语义分离**；**4A** 维持 **`rangeMerge=false` 时不将外向 `string` 按存储串解析**；**5A** 以本文档为设计落盘）  
+**依据**：`原始需求/前端/C7时间选择器.md`；与 **`C7DatePicker`** 在 **「计算属性 + `outerToInner` / `innerToOuter`」单数据流、`mergeDelimiter` 回退规则、默认格式注入模式」** 上同构；在 **范围模式下外向 `string` 是否进入拆分逻辑** 上与 **`C7DatePicker` 有意不同**（见第 8 节、第 15 节）。
 
 ---
 
@@ -16,7 +16,7 @@
 - 在 **`is-range` / `isRange`** 为真时，通过 **`rangeMerge`** 在 **合并字符串**（默认逗号分隔，可用 **`mergeDelimiter`** 配置）与 **EP 原生范围值**（一般为二元数组）之间切换；
 - **`change`** 载荷与 **`update:modelValue`** 外向形态一致；**`blur` / `focus`** 与 EP 一致转发。
 
-**验收**：**`is-range` + `rangeMerge`** 下，外部字符串 **`"08:00:00,18:00:00"`** 可回显、可编辑，并按配置输出。
+**验收**：**`is-range` + `rangeMerge=true`** 下，外部字符串 **`"08:00:00,18:00:00"`** 可回显、可编辑，并按配置输出。
 
 ---
 
@@ -42,7 +42,7 @@
 - **`defineOptions({ name: 'C7TimePicker', inheritAttrs: false })`**。
 - 根上使用经筛选的 **`v-bind`**：**不得**把本组件独占的 **`modelValue` / `rangeMerge` / `mergeDelimiter`** 再透传给 EP；**`model-value` / `@update:model-value`** 由包装层接管。
 - 文档说明：**除下文「显式 props」外，其余属性与 Element Plus `el-time-picker` 一致**。
-- **`visible-change`** 等其它 EP 事件：**不**要求在 **`defineEmits`** 中穷举；调用方可通过 **模板监听** 或 **attrs 监听器** 使用（与澄清结论 4-A 一致）。
+- **`visible-change`** 等其它 EP 事件：**不**要求在 **`defineEmits`** 中穷举；调用方可通过 **模板监听** 或 **attrs 监听器** 使用。
 
 ---
 
@@ -52,7 +52,7 @@
 |------|-------------|------|
 | **`modelValue`** | — | **对外**绑定值。单值：与 EP 一致。**范围 + `rangeMerge`**：**`string \| null`**（两段由 **`mergeDelimiter`** 拼接）。**范围 + 非 merge**：EP 范围形态（一般为 **长度 2 的数组**）。 |
 | **`rangeMerge`** | **`boolean`**，默认 **`false`** | **仅当** `is-range` / `isRange` 为 **`true`** 时生效；否则无效果。 |
-| **`mergeDelimiter`** | **`string`**，默认 **`','`** | **仅用于存储串**的拼接与拆分；**与 EP `range-separator`（面板「起—止」展示）语义分离**。若传入 **`null`**、**`undefined`** 或 **空字符串**，**有效分隔符回退为 `','`**（与 **`C7DatePicker`** 一致）。 |
+| **`mergeDelimiter`** | **`string`**，默认 **`','`** | **仅用于存储串**的拼接与拆分；**与 EP `range-separator`（面板「起—止」展示）语义分离**。若传入 **`null`**、**`undefined`** 或 **空字符串**，**有效分隔符回退为 `','`**（与 **`C7DatePicker`** 对 **`mergeDelimiter`** 的回退规则一致）。 |
 
 ---
 
@@ -67,7 +67,7 @@
 
 ## 7. 范围模式判定
 
-**范围模式**以根上传入的 **`is-range` 或 `isRange` 为 `true`** 为准（与原始需求一致）。**非范围**时：**`rangeMerge` / `mergeDelimiter`** 无效果，**`outerToInner` / `innerToOuter`** 对单值直透传（除清空归一化见第 9 节）。
+**范围模式**以根上传入的 **`is-range` 或 `isRange` 为 `true`** 为准（含 Vue 布尔空属性等价为 true 的写法以实现为准，与 **`C7TimePicker`** 现实现一致）。**非范围**时：**`rangeMerge` / `mergeDelimiter`** 无效果，**`outerToInner` / `innerToOuter`** 对单值直透传（除清空归一化见第 9 节）。
 
 ---
 
@@ -86,7 +86,10 @@
 | **`Array`** | 长度 **2** → 原样返回；否则 **`null` + warn**。 |
 | **其它类型** | **`null` + warn**。 |
 
-**范围 + 非 `rangeMerge`：** **`string`** 不再按存储串拆分（与 **`C7DatePicker`** 在「非 merge」时不解析合并串的策略一致：外向应为 EP 数组形态）；**`Array`** 长度 2 透传，否则 **`null` + warn**。若业务误传合并串，行为与日期侧非 merge 误用一致，**文档注明**。
+**范围 + 非 `rangeMerge`（与 `C7DatePicker` 的差异点，已定稿 4A）：**
+
+- **`C7DatePicker`**：只要是 **范围 `type`**，外向为 **`string`** 时 **一律**按 **`effectiveDelimiter`** 拆成两段数组供 EP 回显（与 **`rangeMerge` 取值无关**；**`rangeMerge` 仅影响 `innerToOuter` 是否合并回单串**）。
+- **`C7TimePicker`**：**仅接受长度 2 的数组**；外向为 **`string`** 时 **不**按存储串拆分 → **`null` + `console.warn`**（避免在「外向应为数组」的契约下静默误解析）。业务若需从合并串回显，**必须** **`rangeMerge=true`**（或在上层先拆成数组再传入）。
 
 ---
 
@@ -96,7 +99,7 @@
 
 **范围**：若 **`inner == null`** → 外向 **`null`**。若 **非数组** 或 **长度不为 2** → 外向 **`null`**（与 **`C7DatePicker`** 一致，不额外 warn，避免与 EP 内部瞬时状态打架）。
 
-**范围 + `rangeMerge`：** 设两段为 **`a`、** **`b`**（与 **`C7DatePicker`** 相同逻辑）：
+**范围 + `rangeMerge`：** 设两段为 **`a`**、**`b`**（与 **`C7DatePicker`** 相同逻辑）：
 
 - 若 **`a == null && b == null`** → **`null`**；
 - 否则 **`String(a 或 '') + effectiveDelimiter + String(b 或 '')`**（**`null` 段以空串参与拼接**，与 **`C7DatePicker`** 的 **`innerToOuter`** 一致）。
@@ -123,9 +126,9 @@
 
 ## 12. 测试建议（实现阶段）
 
-1. **默认格式**：不传 **`format` / `value-format`** 时，行为符合 **`HH:mm:ss`** 注入预期。  
+1. **默认格式**：不传 **`format` / `value-format` / `valueFormat`** 时，行为符合 **`HH:mm:ss`** 注入预期。  
 2. **范围 + `rangeMerge`**：外向 **`"08:00:00,18:00:00"`** 回显；修改后仍为合并串；**`mergeDelimiter`** 非逗号时拆拼正确。  
-3. **范围 + 非 `rangeMerge`**：二元数组与 EP 一致。  
+3. **范围 + 非 `rangeMerge`**：二元数组与 EP 一致；**误传合并串** → 内向 **`null`** 且 warn（与第 8 节一致）。  
 4. **非法合并串 / 非法数组**：内向 **`null`**，warn 可观测且不过度重复。  
 5. **非范围**：**`rangeMerge=true`** 不产生字符串合并。  
 6. **与 `range-separator`**：面板展示分隔符与 **`mergeDelimiter`** 存储串互不影响。
@@ -135,10 +138,28 @@
 ## 13. 范围与非目标
 
 - **本期不包含**：日期时间混合选择（由 **`C7DatePicker`** 等承担）。  
-- **不修改**：**`C7DatePicker`** 源码；仅行为对齐说明于本文档。
+- **不修改**：**`C7DatePicker`** 源码；本文档 **显式记录** 时间侧与日期侧在 **范围外向 `string` 解析** 上的差异，避免读者误以为两组件 **`outerToInner` 完全一致**。
 
 ---
 
-## 14. 后续流程
+## 14. 原始需求 · OpenSpec · 实现 — 对照（澄清 1B）
 
-实现前使用 **`writing-plans`** 产出可执行实现计划；实现完成后按需补充 **`docs/docs/frontend/components`** 与 OpenSpec 变更（若仓库流程要求）。
+| 维度 | 原始需求 `C7时间选择器.md` | OpenSpec `openspec/changes/ui-c7-time-picker/specs/...` | 实现 `C7TimePicker/index.vue` |
+|------|---------------------------|--------------------------------------------------------|------------------------------|
+| 默认格式 | `HH:mm:ss` | 未传 format/valueFormat 时注入 **`HH:mm:ss`** | **一致** |
+| 范围 + 合并外向 | `rangeMerge=true` 逗号串等 | `rangeMerge` + `mergeDelimiter`，拆分/拼接规则 | **一致** |
+| 范围 + 非合并外向 | 「否则输出数组」 | `rangeMerge=false` 时数组；**外向 `string` 不拆分** | **一致** |
+| 事件 | `update:modelValue`、`change`/`blur`/`focus` | 同设计 + `change` 与 v-model 同形态 | **一致** |
+| 与 `C7DatePicker` | 未写细 | Spec 写明 **`rangeMerge=false` 不解析 `string`** | **一致**；与 **日期组件实现** 在「范围 + 外向 `string`」上 **不同**（见第 8 节） |
+
+**结论**：当前实现与 OpenSpec、原始需求验收口径 **一致**；与 **`C7DatePicker`** 的差异为 **已定稿的有意行为**，评审与文档以本文第 8 节为准。
+
+---
+
+## 15. 后续流程
+
+设计文档经 **你审阅确认无修改** 后，使用 **`writing-plans`** 产出可执行实现计划（若实现已全部完成，则计划可退化为「核对测试与文档链接」类条目）。实现完成后按需补充 **`docs/docs/frontend/components`** 与 OpenSpec 归档流程（若仓库流程要求）。
+
+---
+
+**自检（占位 / 矛盾 / 范围）**：无 TBD；第 8 节与第 14 节相互支撑、无「与日期侧相同」的误导表述；范围聚焦 **`C7TimePicker`**，不含后端与其它组件改造。
