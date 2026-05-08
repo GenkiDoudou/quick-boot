@@ -97,6 +97,12 @@ export const constantRoutes = [
     meta: { title: 'C7DictTag Dev' }
   },
   {
+    path: '/dev/c7-watermark-e2e',
+    component: () => import('@/views/dev/C7WatermarkE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Watermark Dev' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404'),
     hidden: true
