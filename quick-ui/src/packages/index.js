@@ -19,6 +19,7 @@ import C7Title from './C7Title/index.vue'
 import C7TreeSelect from './C7TreeSelect/index.vue'
 import C7Cascader from './C7Cascader/index.vue'
 import C7Watermark from './C7Watermark/index.vue'
+import C7Preview from './C7Preview/index.vue'
 import C7ExcelDownload from './C7ExcelDownload/index.vue'
 import C7ExcelUpload from './C7ExcelUpload/index.vue'
 import {
@@ -53,6 +54,7 @@ export {
   C7TreeSelect,
   C7Cascader,
   C7Watermark,
+  C7Preview,
   C7ExcelDownload,
   C7ExcelUpload,
   setMessageBoxDefaults,
@@ -91,6 +93,7 @@ export function installPackages(app) {
   app.component('C7TreeSelect', C7TreeSelect)
   app.component('C7Cascader', C7Cascader)
   app.component('C7Watermark', C7Watermark)
+  app.component('C7Preview', C7Preview)
   app.component('C7ExcelDownload', C7ExcelDownload)
   app.component('C7ExcelUpload', C7ExcelUpload)
 }

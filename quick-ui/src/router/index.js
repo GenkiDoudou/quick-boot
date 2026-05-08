@@ -31,6 +31,12 @@ export const constantRoutes = [
     meta: { title: 'C7Select Dev' }
   },
   {
+    path: '/dev/c7-cascader-e2e',
+    component: () => import('@/views/dev/C7CascaderE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Cascader Dev' }
+  },
+  {
     path: '/dev/c7-pagination-e2e',
     component: () => import('@/views/dev/C7PaginationE2E.vue'),
     hidden: true,
@@ -101,6 +107,12 @@ export const constantRoutes = [
     component: () => import('@/views/dev/C7WatermarkE2E.vue'),
     hidden: true,
     meta: { title: 'C7Watermark Dev' }
+  },
+  {
+    path: '/dev/c7-preview-e2e',
+    component: () => import('@/views/dev/C7PreviewE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7Preview Dev' }
   },
   {
     path: '/:pathMatch(.*)*',
