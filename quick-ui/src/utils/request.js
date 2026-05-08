@@ -29,6 +29,11 @@ service.interceptors.request.use(config => {
 
 service.interceptors.response.use(res => {
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
+            /** @type {import('axios').AxiosRequestConfig & { returnBlobWithHeaders?: boolean }} */
+            const cfg = res.config || {}
+            if (cfg.returnBlobWithHeaders === true) {
+                return { data: res.data, headers: res.headers }
+            }
             return res.data
         }
         const code = res.data.code || 200;
@@ -83,6 +88,18 @@ service.interceptors.response.use(res => {
     }
 )
 
+/**
+ * 表单 POST 导出：响应体为 **Blob**（`responseType: 'blob'`）。
+ *
+ * - **默认**：Promise resolve 值为 **`Blob`**（与历史行为一致）。
+ * - **`config.returnBlobWithHeaders === true`**：resolve 值为 **`{ data: Blob, headers }`**，
+ *   便于解析 **`Content-Disposition`**（如 **`C7ExcelDownload`** 与 **`filename*`**）。
+ *
+ * @param {string} url 相对 `baseURL` 的路径
+ * @param {Record<string, unknown>} [params] 查询/表单参数（经 `tansParams` 序列化）
+ * @param {import('axios').AxiosRequestConfig & { returnBlobWithHeaders?: boolean }} [config] 合并到 axios 请求配置；可传 **`returnBlobWithHeaders`**
+ * @returns {Promise<Blob | { data: Blob, headers: import('axios').AxiosResponse['headers'] }>}
+ */
 export function downloadRequest(url, params, config) {
     return service.post(url, params, {
         transformRequest: [(params) => {

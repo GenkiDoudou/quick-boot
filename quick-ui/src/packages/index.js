@@ -17,7 +17,9 @@ import C7DatePicker from './C7DatePicker/index.vue'
 import C7TimePicker from './C7TimePicker/index.vue'
 import C7Title from './C7Title/index.vue'
 import C7TreeSelect from './C7TreeSelect/index.vue'
+import C7Cascader from './C7Cascader/index.vue'
 import C7Watermark from './C7Watermark/index.vue'
+import C7ExcelDownload from './C7ExcelDownload/index.vue'
 import {
   setMessageBoxDefaults,
   c7Confirm,
@@ -48,7 +50,9 @@ export {
   C7TimePicker,
   C7Title,
   C7TreeSelect,
+  C7Cascader,
   C7Watermark,
+  C7ExcelDownload,
   setMessageBoxDefaults,
   c7Confirm,
   c7Alert,
@@ -83,5 +87,7 @@ export function installPackages(app) {
   app.component('C7TimePicker', C7TimePicker)
   app.component('C7Title', C7Title)
   app.component('C7TreeSelect', C7TreeSelect)
+  app.component('C7Cascader', C7Cascader)
   app.component('C7Watermark', C7Watermark)
+  app.component('C7ExcelDownload', C7ExcelDownload)
 }
