@@ -20,6 +20,8 @@ import C7TreeSelect from './C7TreeSelect/index.vue'
 import C7Cascader from './C7Cascader/index.vue'
 import C7Watermark from './C7Watermark/index.vue'
 import C7Preview from './C7Preview/index.vue'
+import C7JsonTableColumn from './C7JsonTableColumn/index.vue'
+import C7JsonTable from './C7JsonTable/index.vue'
 import C7ExcelDownload from './C7ExcelDownload/index.vue'
 import C7ExcelUpload from './C7ExcelUpload/index.vue'
 import {
@@ -55,6 +57,8 @@ export {
   C7Cascader,
   C7Watermark,
   C7Preview,
+  C7JsonTableColumn,
+  C7JsonTable,
   C7ExcelDownload,
   C7ExcelUpload,
   setMessageBoxDefaults,
@@ -94,6 +98,8 @@ export function installPackages(app) {
   app.component('C7Cascader', C7Cascader)
   app.component('C7Watermark', C7Watermark)
   app.component('C7Preview', C7Preview)
+  app.component('C7JsonTableColumn', C7JsonTableColumn)
+  app.component('C7JsonTable', C7JsonTable)
   app.component('C7ExcelDownload', C7ExcelDownload)
   app.component('C7ExcelUpload', C7ExcelUpload)
 }

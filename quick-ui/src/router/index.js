@@ -115,6 +115,18 @@ export const constantRoutes = [
     meta: { title: 'C7Preview Dev' }
   },
   {
+    path: '/dev/c7-json-table-column-e2e',
+    component: () => import('@/views/dev/C7JsonTableColumnE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7JsonTableColumn Dev' }
+  },
+  {
+    path: '/dev/c7-json-table-e2e',
+    component: () => import('@/views/dev/C7JsonTableE2E.vue'),
+    hidden: true,
+    meta: { title: 'C7JsonTable Dev' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404'),
     hidden: true
