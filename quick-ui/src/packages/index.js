@@ -17,8 +17,47 @@ import C7DatePicker from './C7DatePicker/index.vue'
 import C7TimePicker from './C7TimePicker/index.vue'
 import C7Title from './C7Title/index.vue'
 import C7TreeSelect from './C7TreeSelect/index.vue'
+import {
+  setMessageBoxDefaults,
+  c7Confirm,
+  c7Alert,
+  c7Prompt,
+  c7DangerConfirm,
+  c7Loading,
+  mergeMessageBoxOptions,
+  mapMessageBoxResolve,
+  mapMessageBoxReject,
+  splitTitleAndOptions,
+} from './C7MessageBox/index.js'
 
-export { C7Button, C7ButtonGroup, C7Select, C7Pagination, C7Card, C7Copy, C7Checkbox, C7Radio, C7Switch, C7DictTag, C7Dialog, C7Descriptions, C7DatePicker, C7TimePicker, C7Title, C7TreeSelect }
+export {
+  C7Button,
+  C7ButtonGroup,
+  C7Select,
+  C7Pagination,
+  C7Card,
+  C7Copy,
+  C7Checkbox,
+  C7Radio,
+  C7Switch,
+  C7DictTag,
+  C7Dialog,
+  C7Descriptions,
+  C7DatePicker,
+  C7TimePicker,
+  C7Title,
+  C7TreeSelect,
+  setMessageBoxDefaults,
+  c7Confirm,
+  c7Alert,
+  c7Prompt,
+  c7DangerConfirm,
+  c7Loading,
+  mergeMessageBoxOptions,
+  mapMessageBoxResolve,
+  mapMessageBoxReject,
+  splitTitleAndOptions,
+}
 
 /**
  * 注册 packages 内全局组件（名称与组件一致，如 C7Button）。
