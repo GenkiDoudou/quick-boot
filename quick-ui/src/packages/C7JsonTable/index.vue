@@ -5,7 +5,6 @@
         v-if="searchColumns.length"
         class="c7-json-table__search"
         :model="searchParam"
-        inline
         label-width="auto"
         @submit.prevent="handleSearchSubmit"
         @keyup.enter="handleSearchSubmit"
@@ -29,6 +28,7 @@
                   v-model="searchParam[col.prop]"
                   :data-list="col.dataList ?? col.options ?? []"
                   clearable
+                  style="width: 100%"
                   v-bind="col.props || {}"
               />
             </template>
@@ -567,6 +567,11 @@ defineExpose({
 <style scoped>
 .c7-json-table__search {
   margin-bottom: 12px;
+}
+
+.c7-json-table__search :deep(.el-select),
+.c7-json-table__search :deep(.el-date-editor) {
+  min-width: 180px;
 }
 
 .c7-json-table__toolbar {

@@ -22,10 +22,10 @@ export function addDept(data) {
 
 // 修改部门
 export function updateDept(data) {
-  return request({ url: '/system/dept', method: 'put', data })
+  return request({ url: '/system/dept/update', method: 'post', data })
 }
 
 // 删除部门
 export function delDept(deptId) {
-  return request({ url: '/system/dept/' + deptId, method: 'delete' })
+  return request({ url: '/system/dept/remove/' + deptId, method: 'post' })
 }

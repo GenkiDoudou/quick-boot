@@ -1,34 +1,20 @@
-schema: spec-driven
+﻿schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
 context: |
-  在创建、修改或审阅 OpenSpec 相关文件（包括但不限于 openspec/ 目录下的配置与规范，
-  以及 changes/ 下各变更中的 proposal、design、spec、tasks 等产物）时，正文、列表与说明统一使用简体中文；
-  代码、命令、文件路径、专有标识符（如 API 名、配置键）保持原样，可在必要时用中文括号补充说明。
+  所有 OpenSpec 产物（proposal/design/spec/tasks）正文统一使用简体中文。
+  代码、命令、路径、配置键等专有标识保持英文原文。
 
-  在根据 OpenSpec 变更实现或生成前后端代码时，产出必须包含便于维护的**详细注释**（禁止对外 API、组件契约仅靠猜的黑盒代码）：
-  - 原则：面向长期维护；不写复述标识符的无信息注释；复杂分支、事务边界、魔数与单位、外部调用失败与缓存假设须点明。
-  - 后端（Java）：新建 public 类型及其 public/protected 成员齐备 JavaDoc（@param/@return/@throws 等）；Entity/DTO 与表/接口字段映射在名不一致或易产生歧义时必注；枚举/状态含义、可空性、并发与线程安全假设在不直观时补充。
-  - 前端（Vue/TypeScript）：默认导出组件、composable、模块级工具函数均有 JSDoc；重要 props 取值与默认值、emit 载荷形状、路由/权限/异步就绪等前置条件写清；与后端 DTO 字段映射或转换须交代。
-  注释以简体中文为主，避免仅生成无注释的裸实现。
+  文件编码规范（强制）：
+  - 新建或修改任何文本文件时，一律使用 UTF-8 编码（建议 UTF-8 无 BOM）。
+  - 禁止使用 GBK/ANSI/UTF-16 等可能导致乱码的编码。
+  - 若发现历史文件编码不一致，先统一为 UTF-8 再继续修改。
 
-  生成或实现业务/工具代码时，若需要字符串处理、日期、集合、IO、加解密、HTTP、JSON 等通用能力，**须优先查阅并复用当前模块已声明的构建依赖**，而非默认手写冗长实现或未经讨论地引入同类新库：
-  - 后端：以各 Maven 模块及父 `pom.xml` 为准（典型如 **Lombok**、**Hutool**、Spring 与 MyBatis-Plus 已提供的 API、`quickboot-common` 等模块中已有的工具类）；仅在现有依赖无法满足时再提出新增坐标并同步修改 POM。
-  - 前端：以 `quick-ui/package.json`（及实际安装树）为准，优先使用已有依赖；新增 npm 包须有明确理由。
+  在生成或修改前端页面/组件代码前，必须先读取仓库根目录 DESIGN.md 并严格遵循其设计规范。
+  禁止将 DESIGN.md 正文复制到本文件中替代阅读。
 
-  **OpenSpec Explore（openspec-explore）澄清方式**：当需要用户拍板或补充信息时，不得仅用开放式追问；应给出离散选项，并按下列格式输出：
-  - 使用 **A、B、C、D**（若超过四项则顺延 **E、F…**）作为选项标签，每项独占一行，形如：`A. …`、`B. …`、`C. …`、`D. …`。
-  - 在选项列表之后，单独一行给出 **最佳推荐答案**，格式为：`最佳推荐：X`（X 为 A/B/C/D… 之一），并附一两句话说明理由（结合当前对话与仓库/变更上下文）。
-  - 若上下文已足以判断默认值，仍应列出全部选项供用户确认，且 **最佳推荐** 须与该判断一致。
+  生成代码前必须读取并遵循：
+  - sdd/后端代码规范.md
+  - sdd/前端代码规范.md
+  - sdd/数据库设计规范.md
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  与口头指令冲突时，优先以规范文档为准，并提示用户确认例外。

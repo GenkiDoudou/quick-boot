@@ -238,6 +238,7 @@ export default {
                 {text: '📋 C7JsonForm JSON动态表单', link: '/docs/frontend/components/通用组件/c7-json-form'},
                 {text: '📊 C7JsonTable JSON动态表格', link: '/docs/frontend/components/通用组件/c7-json-table'},
                 {text: '📄 C7Pagination 分页', link: '/docs/frontend/components/通用组件/c7-pagination'},
+                {text: '🔀 C7Switch 开关', link: '/docs/frontend/components/通用组件/c7-switch'},
                 {text: '🕐 C7TimePicker 时间选择器', link: '/docs/frontend/components/通用组件/c7-time-picker'},
                 {text: '📌 C7Title 标题', link: '/docs/frontend/components/通用组件/c7-title'},
                 {text: '🌲 C7TreeSelect 树形选择器', link: '/docs/frontend/components/通用组件/c7-tree-select'},

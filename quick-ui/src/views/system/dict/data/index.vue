@@ -1,0 +1,169 @@
+﻿<template>
+  <div class="app-container">
+    <C7JsonTable
+      ref="tableRef"
+      row-key="dictCode"
+      :show-index="false"
+      :show-selection="true"
+      :list-function="listFunction"
+      :table-columns="tableColumns"
+      :search-columns="searchColumns"
+      :default-search-param="defaultSearchParam"
+      :delete-function="batchDeleteFunction"
+      :export-function="exportFunction"
+      :check-delete-success="() => true"
+      rows-key="data.records"
+      total-key="data.total"
+      @selection-change="onSelectionChange"
+    >
+      <template #toolbar-left>
+        <el-button type="primary" plain @click="openAdd">新增</el-button>
+        <el-button type="success" plain :disabled="selectedRowsRef.length !== 1" @click="openEdit(selectedRowsRef[0])">修改</el-button>
+        <el-button type="danger" plain :disabled="selectedRowsRef.length === 0" @click="handleBatchDelete">删除</el-button>
+      </template>
+
+      <template #action="{ row }">
+        <el-button link @click="openEdit(row)">修改</el-button>
+        <c7-button btn-type="delete" link confirm :confirm-message="`确认删除${row.dictLabel}吗？`" :click-function="() => removeRow(row)" />
+      </template>
+    </C7JsonTable>
+
+    <c7-dialog v-model="visible" :title="form.dictCode ? '修改字典项' : '新增字典项'" :on-confirm="submit">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px" class="dict-dialog-form">
+        <el-form-item label="字典类型" prop="dictType"><el-input v-model="form.dictType" disabled /></el-form-item>
+        <el-form-item label="数据标签" prop="dictLabel"><el-input v-model="form.dictLabel" /></el-form-item>
+        <el-form-item label="数据键值" prop="dictValue"><el-input v-model="form.dictValue" /></el-form-item>
+        <el-form-item label="显示排序" prop="dictSort"><el-input-number v-model="form.dictSort" :min="0" /></el-form-item>
+        <el-form-item label="样式"><el-input v-model="form.cssClass" /></el-form-item>
+        <el-form-item label="回显样式"><el-input v-model="form.listClass" /></el-form-item>
+        <el-form-item label="状态" prop="status"><el-radio-group v-model="form.status"><el-radio v-for="d in sys_normal_disable" :key="d.value" :label="d.value">{{ d.label }}</el-radio></el-radio-group></el-form-item>
+        <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" /></el-form-item>
+      </el-form>
+    </c7-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useDict } from '@/utils/dict'
+import { addData, delData, exportData, listData, updateData } from '@/api/system/dict/data'
+
+const route = useRoute()
+const { sys_normal_disable } = useDict('sys_normal_disable')
+const tableRef = ref(null)
+const visible = ref(false)
+const formRef = ref(null)
+const selectedRowsRef = ref([])
+const currentDictType = ref(route.params.dictType || '')
+
+const form = ref({ dictCode: null, dictType: currentDictType.value, dictLabel: '', dictValue: '', dictSort: 0, cssClass: '', listClass: '', status: '0', remark: '' })
+
+const defaultSearchParam = {
+  dictType: currentDictType.value,
+  dictLabel: '',
+  status: ''
+}
+
+const searchColumns = [
+  { prop: 'dictType', label: '字典类型', type: 'input', span: 6, props: { disabled: true } },
+  { prop: 'dictLabel', label: '数据标签', type: 'input', span: 6, props: { placeholder: '请输入数据标签', clearable: true } },
+  { prop: 'status', label: '状态', type: 'select', span: 6, options: sys_normal_disable.value, props: { placeholder: '数据状态', clearable: true, style: 'width: 200px', popperClass: 'dict-status-popper' } }
+]
+
+const tableColumns = [
+  { prop: 'dictCode', label: '字典编码' },
+  { prop: 'dictLabel', label: '数据标签' },
+  { prop: 'dictValue', label: '数据键值' },
+  { prop: 'dictSort', label: '排序', width: 80 },
+  { prop: 'listClass', label: '回显样式' },
+  { prop: 'status', label: '状态', columnType: 'tag', options: sys_normal_disable.value, width: 100 },
+  { prop: 'remark', label: '备注' },
+  { prop: 'createTime', label: '创建时间', width: 180 },
+  { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 180, fixed: 'right' }
+]
+
+const rules = {
+  dictType: [{ required: true, message: '字典类型不能为空', trigger: 'blur' }],
+  dictLabel: [{ required: true, message: '数据标签不能为空', trigger: 'blur' }],
+  dictValue: [{ required: true, message: '数据键值不能为空', trigger: 'blur' }]
+}
+
+function onSelectionChange(rows) {
+  selectedRowsRef.value = rows || []
+}
+
+function listFunction(params) {
+  const req = { ...params, dictType: currentDictType.value }
+  return listData(req).then((res) => {
+    const records = res.data || []
+    return { data: { records, total: records.length } }
+  })
+}
+
+function openAdd() {
+  form.value = { dictCode: null, dictType: currentDictType.value, dictLabel: '', dictValue: '', dictSort: 0, cssClass: '', listClass: '', status: '0', remark: '' }
+  visible.value = true
+}
+
+function openEdit(row) {
+  if (!row) return
+  form.value = { ...row }
+  visible.value = true
+}
+
+function submit() {
+  return new Promise((resolve, reject) => {
+    formRef.value.validate((valid) => {
+      if (!valid) return reject(new Error('校验失败'))
+      const req = form.value.dictCode ? updateData(form.value) : addData(form.value)
+      req.then(() => {
+        ElMessage.success('操作成功')
+        visible.value = false
+        tableRef.value?.refreshData()
+        resolve()
+      }).catch(reject)
+    })
+  })
+}
+
+function removeRow(row) {
+  return delData(row.dictCode).then(() => {
+    ElMessage.success('删除成功')
+    return tableRef.value?.refreshData()
+  })
+}
+
+function batchDeleteFunction(ids) {
+  return Promise.all((ids || []).map((id) => delData(id)))
+}
+
+function handleBatchDelete() {
+  const ids = selectedRowsRef.value.map((item) => item.dictCode)
+  if (!ids.length) return
+  batchDeleteFunction(ids).then(() => {
+    ElMessage.success('删除成功')
+    tableRef.value?.refreshData()
+  })
+}
+
+function exportFunction(searchParam) {
+  return exportData({ ...searchParam, dictType: currentDictType.value })
+}
+
+watch(
+  () => route.params.dictType,
+  (v) => {
+    currentDictType.value = v || ''
+    form.value.dictType = currentDictType.value
+    tableRef.value?.refreshData()
+  }
+)
+</script>
+
+<style>
+.dict-status-popper {
+  min-width: 180px !important;
+}
+</style>

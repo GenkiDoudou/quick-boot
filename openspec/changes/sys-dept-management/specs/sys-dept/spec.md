@@ -56,7 +56,7 @@
 
 ### Requirement: 新增与修改部门校验
 
-`POST /system/dept` 与 `PUT /system/dept` MUST 校验：`parent_id` 指向的父部门存在且未删除；**禁止**将节点父级设为自身；**禁止**改父级后形成环（父级不得落在当前节点及其子孙 id 集合内）；`parent_id = -1` MUST 表示顶级；`status` 取值 MUST 与字典 **`sys_normal_disable`** 一致（`0`/`1`）；邮箱与手机格式 MUST 按项目统一校验策略校验（若项目暂无则允许宽松校验但 MUST 在代码注释中说明）。
+`POST /system/dept` 与 `POST /system/dept/update` MUST 校验：`parent_id` 指向的父部门存在且未删除；**禁止**将节点父级设为自身；**禁止**改父级后形成环（父级不得落在当前节点及其子孙 id 集合内）；`parent_id = -1` MUST 表示顶级；`status` 取值 MUST 与字典 **`sys_normal_disable`** 一致（`0`/`1`）；邮箱与手机格式 MUST 按项目统一校验策略校验（若项目暂无则允许宽松校验但 MUST 在代码注释中说明）。
 
 #### Scenario: 新增顶级部门成功
 
@@ -65,19 +65,19 @@
 
 #### Scenario: 修改父级成环被拒绝
 
-- **WHEN** `PUT` 将某节点的 `parentId` 设为其子孙节点 id
+- **WHEN** `POST /system/dept/update` 将某节点的 `parentId` 设为其子孙节点 id
 - **THEN** 响应失败且数据库中该节点 `parent_id` 未被更新为非法值
 
 ---
 
 ### Requirement: 删除部门仅受子部门约束
 
-`DELETE /system/dept/{deptId}` MUST 在校验登录/权限（与项目一致）后，若存在未逻辑删除的子部门则 MUST 拒绝删除并返回业务失败；若无子部门则 MUST 执行逻辑删除（或项目约定的删除语义）。本迭代 MUST NOT 依赖 `sys_user` 或任何用户表计数作为删除条件。
+`POST /system/dept/remove/{deptId}` MUST 在校验登录/权限（与项目一致）后，若存在未逻辑删除的子部门则 MUST 拒绝删除并返回业务失败；若无子部门则 MUST 执行逻辑删除（或项目约定的删除语义）。本迭代 MUST NOT 依赖 `sys_user` 或任何用户表计数作为删除条件。
 
 #### Scenario: 有子部门时删除失败
 
 - **WHEN** 目标部门存在至少一个未逻辑删除的子部门
-- **THEN** `DELETE` 返回业务失败且子部门数据仍存在
+- **THEN** `POST /system/dept/remove/{deptId}` 返回业务失败且子部门数据仍存在
 
 #### Scenario: 叶子部门删除成功
 

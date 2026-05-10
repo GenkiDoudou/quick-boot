@@ -1,4 +1,4 @@
-import { createWebHistory, createRouter } from 'vue-router'
+﻿import { createWebHistory, createRouter } from 'vue-router'
 import Layout from '@/layout/index.vue'
 
 export const constantRoutes = [
@@ -21,19 +21,19 @@ export const constantRoutes = [
   {
     path: '/dev/c7-button-e2e',
     component: () => import('@/views/dev/C7ButtonE2E.vue'),
-    hidden: true,
+    hidden: false,
     meta: { title: 'C7Button E2E' }
   },
   {
     path: '/dev/c7-select-e2e',
     component: () => import('@/views/dev/C7SelectE2E.vue'),
-    hidden: true,
+    hidden: false,
     meta: { title: 'C7Select Dev' }
   },
   {
     path: '/dev/c7-cascader-e2e',
     component: () => import('@/views/dev/C7CascaderE2E.vue'),
-    hidden: true,
+    hidden: false,
     meta: { title: 'C7Cascader Dev' }
   },
   {
@@ -163,6 +163,60 @@ export const constantRoutes = [
       }
     ]
   },
+  {
+    path: '/user2',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: 'profile',
+        component: () => import('@/views/system/user/index.vue'),
+        name: 'userList',
+        meta: { title: '用户管理', icon: 'user' }
+      }
+    ]
+
+
+  },
+  {
+    path: '/system/dept',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/dept/index.vue'),
+        name: 'Dept',
+        meta: { title: '部门管理', icon: 'tree' }
+      }
+    ]
+  },
+  {
+    path: '/system/dict/type',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/dict/type/index.vue'),
+        name: 'DictType',
+        meta: { title: '字典管理', icon: 'setting' }
+      }
+    ]
+  },
+  {
+    path: '/system/dict/data/:dictType',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/dict/data/index.vue'),
+        name: 'DictData',
+        meta: { title: '字典项管理', icon: 'list' }
+      }
+    ]
+  },
   
 ]
 
@@ -181,3 +235,4 @@ const router = createRouter({
 })
 
 export default router
+

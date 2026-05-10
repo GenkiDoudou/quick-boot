@@ -8,6 +8,11 @@ qc:
     enabled: false
 
 spring:
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
   autoconfigure:
     exclude:
       - cloud.tianai.captcha.spring.autoconfiguration.ImageCaptchaAutoConfiguration

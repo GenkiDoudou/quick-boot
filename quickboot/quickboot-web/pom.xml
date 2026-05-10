@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -29,6 +29,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 开发期：类路径变更触发热重启、LiveReload 等；optional 避免作为传递依赖；可执行包由 repackage 排除 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -62,6 +69,12 @@
             <artifactId>jasypt-spring-boot-starter</artifactId>
             <version>4.0.3</version>
         </dependency>
+    
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -78,6 +91,8 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <!-- 与 spring-boot-devtools 配合：同一 JVM 内运行，mvn spring-boot:run 才能监听到编译输出并自动重启 -->
+                    <fork>false</fork>
                     <includeSystemScope>true</includeSystemScope>
                     <excludes>
                         <exclude>
@@ -120,6 +135,12 @@
                     <skipPoms>true</skipPoms>
                     <prefix>git</prefix>
                 </configuration>
+            </plugin>
+        
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>
