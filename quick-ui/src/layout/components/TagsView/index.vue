@@ -18,6 +18,24 @@
         </span>
       </router-link>
     </scroll-pane>
+    <div class="tags-view-actions">
+      <el-dropdown trigger="click" @command="handleQuickCommand">
+        <span class="tags-view-actions__trigger">
+          <el-icon><ArrowDown /></el-icon>
+        </span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="fullscreen">全屏显示</el-dropdown-item>
+            <el-dropdown-item command="refresh">刷新页面</el-dropdown-item>
+            <el-dropdown-item command="closeCurrent" :disabled="isAffix(activeTag)">关闭当前</el-dropdown-item>
+            <el-dropdown-item command="closeOthers">关闭其他</el-dropdown-item>
+            <el-dropdown-item command="closeLeft" :disabled="isFirstActiveView">关闭左侧</el-dropdown-item>
+            <el-dropdown-item command="closeRight" :disabled="isLastActiveView">关闭右侧</el-dropdown-item>
+            <el-dropdown-item command="closeAll">全部关闭</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
     <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
       <li @click="refreshSelectedTag(selectedTag)">
         <refresh-right style="width: 1em; height: 1em;" /> 刷新页面
@@ -47,6 +65,8 @@ import { getNormalPath } from '@/utils/ruoyi'
 import useTagsViewStore from '@/store/modules/tagsView'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
+import { useFullscreen } from '@vueuse/core'
+import { ArrowDown } from '@element-plus/icons-vue'
 
 const visible = ref(false)
 const top = ref(0)
@@ -58,10 +78,26 @@ const scrollPaneRef = ref(null)
 const { proxy } = getCurrentInstance()
 const route = useRoute()
 const router = useRouter()
+const { toggle: toggleFullscreen } = useFullscreen()
 
 const visitedViews = computed(() => useTagsViewStore().visitedViews)
 const routes = computed(() => usePermissionStore().routes)
 const theme = computed(() => useSettingsStore().theme)
+const activeTag = computed(() => visitedViews.value.find(v => v.path === route.path) || route)
+const isFirstActiveView = computed(() => {
+  try {
+    return activeTag.value.fullPath === '/index' || activeTag.value.fullPath === visitedViews.value[1].fullPath
+  } catch (err) {
+    return false
+  }
+})
+const isLastActiveView = computed(() => {
+  try {
+    return activeTag.value.fullPath === visitedViews.value[visitedViews.value.length - 1].fullPath
+  } catch (err) {
+    return false
+  }
+})
 
 watch(route, () => {
   addTags()
@@ -254,16 +290,53 @@ function closeMenu() {
 function handleScroll() {
   closeMenu()
 }
+
+function handleQuickCommand(command) {
+  selectedTag.value = activeTag.value
+  if (command === 'fullscreen') {
+    toggleFullscreen()
+    return
+  }
+  if (command === 'refresh') {
+    refreshSelectedTag(activeTag.value)
+    return
+  }
+  if (command === 'closeCurrent') {
+    if (!isAffix(activeTag.value)) {
+      closeSelectedTag(activeTag.value)
+    }
+    return
+  }
+  if (command === 'closeOthers') {
+    closeOthersTags()
+    return
+  }
+  if (command === 'closeLeft') {
+    closeLeftTags()
+    return
+  }
+  if (command === 'closeRight') {
+    closeRightTags()
+    return
+  }
+  if (command === 'closeAll') {
+    closeAllTags(activeTag.value)
+  }
+}
 </script>
 
 <style lang='scss' scoped>
 .tags-view-container {
+  display: flex;
+  align-items: center;
   height: 34px;
   width: 100%;
   background: #fff;
   border-bottom: 1px solid #d8dce5;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.12), 0 0 3px 0 rgba(0, 0, 0, 0.04);
   .tags-view-wrapper {
+    flex: 1;
+    min-width: 0;
     .tags-view-item {
       display: inline-block;
       position: relative;
@@ -298,6 +371,25 @@ function handleScroll() {
           margin-right: 5px;
         }
       }
+    }
+  }
+  .tags-view-actions {
+    flex-shrink: 0;
+    margin-right: 12px;
+    &__trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #606266;
+      cursor: pointer;
+      user-select: none;
+      padding: 0;
+      height: 24px;
+      width: 24px;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      background-color: #fff;
     }
   }
   .contextmenu {

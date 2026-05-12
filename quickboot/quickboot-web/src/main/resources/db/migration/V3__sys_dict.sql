@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS sys_dict_type (
+CREATE TABLE IF NOT EXISTS sys_dict_type (
   dict_id BIGINT NOT NULL PRIMARY KEY,
   dict_name VARCHAR(100) NOT NULL,
   dict_type VARCHAR(100) NOT NULL,

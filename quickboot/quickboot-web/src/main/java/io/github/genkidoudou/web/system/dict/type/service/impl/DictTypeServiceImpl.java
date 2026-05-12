@@ -1,113 +1,188 @@
 package io.github.genkidoudou.web.system.dict.type.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import io.github.genkidoudou.common.excel.ExcelImportResult;
+import io.github.genkidoudou.common.excel.ExcelResult;
+import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.excel.exception.ExcelDataCheckException;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.dict.data.service.DictDataService;
 import io.github.genkidoudou.web.system.dict.type.domain.SysDictType;
-import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeSaveRequest;
+import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeBo;
+import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeExcelRow;
 import io.github.genkidoudou.web.system.dict.type.mapper.SysDictTypeMapper;
 import io.github.genkidoudou.web.system.dict.type.service.DictTypeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class DictTypeServiceImpl implements DictTypeService {
-    private final SysDictTypeMapper mapper;
-    private final DictDataService dictDataService;
-    private final Map<String, Long> dictCache = new ConcurrentHashMap<>();
+  private final SysDictTypeMapper mapper;
+  private final DictDataService dictDataService;
 
-    public DictTypeServiceImpl(SysDictTypeMapper mapper, DictDataService dictDataService) {
-        this.mapper = mapper;
-        this.dictDataService = dictDataService;
+  public DictTypeServiceImpl(SysDictTypeMapper mapper, DictDataService dictDataService) {
+    this.mapper = mapper;
+    this.dictDataService = dictDataService;
+  }
+
+  @Override
+  public List<SysDictType> list(String dictName, String dictType, String status) {
+    return mapper.selectList(Wrappers.<SysDictType>lambdaQuery()
+      .like(StrUtil.isNotBlank(dictName), SysDictType::getDictName, dictName)
+      .like(StrUtil.isNotBlank(dictType), SysDictType::getDictType, dictType)
+      .eq(StrUtil.isNotBlank(status), SysDictType::getStatus, status)
+      .orderByAsc(SysDictType::getDictId));
+  }
+
+  @Override
+  public SysDictType getById(Long dictId) {
+    return mapper.selectById(dictId);
+  }
+
+  @Override
+  @Transactional(rollbackFor = Exception.class)
+  public void add(SysDictTypeBo req) {
+    checkUnique(req.getDictType(), null);
+    mapper.insert(toEntity(req));
+  }
+
+  @Override
+  @Transactional(rollbackFor = Exception.class)
+  public void update(SysDictTypeBo req) {
+    if (req.getDictId() == null) {
+      throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "dictId is required for update");
     }
-
-    @Override
-    public List<SysDictType> list(String dictName, String dictType, String status) {
-        return mapper.selectList(Wrappers.<SysDictType>lambdaQuery()
-                .like(StrUtil.isNotBlank(dictName), SysDictType::getDictName, dictName)
-                .like(StrUtil.isNotBlank(dictType), SysDictType::getDictType, dictType)
-                .eq(StrUtil.isNotBlank(status), SysDictType::getStatus, status)
-                .orderByAsc(SysDictType::getDictId));
+    if (mapper.selectById(req.getDictId()) == null) {
+      throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "dict type not found");
     }
+    checkUnique(req.getDictType(), req.getDictId());
+    mapper.updateById(toEntity(req));
+  }
 
-    @Override
-    public SysDictType getById(Long dictId) {
-        return mapper.selectById(dictId);
+  @Override
+  @Transactional(rollbackFor = Exception.class)
+  public void remove(Long dictId) {
+    SysDictType old = mapper.selectById(dictId);
+    if (old == null) {
+      throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "dict type not found");
     }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void add(SysDictTypeSaveRequest req) {
-        checkUnique(req.getDictType(), null);
-        mapper.insert(toEntity(req));
+    if (dictDataService.countByType(old.getDictType()) > 0) {
+      throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "dict type has data items, cannot delete");
     }
+    mapper.deleteById(dictId);
+    dictDataService.refreshCacheByType(old.getDictType());
+  }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void update(SysDictTypeSaveRequest req) {
-        if (req.getDictId() == null) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "修改字典类型必须传dictId");
+  @Override
+  public List<SysDictType> export(String dictName, String dictType, String status) {
+    return list(dictName, dictType, status);
+  }
+
+  @Override
+  public void refreshAllCache() {
+    dictDataService.refreshAllCache();
+  }
+
+  @Override
+  public void refreshTypeCache(String dictType) {
+    dictDataService.refreshCacheByType(dictType);
+  }
+
+  @Override
+  @Transactional(rollbackFor = Exception.class)
+  public ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException {
+
+
+    ExcelResult<SysDictTypeExcelRow> readResult = ExcelUtils.importExcel(file.getInputStream(), SysDictTypeExcelRow.class, (row, context) -> {
+      if (isBlankRow(row)) {
+        return;
+      }
+
+      String dictType = StrUtil.trim(row.getDictType());
+      if (StrUtil.isBlank(dictType)) {
+        throw new ExcelDataCheckException("字典类型不能为空");
+      }
+      SysDictType existed = mapper.selectOne(new LambdaQueryWrapper<SysDictType>()
+        .eq(SysDictType::getDictType, dictType), false);
+
+      if (existed != null) {
+        if (!updateSupport) {
+          throw new ExcelDataCheckException("字典类型重复");
         }
-        if (mapper.selectById(req.getDictId()) == null) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "字典类型不存在或已删除");
-        }
-        checkUnique(req.getDictType(), req.getDictId());
-        mapper.updateById(toEntity(req));
-    }
+        BeanUtil.copyProperties(row, existed);
+        existed.setDictType(dictType);
+        existed.setStatus(normalizeStatus(existed.getStatus()));
+        mapper.updateById(existed);
+      } else {
+        SysDictType entity = BeanUtil.copyProperties(row, SysDictType.class);
+        entity.setDictType(dictType);
+        entity.setStatus(normalizeStatus(entity.getStatus()));
+        mapper.insert(entity);
+      }
+    }, (rows, context) -> {
+    });
+    return ExcelImportResult.build(readResult);
+  }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void remove(Long dictId) {
-        SysDictType old = mapper.selectById(dictId);
-        if (old == null) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "字典类型不存在或已删除");
-        }
-        if (dictDataService.countByType(old.getDictType()) > 0) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "该字典类型存在字典项，不能删除");
-        }
-        mapper.deleteById(dictId);
-        dictCache.remove(old.getDictType());
+  private void checkUnique(String dictType, Long excludeId) {
+    var q = Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getDictType, dictType);
+    if (excludeId != null) {
+      q.ne(SysDictType::getDictId, excludeId);
     }
+    if (mapper.selectCount(q) > 0) {
+      throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "dict type already exists");
+    }
+  }
 
-    @Override
-    public List<SysDictType> export(String dictName, String dictType, String status) {
-        return list(dictName, dictType, status);
-    }
+  private SysDictType toEntity(SysDictTypeBo req) {
+    return BeanUtil.copyProperties(req, SysDictType.class);
+  }
 
-    @Override
-    public void refreshAllCache() {
-        dictCache.clear();
-        for (SysDictType t : list(null, null, null)) {
-            dictCache.put(t.getDictType(), System.currentTimeMillis());
-        }
+  private boolean isBlankRow(SysDictTypeExcelRow row) {
+    if (row == null) {
+      return true;
     }
+    return StrUtil.isAllBlank(row.getDictName(), row.getDictType(), row.getStatus(), row.getRemark());
+  }
 
-    @Override
-    public void refreshTypeCache(String dictType) {
-        dictCache.put(dictType, System.currentTimeMillis());
+  private String normalizeStatus(String status) {
+    if (StrUtil.equalsAny(status, "0", "1")) {
+      return status;
     }
+    return "0";
+  }
 
-    private void checkUnique(String dictType, Long excludeId) {
-        var q = Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getDictType, dictType);
-        if (excludeId != null) q.ne(SysDictType::getDictId, excludeId);
-        if (mapper.selectCount(q) > 0) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "字典类型已存在");
-        }
+  private void batchInsert(List<SysDictType> rows) {
+    for (SysDictType row : rows) {
+      mapper.insert(row);
     }
+  }
 
-    private SysDictType toEntity(SysDictTypeSaveRequest req) {
-        SysDictType e = new SysDictType();
-        e.setDictId(req.getDictId());
-        e.setDictName(req.getDictName());
-        e.setDictType(req.getDictType());
-        e.setStatus(req.getStatus());
-        e.setRemark(req.getRemark());
-        return e;
+  private void batchUpdate(List<SysDictType> rows) {
+    for (SysDictType row : rows) {
+      mapper.updateById(row);
     }
+  }
+
+  private String toColumnLabel(String columnName) {
+    if ("dictName".equals(columnName)) {
+      return "dictName";
+    }
+    if ("dictType".equals(columnName)) {
+      return "dictType";
+    }
+    return columnName;
+  }
 }

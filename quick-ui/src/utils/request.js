@@ -27,8 +27,45 @@ service.interceptors.request.use(config => {
     return Promise.reject(error)
 })
 
-service.interceptors.response.use(res => {
+function handleUnauthorized(msg = '登录状态已过期，请重新登录') {
+    if (window.location.pathname === '/login') {
+        return Promise.reject(msg)
+    }
+    if (!isShowReloginDialog) {
+        isShowReloginDialog = true
+        removeToken()
+        ElMessageBox.close()
+        ElMessageBox.confirm(msg, '系统提示', {
+            confirmButtonText: '重新登录',
+            cancelButtonText: '取消',
+            type: 'warning',
+            showClose: false
+        }).then(() => {
+            isShowReloginDialog = false
+            window.location.replace('/login')
+        }).catch(() => {
+            isShowReloginDialog = false
+            window.location.replace('/login')
+        })
+    }
+    return Promise.reject(msg)
+}
+
+service.interceptors.response.use(async (res) => {
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
+            // 导出等二进制场景：若后端返回的是 JSON 错误体，需要提前识别 401 并跳转登录。
+            if (res.data && res.data.type && String(res.data.type).includes('application/json')) {
+                try {
+                    const text = await res.data.text()
+                    const json = JSON.parse(text || '{}')
+                    const code = Number(json.code || 200)
+                    if (code === 401) {
+                        return handleUnauthorized(json.msg || '登录状态已过期，请重新登录')
+                    }
+                } catch (e) {
+                    // ignore: 保持原有 blob 返回行为
+                }
+            }
             /** @type {import('axios').AxiosRequestConfig & { returnBlobWithHeaders?: boolean }} */
             const cfg = res.config || {}
             if (cfg.returnBlobWithHeaders === true) {
@@ -36,33 +73,11 @@ service.interceptors.response.use(res => {
             }
             return res.data
         }
-        const code = res.data.code || 200;
+        const code = Number(res.data.code || 200);
         const msg = errorCode[code] || res.data.msg || errorCode['default']
 
         if (code === 401) {
-            // 已在登录页则不处理
-            if (window.location.pathname === '/login') {
-                return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
-            }
-            if (!isShowReloginDialog) {
-                isShowReloginDialog = true;
-                // 立即清除token，阻止后续请求继续携带无效token触发401
-                removeToken();
-                ElMessageBox.close();
-                ElMessageBox.confirm('登录状态已过期，请重新登录', '系统提示', {
-                    confirmButtonText: '重新登录',
-                    cancelButtonText: '取消',
-                    type: 'warning',
-                    showClose: false
-                }).then(() => {
-                    isShowReloginDialog = false;
-                    window.location.replace('/login');
-                }).catch(() => {
-                    isShowReloginDialog = false;
-                    window.location.replace('/login');
-                });
-            }
-            return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
+            return handleUnauthorized(msg)
         } else if (code === 500) {
             ElMessage({message: msg, type: 'error'})
             return Promise.reject(new Error(msg))

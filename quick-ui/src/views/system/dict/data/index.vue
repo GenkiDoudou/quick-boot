@@ -11,17 +11,20 @@
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
       :export-function="exportFunction"
+      :show-add-button="true"
+      :show-edit-button="true"
+      :show-delete-button="true"
+      :show-export-button="true"
+      :show-import-button="true"
+      :on-add="openAdd"
+      :on-edit="openEdit"
+      :import-function="importFunction"
+      :import-template-function="importTemplateFunction"
+      import-template-file-name="dict-data-template.xlsx"
       :check-delete-success="() => true"
       rows-key="data.records"
       total-key="data.total"
-      @selection-change="onSelectionChange"
     >
-      <template #toolbar-left>
-        <el-button type="primary" plain @click="openAdd">新增</el-button>
-        <el-button type="success" plain :disabled="selectedRowsRef.length !== 1" @click="openEdit(selectedRowsRef[0])">修改</el-button>
-        <el-button type="danger" plain :disabled="selectedRowsRef.length === 0" @click="handleBatchDelete">删除</el-button>
-      </template>
-
       <template #action="{ row }">
         <el-button link @click="openEdit(row)">修改</el-button>
         <c7-button btn-type="delete" link confirm :confirm-message="`确认删除${row.dictLabel}吗？`" :click-function="() => removeRow(row)" />
@@ -44,18 +47,17 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { addData, delData, exportData, listData, updateData } from '@/api/system/dict/data'
+import { addData, delData, exportData, importData, importDataTemplate, listData, updateData } from '@/api/system/dict/data'
 
 const route = useRoute()
 const { sys_normal_disable } = useDict('sys_normal_disable')
 const tableRef = ref(null)
 const visible = ref(false)
 const formRef = ref(null)
-const selectedRowsRef = ref([])
 const currentDictType = ref(route.params.dictType || '')
 
 const form = ref({ dictCode: null, dictType: currentDictType.value, dictLabel: '', dictValue: '', dictSort: 0, cssClass: '', listClass: '', status: '0', remark: '' })
@@ -66,13 +68,13 @@ const defaultSearchParam = {
   status: ''
 }
 
-const searchColumns = [
+const searchColumns = computed(() => [
   { prop: 'dictType', label: '字典类型', type: 'input', span: 6, props: { disabled: true } },
   { prop: 'dictLabel', label: '数据标签', type: 'input', span: 6, props: { placeholder: '请输入数据标签', clearable: true } },
   { prop: 'status', label: '状态', type: 'select', span: 6, options: sys_normal_disable.value, props: { placeholder: '数据状态', clearable: true, style: 'width: 200px', popperClass: 'dict-status-popper' } }
-]
+])
 
-const tableColumns = [
+const tableColumns = computed(() => [
   { prop: 'dictCode', label: '字典编码' },
   { prop: 'dictLabel', label: '数据标签' },
   { prop: 'dictValue', label: '数据键值' },
@@ -82,16 +84,12 @@ const tableColumns = [
   { prop: 'remark', label: '备注' },
   { prop: 'createTime', label: '创建时间', width: 180 },
   { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 180, fixed: 'right' }
-]
+])
 
 const rules = {
   dictType: [{ required: true, message: '字典类型不能为空', trigger: 'blur' }],
   dictLabel: [{ required: true, message: '数据标签不能为空', trigger: 'blur' }],
   dictValue: [{ required: true, message: '数据键值不能为空', trigger: 'blur' }]
-}
-
-function onSelectionChange(rows) {
-  selectedRowsRef.value = rows || []
 }
 
 function listFunction(params) {
@@ -139,17 +137,19 @@ function batchDeleteFunction(ids) {
   return Promise.all((ids || []).map((id) => delData(id)))
 }
 
-function handleBatchDelete() {
-  const ids = selectedRowsRef.value.map((item) => item.dictCode)
-  if (!ids.length) return
-  batchDeleteFunction(ids).then(() => {
-    ElMessage.success('删除成功')
+function exportFunction(searchParam) {
+  return exportData({ ...searchParam, dictType: currentDictType.value })
+}
+
+function importFunction(file, strategy) {
+  return importData(file, currentDictType.value, strategy === 'overwrite').then((res) => {
     tableRef.value?.refreshData()
+    return res?.data || res || { total: 0, successCount: 0, failCount: 0 }
   })
 }
 
-function exportFunction(searchParam) {
-  return exportData({ ...searchParam, dictType: currentDictType.value })
+function importTemplateFunction() {
+  return importDataTemplate()
 }
 
 watch(

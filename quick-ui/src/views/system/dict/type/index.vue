@@ -11,15 +11,21 @@
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
       :export-function="exportFunction"
+      :show-add-button="true"
+      :show-edit-button="true"
+      :show-delete-button="true"
+      :show-export-button="true"
+      :show-import-button="true"
+      :on-add="openAdd"
+      :on-edit="openEdit"
+      :import-function="importFunction"
+      :import-template-function="importTemplateFunction"
+      import-template-file-name="dict-type-template.xlsx"
       :check-delete-success="() => true"
       rows-key="data.records"
       total-key="data.total"
-      @selection-change="onSelectionChange"
     >
       <template #toolbar-left>
-        <el-button type="primary" plain @click="openAdd" v-hasPermi="['system:dict:add']">新增</el-button>
-        <el-button type="success" plain :disabled="selectedRowsRef.length !== 1" @click="openEdit(selectedRowsRef[0])" v-hasPermi="['system:dict:edit']">修改</el-button>
-        <el-button type="danger" plain :disabled="selectedRowsRef.length === 0" @click="handleBatchDelete" v-hasPermi="['system:dict:remove']">删除</el-button>
         <el-button type="danger" plain @click="refreshAll" v-hasPermi="['system:dict:refresh']">刷新缓存</el-button>
       </template>
 
@@ -49,7 +55,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { addType, exportType, listType, refreshAllType, removeType, updateType } from '@/api/system/dict/type'
+import { addType, exportType, importType, importTypeTemplate, listType, refreshAllType, removeType, updateType } from '@/api/system/dict/type'
 
 defineOptions({ name: 'DictType' })
 
@@ -58,7 +64,6 @@ const { sys_normal_disable } = useDict('sys_normal_disable')
 const tableRef = ref(null)
 const visible = ref(false)
 const formRef = ref(null)
-const selectedRowsRef = ref([])
 
 const form = ref({ dictId: null, dictName: '', dictType: '', status: '0', remark: '' })
 
@@ -90,10 +95,6 @@ const rules = {
   dictName: [{ required: true, message: '请输入字典名称', trigger: 'blur' }],
   dictType: [{ required: true, message: '请输入字典类型', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
-}
-
-function onSelectionChange(rows) {
-  selectedRowsRef.value = rows || []
 }
 
 function listFunction(params) {
@@ -142,17 +143,19 @@ function batchDeleteFunction(ids) {
   return Promise.all((ids || []).map((id) => removeType(id)))
 }
 
-function handleBatchDelete() {
-  const ids = selectedRowsRef.value.map((item) => item.dictId)
-  if (!ids.length) return
-  batchDeleteFunction(ids).then(() => {
-    ElMessage.success('删除成功')
+function exportFunction(searchParam) {
+  return exportType(searchParam)
+}
+
+function importFunction(file, strategy) {
+  return importType(file, strategy === 'overwrite').then((res) => {
     tableRef.value?.refreshData()
+    return res?.data || res || { total: 0, successCount: 0, failCount: 0 }
   })
 }
 
-function exportFunction(searchParam) {
-  return exportType(searchParam)
+function importTemplateFunction() {
+  return importTypeTemplate()
 }
 
 function refreshAll() {

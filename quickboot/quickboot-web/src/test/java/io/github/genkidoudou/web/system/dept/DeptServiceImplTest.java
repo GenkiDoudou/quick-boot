@@ -1,4 +1,4 @@
-﻿package io.github.genkidoudou.web.system.dept;
+package io.github.genkidoudou.web.system.dept;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import io.github.genkidoudou.common.exception.WarningException;

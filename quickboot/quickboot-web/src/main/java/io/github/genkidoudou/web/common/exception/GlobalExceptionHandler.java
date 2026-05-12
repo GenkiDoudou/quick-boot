@@ -74,7 +74,7 @@ public class GlobalExceptionHandler {
         int code = ErrorCodes.Security.UNAUTHORIZED;
         String message = resolveMessage(code, null, "未登录或登录已过期");
         log.warn("not login, code={}, msg={}", code, message);
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(R.error(code, message));
+        return ResponseEntity.status(HttpStatus.OK).body(R.error(code, message));
     }
 
     /**

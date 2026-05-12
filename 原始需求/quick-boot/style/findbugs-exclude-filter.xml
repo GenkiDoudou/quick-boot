@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+
+	<Match>
+		<Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,CRLF_INJECTION_LOGS,DLS_DEAD_LOCAL_STORE"/>
+	</Match>
+
+<!--	<Match>-->
+<!--		&lt;!&ndash;过滤类&ndash;&gt;-->
+<!--		<Class name="com.missxxxx.proscenium.plugin.misconf.ProsceniumConfig"/>-->
+<!--	</Match>-->
+
+<!--	<Match>-->
+<!--		&lt;!&ndash; 过滤包：&ndash;&gt;-->
+<!--		<Package name="com.missxxxx.proscenium.plugin.misconf"/>-->
+<!--	</Match>-->
+
+
+<!--	&lt;!&ndash;过滤方法 &ndash;&gt;-->
+<!--	<Match>-->
+<!--		<Class name="com.missxxxx.proscenium.service.CartShowServiceImpl"/>-->
+<!--		<Method name="getResultData"></Method>-->
+<!--	</Match>-->
+
+<!--	&lt;!&ndash; 过滤异常&ndash;&gt;-->
+<!--	<Match>-->
+<!--		&lt;!&ndash;装箱后拆箱紧接着装箱，忽略不处理 &ndash;&gt;-->
+<!--		&lt;!&ndash; Boxed value is unboxed and then immediately reboxed&ndash;&gt;-->
+<!--		<Package name="~.*"/>-->
+<!--		<Bug pattern="BX_UNBOXING_IMMEDIATELY_REBOXED"/>-->
+<!--	</Match>-->
+</FindBugsFilter>

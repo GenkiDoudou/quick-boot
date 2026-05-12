@@ -19,6 +19,6 @@
   "PATH": "C:\\Program Files\\Java\\jdk-17\\bin;${env:PATH}"
 },
 "java.compile.nullAnalysis.mode": "automatic",
-"java.configuration.updateBuildConfiguration": "interactive"
+"java.configuration.updateBuildConfiguration": "automatic"
 
 }

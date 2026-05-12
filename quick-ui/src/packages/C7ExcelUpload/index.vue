@@ -1,342 +1,236 @@
 <template>
   <div class="c7-excel-upload" v-bind="rootBindAttrs">
     <input
-        ref="fileInputRef"
-        class="c7-excel-upload__input"
-        type="file"
-        :accept="accept"
-        :disabled="uploading"
-        @change="onFileInputChange"
+      ref="fileInputRef"
+      class="c7-excel-upload__input"
+      type="file"
+      :accept="accept"
+      :disabled="uploading"
+      @change="onFileInputChange"
     />
-    <div class="c7-excel-upload__row">
-      <el-button :disabled="uploading" @click="openFilePicker">
-        选择文件
-      </el-button>
-      <span v-if="selectedFileName" class="c7-excel-upload__name">{{ selectedFileName }}</span>
+
+    <div
+      class="c7-excel-upload__dropzone"
+      :class="{ 'is-dragover': dragOver }"
+      @click="openFilePicker"
+      @dragover.prevent="onDragOver"
+      @dragleave.prevent="onDragLeave"
+      @drop.prevent="onDrop"
+    >
+      <el-icon class="c7-excel-upload__drop-icon"><UploadFilled /></el-icon>
+      <div class="c7-excel-upload__drop-text">将文件拖到此处，或<span class="link">点击上传</span></div>
+      <div v-if="selectedFileName" class="c7-excel-upload__file-name">{{ selectedFileName }}</div>
     </div>
-    <el-radio-group
-        v-model="duplicateStrategy"
-        class="c7-excel-upload__strategy"
-        :disabled="uploading"
-    >
-      <el-radio value="overwrite">{{ overwriteLabelText }}</el-radio>
-      <el-radio value="ignore">{{ ignoreLabelText }}</el-radio>
-    </el-radio-group>
-    <el-button
-        v-bind="importButtonBindAttrs"
-        :loading="uploading"
-        @click="handleImportClick"
-    >
-      导入
-    </el-button>
+
+    <div class="c7-excel-upload__tips">
+      <el-checkbox v-model="updateSupport" :disabled="uploading">是否更新已经存在的数据</el-checkbox>
+      <div class="tip-row">
+        仅允许导入 xls、xlsx 格式文件。
+        <C7ExcelDownload
+          v-if="hasTemplateFn"
+          link
+          type="primary"
+          :download-fn="templateDownloadFn"
+          :default-file-name="templateFileName"
+        >下载模板</C7ExcelDownload>
+      </div>
+    </div>
+
     <div v-if="lastResult" class="c7-excel-upload__result">
-      <div>总计：{{ lastResult.total }}，成功：{{ lastResult.successCount }}，失败：{{ lastResult.failCount }}</div>
-      <a
-          v-if="showErrorFileLink"
-          class="c7-excel-upload__error-link"
-          :href="trimmedErrorFileUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-      >下载错误明细</a>
+      <div>导入结果：总条数 {{ lastResult.total }}，成功 {{ lastResult.successCount }}，失败 {{ lastResult.failCount }}</div>
+      <el-button
+        v-if="lastResult.failCount > 0 && lastResult.errorFileBase64"
+        type="danger"
+        link
+        @click="downloadErrorFile(lastResult)"
+      >
+        下载失败导入.txt
+      </el-button>
+    </div>
+
+    <div class="c7-excel-upload__actions">
+      <el-button type="primary" :loading="uploading" @click="handleImportClick">确定</el-button>
+      <el-button :disabled="uploading" @click="handleCancelClick">取消</el-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import {computed, ref, useAttrs} from 'vue'
-import {ElMessage} from 'element-plus'
+import { computed, ref, useAttrs } from 'vue'
+import { ElMessage } from 'element-plus'
+import { UploadFilled } from '@element-plus/icons-vue'
+import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 
-defineOptions({name: 'C7ExcelUpload', inheritAttrs: false})
+defineOptions({ name: 'C7ExcelUpload', inheritAttrs: false })
 
-/**
- * C7 Excel 导入：隐藏 **`input[type=file]`**、扩展名与大小校验、重复策略 **`overwrite|ignore`**、
- * 调用业务 **`uploadFn(file, strategy)`**、展示统计与 **`errorFileUrl`** 直链入口；
- * **`v-model:uploading`**、**`v-model:duplicateStrategy`**、**`reset()`** 与 **`C7ExcelDownload`** 的进行中语义对齐。
- *
- * **校验失败**（扩展名/大小）：仅 **`notify` / `ElMessage`**，**不** **`emit('error')`**。
- * **`uploadFn` reject**：**`notify` + `emit('error')`**。
- *
- * **`uploadFn` 契约**：由业务自行 **`FormData` / `request`**；成功 **resolve** **`{ total, successCount, failCount, errorFileUrl? }`**（组件不解析 **`R`**）。
- *
- * @emits success(result) **`uploadFn` resolve** 且结果已写入展示后
- * @emits error(err) 仅 **`uploadFn` reject**（或等价异步失败）
- */
 const props = defineProps({
-  /** 传给原生 **`input`** 的 **`accept`**，默认 **`.xls,.xlsx`** */
-  accept: {type: String, default: '.xls,.xlsx'},
-  /** 允许的最大体积（**MB**），按 **1 MB = 1024×1024 字节** 换算 */
-  maxSizeMb: {type: Number, required: true},
-  /** 覆盖策略展示文案；缺省为 **「覆盖」** */
-  overwriteLabel: {type: String, default: ''},
-  /** 忽略策略展示文案；缺省为 **「忽略」** */
-  ignoreLabel: {type: String, default: ''},
-  /**
-   * **`(file, strategy) => Promise<C7ExcelUploadResult>`**；未传入时点击导入在开发环境 **`console.warn`** 并 **no-op**。
-   * @typedef {{ total: number, successCount: number, failCount: number, errorFileUrl?: string }} C7ExcelUploadResult
-   */
-  uploadFn: {type: Function, default: undefined},
-  /**
-   * 自定义通知；未传入时走 **`ElMessage`**。
-   * @param {'success'|'error'|'warning'|'info'} type
-   * @param {string} message
-   */
-  notify: {type: Function, default: undefined},
+  accept: { type: String, default: '.xls,.xlsx' },
+  maxSizeMb: { type: Number, required: true },
+  uploadFn: { type: Function, default: undefined },
+  notify: { type: Function, default: undefined },
+  templateDownloadFn: { type: Function, default: undefined },
+  templateFileName: { type: String, default: 'import-template.xlsx' },
 })
 
-const emit = defineEmits(['success', 'error'])
+const emit = defineEmits(['success', 'error', 'cancel'])
 
-/** 与父同步：**`v-model:duplicateStrategy`**，默认 **`ignore`**（**`reset()`** 亦复位到此值） */
-const duplicateStrategy = defineModel('duplicateStrategy', {
-  type: String,
-  default: 'ignore',
-})
-
-/** 与父同步：**`v-model:uploading`** */
-const uploading = defineModel('uploading', {type: Boolean, default: false})
+const duplicateStrategy = defineModel('duplicateStrategy', { type: String, default: 'ignore' })
+const uploading = defineModel('uploading', { type: Boolean, default: false })
 
 const attrs = useAttrs()
-const fileInputRef = ref(/** @type {HTMLInputElement | null} */ (null))
-const selectedFile = ref(/** @type {File | null} */ (null))
-/** @type {import('vue').Ref<import('vue').UnwrapRef<{ total: number, successCount: number, failCount: number, errorFileUrl?: string } | null>>} */
+const fileInputRef = ref(null)
+const selectedFile = ref(null)
 const lastResult = ref(null)
+const dragOver = ref(false)
+const updateSupport = ref(false)
 
 const selectedFileName = computed(() => selectedFile.value?.name ?? '')
+const hasTemplateFn = computed(() => typeof props.templateDownloadFn === 'function')
+const rootBindAttrs = computed(() => ({ class: attrs.class, style: attrs.style }))
 
-const overwriteLabelText = computed(() => (props.overwriteLabel && props.overwriteLabel.trim()) ? props.overwriteLabel : '覆盖')
-const ignoreLabelText = computed(() => (props.ignoreLabel && props.ignoreLabel.trim()) ? props.ignoreLabel : '忽略')
+function pushNotify(type, message) {
+  if (typeof props.notify === 'function') return props.notify(type, message)
+  if (type === 'error') ElMessage.error(message)
+  else if (type === 'success') ElMessage.success(message)
+}
 
-const trimmedErrorFileUrl = computed(() => (lastResult.value?.errorFileUrl ?? '').trim())
-
-const showErrorFileLink = computed(() => {
-  const r = lastResult.value
-  if (!r) return false
-  return r.failCount > 0 && trimmedErrorFileUrl.value.length > 0
-})
-
-const rootBindAttrs = computed(() => ({
-  class: attrs.class,
-  style: attrs.style,
-}))
-
-const importButtonBindAttrs = computed(() => ({
-  ...filterAttrsForElButton(attrs),
-}))
-
-/**
- * 判断文件名是否为允许的 Excel 扩展名（**不区分大小写**，仅 **`.xls` / `.xlsx`**）。
- * @param {string} fileName
- * @returns {boolean}
- */
 function isAllowedExcelFileName(fileName) {
   const n = (fileName || '').toLowerCase()
   return n.endsWith('.xls') || n.endsWith('.xlsx')
 }
 
-/**
- * **`maxSizeMb` → 字节上限**（**1 MB = 1024×1024**）。
- * @param {number} maxSizeMb
- * @returns {number}
- */
 function maxSizeMbToBytes(maxSizeMb) {
   return maxSizeMb * 1024 * 1024
 }
 
-/**
- * @param {File} file
- * @param {number} maxSizeMb
- * @returns {boolean}
- */
-function isFileWithinSizeLimit(file, maxSizeMb) {
-  return file.size <= maxSizeMbToBytes(maxSizeMb)
-}
-
-/**
- * 从 **`useAttrs()`** 挑出可安全透传到 **`ElButton`（导入）** 的属性。
- * @param {Record<string, unknown>} raw
- * @returns {Record<string, unknown>}
- */
-function filterAttrsForElButton(raw) {
-  const allow = new Set([
-    'size', 'plain', 'round', 'circle', 'type', 'link', 'text', 'bg', 'nativeType',
-    'class', 'style', 'icon', 'disabled', 'autofocus',
-  ])
-  const out = {}
-  for (const k of Object.keys(raw)) {
-    if (allow.has(k)) out[k] = raw[k]
-  }
-  return out
-}
-
-/**
- * @param {'success'|'error'|'warning'|'info'} type
- * @param {string} message
- */
-function pushNotify(type, message) {
-  if (typeof props.notify === 'function') {
-    props.notify(type, message)
+function applyFile(file) {
+  if (!file) return
+  if (!isAllowedExcelFileName(file.name)) {
+    selectedFile.value = null
+    pushNotify('error', '仅支持 .xls 或 .xlsx 文件')
     return
   }
-  if (type === 'error') ElMessage.error(message)
-  else if (type === 'success') ElMessage.success(message)
-  else if (type === 'warning') ElMessage.warning(message)
-  else ElMessage.info(message)
-}
-
-/**
- * @param {unknown} err
- * @returns {string}
- */
-function formatUploadError(err) {
-  if (err == null) return '导入失败'
-  if (typeof err === 'string') return err
-  if (err instanceof Error && err.message) return err.message
-  try {
-    return String(err)
-  } catch {
-    return '导入失败'
+  if (file.size > maxSizeMbToBytes(props.maxSizeMb)) {
+    selectedFile.value = null
+    pushNotify('error', `文件大小不能超过 ${props.maxSizeMb} MB`)
+    return
   }
+  selectedFile.value = file
 }
 
 function openFilePicker() {
   fileInputRef.value?.click()
 }
 
-/**
- * 选择文件后：扩展名 + 大小校验；通过后暂存 **`File`** 并清空 **`input.value`** 以支持重复选择同一文件。
- * @param {Event} e
- */
 function onFileInputChange(e) {
-  const input = /** @type {HTMLInputElement} */ (e.target)
+  const input = e.target
   const file = input.files && input.files[0] ? input.files[0] : null
   input.value = ''
+  applyFile(file)
+}
 
-  if (!file) return
+function onDragOver() {
+  dragOver.value = true
+}
 
-  if (!isAllowedExcelFileName(file.name)) {
-    selectedFile.value = null
-    pushNotify('error', '仅支持 .xls 或 .xlsx 文件')
-    return
-  }
+function onDragLeave() {
+  dragOver.value = false
+}
 
-  if (!isFileWithinSizeLimit(file, props.maxSizeMb)) {
-    selectedFile.value = null
-    pushNotify('error', `文件大小不能超过 ${props.maxSizeMb} MB`)
-    return
-  }
-
-  selectedFile.value = file
+function onDrop(e) {
+  dragOver.value = false
+  const file = e.dataTransfer?.files?.[0]
+  applyFile(file || null)
 }
 
 async function handleImportClick() {
   if (uploading.value) return
-  if (typeof props.uploadFn !== 'function') {
-    console.warn('[C7ExcelUpload] 缺少有效的 uploadFn')
-    return
-  }
+  if (typeof props.uploadFn !== 'function') return
   if (!selectedFile.value) {
     pushNotify('error', '请先选择文件')
     return
   }
-
   uploading.value = true
+  duplicateStrategy.value = updateSupport.value ? 'overwrite' : 'ignore'
   try {
-    const raw = await props.uploadFn(selectedFile.value, /** @type {'overwrite'|'ignore'} */ (duplicateStrategy.value))
+    const raw = await props.uploadFn(selectedFile.value, duplicateStrategy.value)
     const result = normalizeUploadResult(raw)
     lastResult.value = result
     emit('success', result)
   } catch (err) {
-    const msg = formatUploadError(err)
-    pushNotify('error', msg)
+    pushNotify('error', err?.message || '导入失败')
     emit('error', err)
   } finally {
     uploading.value = false
   }
 }
 
-/**
- * 将 **`uploadFn`** 返回值规范为结果对象；非法形态抛错并走 **`catch`**。
- * @param {unknown} raw
- * @returns {{ total: number, successCount: number, failCount: number, errorFileUrl?: string }}
- */
 function normalizeUploadResult(raw) {
-  if (!raw || typeof raw !== 'object') throw new Error('uploadFn 返回值须为对象')
-  const o = /** @type {Record<string, unknown>} */ (raw)
-  const total = Number(o.total)
-  const successCount = Number(o.successCount)
-  const failCount = Number(o.failCount)
-  if (!Number.isFinite(total) || !Number.isFinite(successCount) || !Number.isFinite(failCount)) {
-    throw new Error('uploadFn 返回值须包含有效的 total/successCount/failCount')
+  if (!raw || typeof raw !== 'object') throw new Error('uploadFn 返回值必须为对象')
+  return {
+    total: Number(raw.total || 0),
+    successCount: Number(raw.successCount || 0),
+    failCount: Number(raw.failCount || 0),
+    failRows: typeof raw.failRows === 'string' ? raw.failRows : '',
+    errorFileName: typeof raw.errorFileName === 'string' ? raw.errorFileName : '',
+    errorFileBase64: typeof raw.errorFileBase64 === 'string' ? raw.errorFileBase64 : '',
   }
-  const errorFileUrl = typeof o.errorFileUrl === 'string' ? o.errorFileUrl : undefined
-  return {total, successCount, failCount, errorFileUrl}
 }
 
-/**
- * **`reset()`**：清空已选文件、**`input.value`**、上次结果；**`duplicateStrategy`** 复位为 **`ignore`**。
- */
+function downloadErrorFile(result) {
+  if (!result?.errorFileBase64) return
+  try {
+    const bytes = atob(result.errorFileBase64)
+    const arr = new Uint8Array(bytes.length)
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+    const blob = new Blob([arr], { type: 'text/plain;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = result.errorFileName || '失败导入.txt'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch {
+    pushNotify('error', '失败明细文件下载失败')
+  }
+}
+
 function reset() {
   selectedFile.value = null
   lastResult.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
-  duplicateStrategy.value = 'ignore'
+  updateSupport.value = false
 }
 
-defineExpose({
-  /** 与 **`v-model:uploading`** 同源 */
-  uploading,
-  reset,
-})
+function handleCancelClick() {
+  reset()
+  emit('cancel')
+}
+
+defineExpose({ uploading, reset })
 </script>
 
 <style scoped>
-.c7-excel-upload {
+.c7-excel-upload { display: flex; flex-direction: column; gap: 12px; }
+.c7-excel-upload__input { position: absolute; width: 0; height: 0; opacity: 0; }
+.c7-excel-upload__dropzone {
+  border: 1px dashed #409eff;
+  border-radius: 6px;
+  min-height: 170px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.c7-excel-upload__input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.c7-excel-upload__row {
-  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
+  cursor: pointer;
+  color: #606266;
+  background: #fafcff;
 }
-
-.c7-excel-upload__name {
-  font-size: 14px;
-  color: var(--el-text-color-regular);
-  word-break: break-all;
-}
-
-.c7-excel-upload__strategy {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.c7-excel-upload__result {
-  font-size: 14px;
-  color: var(--el-text-color-primary);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.c7-excel-upload__error-link {
-  color: var(--el-color-primary);
-  text-decoration: none;
-}
-
-.c7-excel-upload__error-link:hover {
-  text-decoration: underline;
-}
+.c7-excel-upload__dropzone.is-dragover { background: #eef5ff; }
+.c7-excel-upload__drop-icon { font-size: 56px; color: #c0c4cc; margin-bottom: 10px; }
+.c7-excel-upload__drop-text { font-size: 14px; }
+.c7-excel-upload__drop-text .link { color: #409eff; margin-left: 2px; }
+.c7-excel-upload__file-name { margin-top: 8px; color: #606266; font-size: 12px; }
+.c7-excel-upload__tips { color: #606266; font-size: 13px; }
+.tip-row { margin-top: 4px; }
+.c7-excel-upload__actions { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+.c7-excel-upload__result { font-size: 13px; color: #303133; line-height: 1.8; }
 </style>

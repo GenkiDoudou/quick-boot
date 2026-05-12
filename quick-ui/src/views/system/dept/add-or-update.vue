@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <c7-dialog v-model="visible" :title="form.deptId ? '修改部门' : '新增部门'" width="680px" :on-confirm="submit">
     <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="dept-dialog-form">
       <el-form-item label="上级部门" prop="parentId">
@@ -39,7 +39,7 @@ const { sys_normal_disable } = useDict('sys_normal_disable')
 const visible = ref(false)
 const formRef = ref(null)
 const treeData = ref([])
-const form = ref({ deptId: null, parentId: -1, deptName: '', orderNum: 0, leader: '', phone: '', email: '', status: '0', remark: '' })
+const form = ref({ deptId: null, parentId: 0, deptName: '', orderNum: 0, leader: '', phone: '', email: '', status: '0', remark: '' })
 
 const rules = {
   parentId: [{ required: true, message: '请选择上级部门', trigger: 'change' }],
@@ -48,22 +48,30 @@ const rules = {
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
+
+
 function open(payload = {}) {
   visible.value = true
-  form.value = { deptId: null, parentId: payload.parentId ?? -1, deptName: '', orderNum: 0, leader: '', phone: '', email: '', status: '0', remark: '' }
-  listTreeDept().then(res => {
-    treeData.value = [{ id: -1, label: '顶级部门', children: res.data || [] }]
-  })
-  if (payload.deptId) {
-    getDept(payload.deptId).then(res => {
-      form.value = { ...form.value, ...(res.data || {}) }
-    })
+  form.value = {
+    deptId: null,
+    parentId: payload.parentId ?? '-1',
+    deptName: '',
+    orderNum: 0,
+    leader: '',
+    phone: '',
+    email: '',
+    status: '0',
+    remark: ''
   }
+  listTreeDept().then((res) => {
+    treeData.value = [{ id: '-1', label: '顶级部门', children: res.data || [] }]
+  })
+
 }
 
 function submit() {
   return new Promise((resolve, reject) => {
-    formRef.value.validate(valid => {
+    formRef.value.validate((valid) => {
       if (!valid) {
         reject(new Error('表单校验未通过'))
         return
@@ -82,40 +90,5 @@ defineExpose({ open })
 </script>
 
 <style scoped>
-.dept-dialog-form {
-  --dept-primary: #0a2463;
-  --dept-accent: #409eff;
-  --dept-border: #dce3eb;
-  --dept-text: #233243;
-  --dept-text-muted: #4f6175;
-  font-family: "PingFang SC", "Helvetica Neue", sans-serif;
-  color: var(--dept-text);
-}
 
-.dept-dialog-form :deep(.el-form-item__label) {
-  color: var(--dept-text-muted);
-  font-weight: 600;
-}
-
-.dept-dialog-form :deep(.el-input__wrapper),
-.dept-dialog-form :deep(.el-textarea__inner),
-.dept-dialog-form :deep(.el-input-number) {
-  border-color: var(--dept-border);
-}
-
-.dept-dialog-form :deep(.el-input__wrapper.is-focus),
-.dept-dialog-form :deep(.el-textarea__inner:focus),
-.dept-dialog-form :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px var(--dept-accent) inset;
-}
-
-.dept-dialog-form :deep(.el-radio__input.is-checked .el-radio__inner) {
-  border-color: var(--dept-accent);
-  background: var(--dept-accent);
-}
-
-.dept-dialog-form :deep(.el-radio__input.is-checked + .el-radio__label) {
-  color: var(--dept-primary);
-  font-weight: 600;
-}
 </style>

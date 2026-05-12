@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="c7-json-table" v-bind="$attrs">
     <!-- 搜索区 -->
     <el-form
@@ -57,8 +57,17 @@
         </el-col>
         <el-col :span="6">
           <el-form-item>
-            <el-button type="primary" @click="handleSearchSubmit">搜索</el-button>
-            <el-button @click="handleSearchReset">重置</el-button>
+            <el-button
+                v-if="showSearchButton"
+                type="primary"
+                v-bind="searchButtonProps"
+                @click="handleSearchSubmit"
+            >{{ searchButtonText }}</el-button>
+            <el-button
+                v-if="showResetButton"
+                v-bind="resetButtonProps"
+                @click="handleSearchReset"
+            >{{ resetButtonText }}</el-button>
           </el-form-item>
         </el-col>
       </el-row>
@@ -68,23 +77,51 @@
     <!-- 工具栏 -->
     <el-row class="c7-json-table__toolbar" :gutter="8" align="middle">
       <el-col :span="12">
-        <slot name="toolbar-left"/>
+        <slot
+            name="toolbar-left"
+            :selected-rows="selectedRows"
+            :search-param="searchParam"
+            :refresh-data="refreshData"
+            :get-data-list="getDataList"
+        />
         <el-button
-            v-if="deleteFunction"
+            v-if="showAddButton"
+            type="primary"
+            plain
+            v-bind="addButtonProps"
+            @click="handleBuiltInAddClick"
+        >{{ addButtonText }}</el-button>
+        <el-button
+            v-if="showEditButton"
+            type="success"
+            plain
+            :disabled="selectedRows.length !== 1"
+            v-bind="editButtonProps"
+            @click="handleBuiltInEditClick"
+        >{{ editButtonText }}</el-button>
+        <el-button
+            v-if="showDeleteButtonResolved"
             type="danger"
             plain
             :disabled="!selectedRows.length"
+            v-bind="deleteButtonProps"
             @click="handleBatchDelete"
-        >批量删除
-        </el-button>
+        >{{ deleteButtonText }}</el-button>
         <C7ExcelDownload
-            v-if="exportFunction"
+            v-if="showExportButtonResolved"
             :download-fn="exportDownloadFn"
             :default-file-name="exportDefaultFileName"
             @success="onExportBlobSuccess"
         >
-          导出
+          {{ exportButtonText }}
         </C7ExcelDownload>
+        <el-button
+            v-if="showImportButtonResolved"
+            type="warning"
+            plain
+            v-bind="importButtonProps"
+            @click="openImportDialog"
+        >{{ importButtonText }}</el-button>
       </el-col>
       <el-col :span="12" style="text-align: right">
         <slot name="toolbar-right"/>
@@ -100,6 +137,21 @@
         </el-button>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="importDialogVisible" :title="importDialogTitle" width="620px" append-to-body>
+      <C7ExcelUpload
+          ref="importUploadRef"
+          v-if="showImportButtonResolved"
+          :key="importDialogKey"
+          :max-size-mb="importMaxSizeMb"
+          :upload-fn="importUploadFn"
+          :template-download-fn="importTemplateFunction"
+          :template-file-name="importTemplateFileName"
+          @success="onImportSuccess"
+          @error="onImportError"
+          @cancel="onImportCancel"
+      />
+    </el-dialog>
 
     <el-drawer v-model="columnPopoverVisible" title="列设置" direction="rtl" size="280px">
       <div v-for="c in columnSettingItems" :key="c.prop" class="c7-json-table__col-setting-row">
@@ -164,33 +216,35 @@ import C7JsonTableColumn from '../C7JsonTableColumn/index.vue'
 import C7Select from '../C7Select/index.vue'
 import C7DatePicker from '../C7DatePicker/index.vue'
 import C7ExcelDownload from '../C7ExcelDownload/index.vue'
+import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
 const RESERVED_SLOTS = new Set(['search-extra', 'toolbar-left', 'toolbar-right', 'table-columns'])
 
 /**
- * 一体化 JSON 配置列表：搜索区（子集）、工具栏、表格、分页、列设置、删除/导出。
+ * 一体化 JSON 配置表格：包含搜索区、工具栏、表格、分页、列设置、删除、导出、导入等能力。
  *
- * **取消列表请求**：请使用 **`beforeFetch` prop**，返回 **`false`**（支持 **`Promise`**）可阻止调用 **`listFunction`**。
- * **`before-fetch` 事件**仅用于监听参数，**返回值不参与拦截**（与项目内未见「emit 可取消」惯例一致）。
+ * 取消列表请求请使用 `beforeFetch` 属性，返回 `false` 或 `Promise<false>` 可阻止调用 `listFunction`。
+ * `before-fetch` 事件仅用于监听参数，返回值不会参与拦截。
  *
- * @prop {function(object): Promise<unknown>} listFunction 列表请求；入参含 **`...searchParam`**、**`pageNum`**、**`pageSize`**、**`orderByColumn`**、**`isAsc`**（**`asc`/`desc`/''**）
+ * @prop {function(object): Promise<unknown>} listFunction 列表请求函数，
+ * 入参包含 `...searchParam`、`pageNum`、`pageSize`、`orderByColumn`、`isAsc`。
  */
 const props = defineProps({
   /** 列表请求函数 */
   listFunction: {type: Function, required: true},
-  /** 表格列配置（同 C7JsonTableColumn） */
+  /** 表格列配置（传给 C7JsonTableColumn） */
   tableColumns: {type: Array, required: true},
   /** 搜索列配置（JsonForm 字段子集） */
   searchColumns: {type: Array, default: () => []},
   /** 搜索默认值；重置时恢复此快照 */
   defaultSearchParam: {type: Object, default: () => ({})},
-  /** 从列表响应取行数组的点路径（默认对齐 `request` 成功体 **`{ data: { records, total } }`**） */
+  /** 从响应中提取行数组的路径（默认对齐 `{ data: { records, total } }`） */
   rowsKey: {type: String, default: 'data.records'},
-  /** 从列表响应取总数的点路径 */
+  /** 从响应中提取总数的路径 */
   totalKey: {type: String, default: 'data.total'},
-  /** 行主键字段名，传给 `el-table` 的 `row-key` */
+  /** 行主键字段名，透传给 `el-table` 的 `row-key` */
   rowKey: {type: String, default: 'id'},
   border: {type: Boolean, default: true},
   stripe: {type: Boolean, default: true},
@@ -198,23 +252,23 @@ const props = defineProps({
   showIndex: {type: Boolean, default: false},
   /** 列显隐持久化 key；不传则不展示列设置 */
   columnSettingKey: {type: String, default: ''},
-  /** 批量删除 API：入参 id 数组 */
+  /** 批量删除 API：入参为 id 数组 */
   deleteFunction: {type: Function, default: undefined},
-  /** 导出：返回 Blob 或 `{ data, headers }`；入参为组件传入的 **`searchParam` 深拷贝快照**（见 **`exportDownloadFn`**） */
+  /** 导出函数：返回 Blob 或 `{ data, headers }` */
   exportFunction: {type: Function, default: undefined},
-  /** 删除前钩子，返回 `false` 取消 */
+  /** 删除前钩子，返回 `false` 可取消 */
   beforeDelete: {type: Function, default: undefined},
   /** 自定义删除成功判定 */
   checkDeleteSuccess: {type: Function, default: undefined},
-  /** 导出默认文件名（当响应头无 Content-Disposition 时） */
+  /** 导出默认文件名（响应头无 Content-Disposition 时使用） */
   exportDefaultFileName: {type: String, default: 'export.xlsx'},
   /**
-   * 为 **`false`** 时不使用全屏 **`ElLoading`**（仍保留 **`C7ExcelDownload`** 按钮 loading）。
-   * 非 **`false`** 时导出过程中额外全屏 Loading（与原始需求「内置导出 loading」一致）。
+   * 为 `false` 时不启用全屏 `ElLoading`，仅保留下载按钮 loading。
+   * 非 `false` 时导出期间叠加全屏 Loading。
    */
   exportLoadingOptions: {type: [Boolean, Object], default: true},
-  deleteConfirmMessage: {type: String, default: '确认删除选中记录？'},
-  /** 传给 C7JsonTableColumn 的表级空文案 */
+  deleteConfirmMessage: {type: String, default: '确认删除选中记录吗？'},
+  /** 透传给 C7JsonTableColumn 的表格空文案 */
   emptyText: {type: String, default: undefined},
   /** 分页可选条数 */
   pageSizes: {type: Array, default: () => [10, 20, 50, 100]},
@@ -222,10 +276,39 @@ const props = defineProps({
   load: {type: Function, default: undefined},
   treeProps: {type: Object, default: undefined},
   /**
-   * 列表请求前钩子；返回 **`false`** 或 **`Promise<false>`** 时**不**调用 **`listFunction`**。
+   * 列表请求前钩子；返回 `false` 或 `Promise<false>` 时不调用 `listFunction`。
    * @param {Record<string, unknown>} params 即将传给 listFunction 的参数
    */
   beforeFetch: {type: Function, default: undefined},
+  showSearchButton: {type: Boolean, default: true},
+  showResetButton: {type: Boolean, default: true},
+  searchButtonText: {type: String, default: '搜索'},
+  resetButtonText: {type: String, default: '重置'},
+  searchButtonProps: {type: Object, default: () => ({})},
+  resetButtonProps: {type: Object, default: () => ({})},
+  onSearch: {type: Function, default: undefined},
+  onReset: {type: Function, default: undefined},
+  showAddButton: {type: Boolean, default: false},
+  showEditButton: {type: Boolean, default: false},
+  showDeleteButton: {type: Boolean, default: undefined},
+  showExportButton: {type: Boolean, default: undefined},
+  showImportButton: {type: Boolean, default: false},
+  addButtonText: {type: String, default: '新增'},
+  editButtonText: {type: String, default: '修改'},
+  deleteButtonText: {type: String, default: '删除'},
+  exportButtonText: {type: String, default: '导出'},
+  importButtonText: {type: String, default: '导入'},
+  addButtonProps: {type: Object, default: () => ({})},
+  editButtonProps: {type: Object, default: () => ({})},
+  deleteButtonProps: {type: Object, default: () => ({})},
+  importButtonProps: {type: Object, default: () => ({})},
+  onAdd: {type: Function, default: undefined},
+  onEdit: {type: Function, default: undefined},
+  importFunction: {type: Function, default: undefined},
+  importDialogTitle: {type: String, default: '导入数据'},
+  importMaxSizeMb: {type: Number, default: 10},
+  importTemplateFunction: {type: Function, default: undefined},
+  importTemplateFileName: {type: String, default: 'import-template.xlsx'},
 })
 
 const emit = defineEmits([
@@ -237,6 +320,12 @@ const emit = defineEmits([
   'sort-change',
   'delete-success',
   'export-success',
+  'add-click',
+  'edit-click',
+  'search-submit',
+  'search-reset',
+  'import-success',
+  'import-error',
 ])
 
 const slots = useSlots()
@@ -258,10 +347,20 @@ const searchParam = reactive({})
 const orderByColumn = ref('')
 const isAsc = ref('')
 const columnPopoverVisible = ref(false)
+const importDialogVisible = ref(false)
+const importDialogKey = ref(0)
+const importUploadRef = ref(null)
 /** 列设置勾选：prop -> 是否显示 */
 const columnCheck = reactive({})
 
 const STORAGE_PREFIX = 'c7-json-table:columns:'
+const showDeleteButtonResolved = computed(() =>
+    props.showDeleteButton === undefined ? !!props.deleteFunction : !!props.showDeleteButton
+)
+const showExportButtonResolved = computed(() =>
+    props.showExportButton === undefined ? !!props.exportFunction : !!props.showExportButton
+)
+const showImportButtonResolved = computed(() => !!props.showImportButton && typeof props.importFunction === 'function')
 
 function warnDev(msg) {
   if (import.meta.env.DEV) console.warn(`[C7JsonTable] ${msg}`)
@@ -280,7 +379,7 @@ const sortedSearchColumns = computed(() => {
   for (const col of cols) {
     const t = col.type
     if (t && !['input', 'select', 'date', 'daterange', 'slot', undefined, ''].includes(t)) {
-      warnDev(`searchColumns 未知 type="${t}"（prop=${col.prop}），已跳过`)
+      warnDev(`Unknown searchColumns type "${t}" (prop=${col.prop}), skipped.`)
     }
   }
   return cols
@@ -316,7 +415,7 @@ function saveColumnVisibilityToStorage(map) {
   try {
     localStorage.setItem(STORAGE_PREFIX + props.columnSettingKey, JSON.stringify(map))
   } catch (e) {
-    warnDev(`写入列设置失败: ${e}`)
+    warnDev(`Failed to persist column settings: ${e}`)
   }
 }
 
@@ -426,11 +525,21 @@ function getDataList() {
 }
 
 function handleSearchSubmit() {
+  emit('search-submit', {...searchParam})
+  if (typeof props.onSearch === 'function') {
+    const r = props.onSearch({...searchParam})
+    if (r === false) return Promise.resolve()
+  }
   currentPage.value = 1
   return fetchList()
 }
 
 function handleSearchReset() {
+  emit('search-reset')
+  if (typeof props.onReset === 'function') {
+    const r = props.onReset()
+    if (r === false) return Promise.resolve()
+  }
   initSearchParam()
   currentPage.value = 1
   return fetchList()
@@ -513,8 +622,8 @@ function resetColumnSettings() {
 }
 
 /**
- * 供 **`C7ExcelDownload`** 使用：点击时固定 **`searchParam`** 快照再调 **`exportFunction(快照)`**；
- * 若 **`exportLoadingOptions !== false`** 则叠加全屏 **`ElLoading`**（与按钮 **`downloading`** 并存，便于长耗时导出反馈）。
+ * 提供给 `C7ExcelDownload` 使用：点击时固定 `searchParam` 快照再调用 `exportFunction(snapshot)`。
+ * 当 `exportLoadingOptions !== false` 时，额外叠加全屏 `ElLoading`。
  */
 function exportDownloadFn() {
   const snapshot = cloneDeep(searchParam)
@@ -527,7 +636,7 @@ function exportDownloadFn() {
   if (props.exportLoadingOptions === false) {
     return run()
   }
-  const inst = ElLoading.service({fullscreen: true, text: '导出中…'})
+  const inst = ElLoading.service({fullscreen: true, text: '导出中...'})
   return run().finally(() => {
     inst.close()
   })
@@ -536,6 +645,49 @@ function exportDownloadFn() {
 function onExportBlobSuccess() {
   emit('export-success')
 }
+
+function handleBuiltInAddClick() {
+  emit('add-click')
+  if (typeof props.onAdd === 'function') props.onAdd()
+}
+
+function handleBuiltInEditClick() {
+  if (selectedRows.value.length !== 1) return
+  const row = selectedRows.value[0]
+  emit('edit-click', row)
+  if (typeof props.onEdit === 'function') props.onEdit(row)
+}
+
+function openImportDialog() {
+  importDialogKey.value += 1
+  importDialogVisible.value = true
+}
+
+function importUploadFn(file, strategy) {
+  if (typeof props.importFunction !== 'function') {
+    return Promise.reject(new Error('缺少 importFunction'))
+  }
+  return props.importFunction(file, strategy)
+}
+
+function onImportSuccess(result) {
+  emit('import-success', result)
+  refreshData()
+}
+
+function onImportError(err) {
+  emit('import-error', err)
+}
+
+function onImportCancel() {
+  importDialogVisible.value = false
+}
+
+watch(importDialogVisible, (visible) => {
+  if (!visible) {
+    importUploadRef.value?.reset?.()
+  }
+})
 
 watch(
     searchParam,
@@ -592,3 +744,8 @@ defineExpose({
   padding: 6px 0;
 }
 </style>
+
+
+
+
+
