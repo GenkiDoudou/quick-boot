@@ -26,6 +26,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- 分页拦截器类位于 jsqlparser 模块（MP 3.5+ 与 extension 拆分） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -66,6 +72,13 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
+        </dependency>
+
+        <!-- 通知公告富文本 HTML 白名单消毒 -->
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>20240325.1</version>
         </dependency>
 
         <dependency>

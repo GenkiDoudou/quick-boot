@@ -217,7 +217,33 @@ export const constantRoutes = [
       }
     ]
   },
-  
+  {
+    path: '/system/config',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/config/index.vue'),
+        name: 'SysConfig',
+        meta: { title: '参数设置', icon: 'tools' }
+      }
+    ]
+  },
+  {
+    path: '/system/notice',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/notice/index.vue'),
+        name: 'SysNotice',
+        meta: { title: '通知公告', icon: 'message' }
+      }
+    ]
+  },
+
 ]
 
 export const dynamicRoutes = []
