@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.system.user.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
@@ -11,6 +12,7 @@ import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.security.firewall.password.PasswordCodec;
+import io.github.genkidoudou.web.system.dept.DeptSubtreeHelper;
 import io.github.genkidoudou.web.system.dept.domain.SysDept;
 import io.github.genkidoudou.web.system.dept.mapper.SysDeptMapper;
 import io.github.genkidoudou.web.system.menu.domain.SysRole;
@@ -18,6 +20,7 @@ import io.github.genkidoudou.web.system.menu.domain.SysUserRole;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysUserRoleMapper;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
+import io.github.genkidoudou.web.system.user.datascope.DataPermission;
 import io.github.genkidoudou.web.system.user.domain.SysUser;
 import io.github.genkidoudou.web.system.user.dto.SysUserCreateBo;
 import io.github.genkidoudou.web.system.user.dto.SysUserDetailVo;
@@ -32,6 +35,8 @@ import io.github.genkidoudou.web.system.user.dto.UserAuthRoleVo;
 import io.github.genkidoudou.web.system.user.dto.UserChangeStatusRequest;
 import io.github.genkidoudou.web.system.user.dto.UserImportResultVo;
 import io.github.genkidoudou.web.system.user.dto.UserResetPwdRequest;
+import io.github.genkidoudou.web.system.user.datascope.DataScopeSession;
+import io.github.genkidoudou.web.system.user.datascope.DataScopeSessionStore;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
 import io.github.genkidoudou.web.system.user.service.SysUserService;
@@ -42,13 +47,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -101,6 +102,7 @@ public class SysUserServiceImpl implements SysUserService {
         this.userRoleBindService = userRoleBindService;
     }
 
+    @DataPermission(tables = "sys_user")
     @Override
     public PageInfo<SysUserVo> page(SysUserQueryBo query) {
         int pageNum = normalizePageNum(query.getPageNum());
@@ -127,7 +129,7 @@ public class SysUserServiceImpl implements SysUserService {
                 .ge(begin != null, SysUser::getCreateTime, begin)
                 .le(end != null, SysUser::getCreateTime, end);
         if (query.getDeptId() != null) {
-            Set<Long> deptIds = collectDeptSubtreeIds(loadAllDepts(), query.getDeptId());
+            Set<Long> deptIds = DeptSubtreeHelper.collectDeptSubtreeIds(loadAllDepts(), query.getDeptId());
             if (deptIds.isEmpty()) {
                 w.apply("1 = 0");
             } else {
@@ -141,45 +143,22 @@ public class SysUserServiceImpl implements SysUserService {
         return deptMapper.selectList(new LambdaQueryWrapper<SysDept>().orderByAsc(SysDept::getOrderNum));
     }
 
-    /**
-     * 计算某部门节点及其全部子孙部门 id（含自身）。
-     */
-    static Set<Long> collectDeptSubtreeIds(List<SysDept> all, Long rootDeptId) {
-        if (rootDeptId == null || all == null || all.isEmpty()) {
-            return Collections.emptySet();
-        }
-        Map<Long, List<SysDept>> childrenMap = new LinkedHashMap<>();
-        for (SysDept d : all) {
-            Long pid = d.getParentId() != null ? d.getParentId() : -1L;
-            childrenMap.computeIfAbsent(pid, k -> new ArrayList<>()).add(d);
-        }
-        if (!existsDept(all, rootDeptId)) {
-            return Collections.emptySet();
-        }
-        Set<Long> out = new HashSet<>();
-        Deque<Long> stack = new ArrayDeque<>();
-        stack.push(rootDeptId);
-        while (!stack.isEmpty()) {
-            Long id = stack.pop();
-            if (!out.add(id)) {
-                continue;
+    private void assertLoginUserHasDeptForMutatingUser() {
+        try {
+            if (!StpUtil.isLogin()) {
+                return;
             }
-            for (SysDept ch : childrenMap.getOrDefault(id, Collections.emptyList())) {
-                stack.push(ch.getDeptId());
-            }
+        } catch (Exception ignored) {
+            return;
         }
-        return out;
+        DataScopeSession s = DataScopeSessionStore.get();
+        if (s == null) {
+            return;
+        }
+        if (s.loginDeptId() == null) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "当前用户未分配部门，不允许执行该操作");
+        }
     }
-
-    private static boolean existsDept(List<SysDept> all, Long deptId) {
-        for (SysDept d : all) {
-            if (deptId.equals(d.getDeptId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private List<SysUserVo> toUserVos(List<SysUser> users) {
         if (users.isEmpty()) {
             return List.of();
@@ -252,6 +231,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void create(SysUserCreateBo bo) {
+        assertLoginUserHasDeptForMutatingUser();
         assertUserNameUnique(bo.getUserName(), null);
         assertDeptExists(bo.getDeptId());
         assertRolesValid(bo.getRoleIds());
@@ -274,6 +254,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(SysUserUpdateBo bo) {
+        assertLoginUserHasDeptForMutatingUser();
         SysUser existing = userMapper.selectById(bo.getUserId());
         if (existing == null) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "用户不存在或已删除");
@@ -301,6 +282,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void remove(List<Long> userIds) {
+        assertLoginUserHasDeptForMutatingUser();
         if (userIds == null || userIds.isEmpty()) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "用户ID列表不能为空");
         }
@@ -318,6 +300,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void changeStatus(UserChangeStatusRequest req) {
+        assertLoginUserHasDeptForMutatingUser();
         SysUser u = userMapper.selectById(req.getUserId());
         if (u == null) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "用户不存在或已删除");
@@ -332,6 +315,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetPwd(UserResetPwdRequest req) {
+        assertLoginUserHasDeptForMutatingUser();
         SysUser u = userMapper.selectById(req.getUserId());
         if (u == null) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "用户不存在或已删除");
@@ -370,6 +354,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveAuthRole(UserAuthRoleRequest req) {
+        assertLoginUserHasDeptForMutatingUser();
         SysUser u = userMapper.selectById(req.getUserId());
         if (u == null) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "用户不存在或已删除");
@@ -380,6 +365,7 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     public UserImportResultVo importData(MultipartFile file, boolean updateSupport) {
+        assertLoginUserHasDeptForMutatingUser();
         if (file == null || file.isEmpty()) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "导入文件不能为空");
         }

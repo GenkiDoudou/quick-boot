@@ -28,7 +28,9 @@ service.interceptors.request.use(config => {
 })
 
 function handleUnauthorized(msg = '登录状态已过期，请重新登录') {
-    if (window.location.pathname === '/login') {
+    if (window.location.pathname === '/login' || window.location.pathname.endsWith('/login')) {
+        // 登录页：展示后端业务文案（如「用户名或密码错误」），不再静默 reject
+        ElMessage({ message: msg, type: 'error', duration: 5 * 1000 })
         return Promise.reject(msg)
     }
     if (!isShowReloginDialog) {
@@ -74,7 +76,12 @@ service.interceptors.response.use(async (res) => {
             return res.data
         }
         const code = Number(res.data.code || 200);
-        const msg = errorCode[code] || res.data.msg || errorCode['default']
+        const serverMsg = res.data.msg
+        // 401 优先使用服务端 msg（登录失败等），避免被 errorCode['401'] 固定文案覆盖
+        const msg =
+            code === 401 && serverMsg
+                ? serverMsg
+                : (errorCode[String(code)] || serverMsg || errorCode['default'])
 
         if (code === 401) {
             return handleUnauthorized(msg)

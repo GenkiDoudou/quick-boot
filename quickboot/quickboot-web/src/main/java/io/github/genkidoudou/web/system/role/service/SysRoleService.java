@@ -11,6 +11,7 @@ import io.github.genkidoudou.web.system.role.dto.SysRoleBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleUserVo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
+import io.github.genkidoudou.web.system.user.datascope.DataPermission;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
@@ -84,6 +85,7 @@ public interface SysRoleService {
      * @param query 条件
      * @return 分页结果
      */
+    @DataPermission(tables = {"sys_user"})
     PageInfo<SysRoleUserVo> pageAllocatedUsers(SysRoleAuthUserQueryBo query);
 
     /**
@@ -92,6 +94,7 @@ public interface SysRoleService {
      * @param query 条件
      * @return 分页结果
      */
+    @DataPermission(tables = {"sys_user"})
     PageInfo<SysRoleUserVo> pageUnallocatedUsers(SysRoleAuthUserQueryBo query);
 
     /**
@@ -99,6 +102,7 @@ public interface SysRoleService {
      *
      * @param req 入参
      */
+    @DataPermission(tables = {"sys_user"})
     void grantUsers(RoleGrantUsersRequest req);
 
     /**

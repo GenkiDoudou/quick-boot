@@ -7,6 +7,11 @@ import cn.hutool.core.util.StrUtil;
 import io.github.genkidoudou.common.api.HttpCodes;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.web.system.menu.service.MenuService;
+import io.github.genkidoudou.web.system.user.datascope.DataScopeSession;
+import io.github.genkidoudou.web.system.user.datascope.DataScopeSessionStore;
+import io.github.genkidoudou.web.system.user.datascope.LoginDataScopeService;
+import io.github.genkidoudou.web.system.user.domain.SysUser;
+import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,27 +26,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 临时登录与用户会话占位接口，对接 {@code quick-ui} 既有契约（{@code /login}、{@code /getInfo} 等）。
- * <p>
- * 凭证写死在服务端，仅用于联调；接入真实用户体系后应替换为数据库校验并移除本控制器内的常量账号逻辑。
+ * 登录与会话接口，对接 {@code quick-ui}（{@code /login}、{@code /getInfo}、{@code /getRouters} 等）。
  */
 @RestController
 @RequiredArgsConstructor
 public class AuthController {
 
     private final MenuService menuService;
+    private final AuthLoginService authLoginService;
+    private final LoginDataScopeService loginDataScopeService;
+    private final SysUserMapper userMapper;
 
     private final ObjectProvider<ImageCaptchaApplication> imageCaptchaApplicationProvider;
 
     /** 是否校验登录行为验证码（关闭后 /login 不再校验 captchaId，便于自动化）。 */
     @Value("${qc.login.captcha-enabled:true}")
     private boolean loginCaptchaEnabled;
-
-    /** 占位用户名（与前端默认表单一致时可省去修改前端）。 */
-    private static final String STUB_USERNAME = "admin";
-
-    /** 占位密码（明文仅用于开发演示）。 */
-    private static final String STUB_PASSWORD = "admin";
 
     /**
      * 账号密码登录。
@@ -51,6 +51,8 @@ public class AuthController {
      * @param captchaId 天爱验证码二次校验 id（{@code /api/captcha/validate} 成功后返回）
      * @return {@code data.access_token} 供前端存入 Storage/Cookie
      */
+
+
     @PostMapping("/login")
     public R<Map<String, Object>> login(@RequestParam String username,
                                         @RequestParam String password,
@@ -67,10 +69,9 @@ public class AuthController {
                 return R.error(HttpCodes.UNAUTHORIZED, "验证码已失效，请重试");
             }
         }
-        if (!STUB_USERNAME.equals(username) || !STUB_PASSWORD.equals(password)) {
-            return R.error(HttpCodes.UNAUTHORIZED, "用户名或密码错误");
-        }
-        StpUtil.login(1L);
+        long userId = authLoginService.authenticate(username, password);
+        StpUtil.login(userId);
+        loginDataScopeService.refreshSession(userId);
         Map<String, Object> data = new HashMap<>(2);
         data.put("access_token", StpUtil.getTokenValue());
         return R.ok(data);
@@ -84,12 +85,19 @@ public class AuthController {
     @GetMapping("/getInfo")
     public R<Map<String, Object>> getInfo() {
         StpUtil.checkLogin();
-        Map<String, Object> user = new LinkedHashMap<>(4);
-        user.put("userId", 1L);
-        user.put("userName", STUB_USERNAME);
-        user.put("avatar", "");
-
         long userId = StpUtil.getLoginIdAsLong();
+        SysUser u = userMapper.selectById(userId);
+        if (u == null) {
+            return R.error(HttpCodes.NOT_FOUND, "用户不存在或已删除");
+        }
+        Map<String, Object> user = new LinkedHashMap<>(8);
+        user.put("userId", u.getUserId());
+        user.put("userName", u.getUserName());
+        user.put("nickName", StrUtil.blankToDefault(u.getNickName(), u.getUserName()));
+        user.put("avatar", "");
+        DataScopeSession scope = DataScopeSessionStore.get();
+        user.put("deptId", scope != null ? scope.loginDeptId() : u.getDeptId());
+
         Map<String, Object> data = new LinkedHashMap<>(4);
         data.put("user", user);
         data.put("roles", menuService.listRoleKeysByUserId(userId));

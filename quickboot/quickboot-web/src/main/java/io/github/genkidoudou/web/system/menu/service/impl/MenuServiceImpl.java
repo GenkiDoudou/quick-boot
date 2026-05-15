@@ -301,6 +301,11 @@ public class MenuServiceImpl implements MenuService {
                 children.add(toRouterMap(c, childrenMap));
             }
             map.put("children", children);
+            // 与若依 / quick-ui SidebarItem 一致：仅一个可见子菜单时默认会压成单条；
+            // 对目录（Layout）强制展开父级，保证侧栏呈现「系统管理 / 用户管理」层级。
+            if (TYPE_DIR.equals(m.getMenuType())) {
+                map.put("alwaysShow", true);
+            }
         }
         return map;
     }

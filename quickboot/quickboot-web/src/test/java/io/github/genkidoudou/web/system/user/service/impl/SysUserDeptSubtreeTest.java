@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.system.user.service.impl;
 
+import io.github.genkidoudou.web.system.dept.DeptSubtreeHelper;
 import io.github.genkidoudou.web.system.dept.domain.SysDept;
 import org.junit.jupiter.api.Test;
 
@@ -19,14 +20,14 @@ class SysUserDeptSubtreeTest {
         SysDept a = dept(10L, 1L, "分部A");
         SysDept b = dept(11L, 10L, "分部A-子");
         List<SysDept> all = List.of(root, a, b);
-        Set<Long> ids = SysUserServiceImpl.collectDeptSubtreeIds(all, 10L);
+        Set<Long> ids = DeptSubtreeHelper.collectDeptSubtreeIds(all, 10L);
         assertThat(ids).containsExactlyInAnyOrder(10L, 11L);
     }
 
     @Test
     void collectDeptSubtreeIds_unknownRoot_returnsEmpty() {
         SysDept root = dept(1L, -1L, "总部");
-        Set<Long> ids = SysUserServiceImpl.collectDeptSubtreeIds(List.of(root), 999L);
+        Set<Long> ids = DeptSubtreeHelper.collectDeptSubtreeIds(List.of(root), 999L);
         assertThat(ids).isEmpty();
     }
 

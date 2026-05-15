@@ -11,6 +11,7 @@ import io.github.genkidoudou.web.system.user.dto.UserAuthRoleVo;
 import io.github.genkidoudou.web.system.user.dto.UserChangeStatusRequest;
 import io.github.genkidoudou.web.system.user.dto.UserImportResultVo;
 import io.github.genkidoudou.web.system.user.dto.UserResetPwdRequest;
+import io.github.genkidoudou.web.system.user.datascope.DataPermission;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +26,7 @@ public interface SysUserService {
      * @param query 筛选与分页参数
      * @return 分页结果
      */
+    @DataPermission(tables = {"sys_user"})
     PageInfo<SysUserVo> page(SysUserQueryBo query);
 
     /**
@@ -33,6 +35,7 @@ public interface SysUserService {
      * @param userId 用户主键
      * @return 详情；不存在时返回 {@code null}
      */
+    @DataPermission(tables = {"sys_user"})
     SysUserDetailVo get(Long userId);
 
     /**
@@ -40,6 +43,7 @@ public interface SysUserService {
      *
      * @param bo 入参
      */
+    @DataPermission(tables = {"sys_user"})
     void create(SysUserCreateBo bo);
 
     /**
@@ -47,6 +51,7 @@ public interface SysUserService {
      *
      * @param bo 入参
      */
+    @DataPermission(tables = {"sys_user"})
     void update(SysUserUpdateBo bo);
 
     /**
@@ -61,6 +66,7 @@ public interface SysUserService {
      *
      * @param req 请求体
      */
+    @DataPermission(tables = {"sys_user"})
     void changeStatus(UserChangeStatusRequest req);
 
     /**
@@ -68,6 +74,7 @@ public interface SysUserService {
      *
      * @param req 请求体
      */
+    @DataPermission(tables = {"sys_user"})
     void resetPwd(UserResetPwdRequest req);
 
     /**
@@ -76,6 +83,7 @@ public interface SysUserService {
      * @param userId 用户主键
      * @return 可选角色与已勾选
      */
+    @DataPermission(tables = {"sys_user"})
     UserAuthRoleVo authRoleInfo(Long userId);
 
     /**
@@ -83,6 +91,7 @@ public interface SysUserService {
      *
      * @param req 请求体
      */
+    @DataPermission(tables = {"sys_user"})
     void saveAuthRole(UserAuthRoleRequest req);
 
     /**
@@ -92,6 +101,7 @@ public interface SysUserService {
      * @param updateSupport 是否按登录名更新已存在用户
      * @return 导入统计与可选错误下载键
      */
+    @DataPermission(tables = {"sys_user"})
     UserImportResultVo importData(MultipartFile file, boolean updateSupport);
 
     /**
@@ -115,5 +125,6 @@ public interface SysUserService {
      * @param query    与列表一致的筛选
      * @param response HTTP 响应
      */
+    @DataPermission(tables = {"sys_user"})
     void export(SysUserQueryBo query, HttpServletResponse response);
 }
