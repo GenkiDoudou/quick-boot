@@ -20,6 +20,13 @@
       rows-key="data.records"
       total-key="data.total"
     >
+      <template #toolbar-right>
+        <el-tooltip content="通知公告暂不支持导出" placement="top">
+          <span class="notice-toolbar-export-wrap">
+            <el-button type="warning" plain disabled>导出</el-button>
+          </span>
+        </el-tooltip>
+      </template>
       <template #noticeType="{ row }">
         <c7-dict-tag :model-value="row.noticeType" :options="sys_notice_type" />
       </template>
@@ -180,3 +187,11 @@ function batchDeleteFunction(ids) {
   })
 }
 </script>
+
+<style scoped>
+.notice-toolbar-export-wrap {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+</style>

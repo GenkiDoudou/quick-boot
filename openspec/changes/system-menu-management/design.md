@@ -44,4 +44,4 @@
 
 ## Open Questions
 
-- **用户与角色的绑定表**若尚未存在：本变更是否引入最小 `sys_user_role` 或仅在开发配置中写死「当前登录用户 → admin 角色」直至用户管理迭代；需在实现计划（`tasks.md`）中选定一种并更新本文档。
+- **已收口**：采用 **`sys_user_role` 种子数据**（`user_id=1` 绑定 `role_id=1`）与占位登录 `StpUtil.login(1L)` 对齐，供 `getRouters` / `getInfo` 联调；接入真实用户体系后以用户管理模块数据替换。

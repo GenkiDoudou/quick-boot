@@ -11,6 +11,11 @@ spring:
     name: quickboot-web
   profiles:
     active: dev
+  # tianai 默认 CacheStore 自动配置与本模块 TianaiCacheStoreAutoConfiguration 二选一；
+  # 不可在 AutoConfiguration 类上使用 @EnableAutoConfiguration(exclude=…) 排除同类，否则会循环 @Import。
+  autoconfigure:
+    exclude:
+      - cloud.tianai.captcha.spring.autoconfiguration.CacheStoreAutoConfiguration
   data:
     redis:
       timeout: 10000ms
@@ -109,6 +114,9 @@ jasypt:
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
 qc:
+  # 登录页天爱行为验证码；关闭后 /login 不再校验 captchaId（仅用于自动化等场景）
+  login:
+    captcha-enabled: true
   appinfo:
     copyright: 2026
     application-title: qc快速开发平台
@@ -192,6 +200,8 @@ qc:
   captcha:
     enabled: true
     type: SLIDER
+    # local：内存 CacheStore（本地开发无 Redis）；redis：使用 StringRedisTemplate
+    store: local
 
   # 文件存储（quickboot-common FileTemplate，业务 Controller 自行提供下载接口）
   # file:

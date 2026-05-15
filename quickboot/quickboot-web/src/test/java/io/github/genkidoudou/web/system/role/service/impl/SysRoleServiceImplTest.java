@@ -11,6 +11,7 @@ import io.github.genkidoudou.web.system.role.mapper.SysRoleDeptMapper;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
@@ -32,7 +33,8 @@ class SysRoleServiceImplTest {
                 mock(SysRoleDeptMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
-                mock(SysUserRoleBindService.class));
+                mock(SysUserRoleBindService.class),
+                mock(JdbcTemplate.class));
 
         assertThatThrownBy(() -> service.removeBatch(List.of(2L, SysRoleServiceImpl.ADMIN_ROLE_ID)))
                 .isInstanceOf(WarningException.class)
@@ -50,7 +52,8 @@ class SysRoleServiceImplTest {
                 mock(SysRoleDeptMapper.class),
                 userRoleMapper,
                 mock(SysUserMapper.class),
-                mock(SysUserRoleBindService.class));
+                mock(SysUserRoleBindService.class),
+                mock(JdbcTemplate.class));
 
         SysRole r = new SysRole();
         r.setRoleId(2L);
@@ -70,7 +73,8 @@ class SysRoleServiceImplTest {
                 mock(SysRoleDeptMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
-                mock(SysUserRoleBindService.class));
+                mock(SysUserRoleBindService.class),
+                mock(JdbcTemplate.class));
 
         RoleDataScopeRequest req = new RoleDataScopeRequest();
         req.setRoleId(SysRoleServiceImpl.ADMIN_ROLE_ID);
@@ -83,21 +87,26 @@ class SysRoleServiceImplTest {
     }
 
     @Test
-    void updateMenus_shouldRejectAdmin() {
+    void updateMenus_shouldAllowAdminRole() {
+        SysRoleMapper roleMapper = mock(SysRoleMapper.class);
+        SysRoleMenuMapper roleMenuMapper = mock(SysRoleMenuMapper.class);
+        SysRole admin = new SysRole();
+        admin.setRoleId(SysRoleServiceImpl.ADMIN_ROLE_ID);
+        when(roleMapper.selectById(SysRoleServiceImpl.ADMIN_ROLE_ID)).thenReturn(admin);
+
         SysRoleServiceImpl service = new SysRoleServiceImpl(
-                mock(SysRoleMapper.class),
-                mock(SysRoleMenuMapper.class),
+                roleMapper,
+                roleMenuMapper,
                 mock(SysRoleDeptMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
-                mock(SysUserRoleBindService.class));
+                mock(SysUserRoleBindService.class),
+                mock(JdbcTemplate.class));
 
         RoleMenuRequest req = new RoleMenuRequest();
         req.setRoleId(SysRoleServiceImpl.ADMIN_ROLE_ID);
-        req.setMenuIds(List.of(1L));
+        req.setMenuIds(List.of(1L, 2L));
 
-        assertThatThrownBy(() -> service.updateMenus(req))
-                .isInstanceOf(WarningException.class)
-                .hasMessageContaining("菜单权限不允许修改");
+        service.updateMenus(req);
     }
 }

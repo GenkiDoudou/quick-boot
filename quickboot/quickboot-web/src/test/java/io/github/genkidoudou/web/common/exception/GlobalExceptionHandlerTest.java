@@ -49,6 +49,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void shouldMapDuplicateKeyOnRoleKeyToBadRequest() {
+        org.springframework.dao.DuplicateKeyException ex = new org.springframework.dao.DuplicateKeyException(
+                "insert failed",
+                new RuntimeException("unique index uk_sys_role_key on sys_role"));
+        ResponseEntity<R<Void>> entity = handler.handleDataIntegrityViolation(ex);
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(entity.getBody()).isNotNull();
+        assertThat(entity.getBody().getMsg()).isEqualTo("权限字符已存在");
+    }
+
+    @Test
     void shouldMapUnhandledThrowableTo500AndMaskMessage() {
         ResponseEntity<R<Void>> entity = handler.handleThrowable(new RuntimeException("SQL syntax error"));
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);

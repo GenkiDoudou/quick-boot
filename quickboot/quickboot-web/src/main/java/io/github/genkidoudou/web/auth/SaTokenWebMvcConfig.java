@@ -22,7 +22,7 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
                         "/phoneLogin",
                         "/sendSms",
                         "/qrcodeLogin",
-                        "/captchaImage",
+                        "/api/captcha/**",
                         "/qrcodeImage",
                         "/actuator/**",
                         "/error",

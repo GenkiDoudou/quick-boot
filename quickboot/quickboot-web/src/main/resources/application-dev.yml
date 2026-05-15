@@ -1,11 +1,10 @@
 # 本地 / 开发：内存 H2，无需 MySQL 与 jasypt 口令即可启动。
 # MODE=MySQL 便于与 MySQL 方言的脚本尽量对齐；Flyway 仍会对 H2 校验方言。
 #
-# 验证码（tianai-captcha）在无 Redis 时会初始化失败；开发 profile 排除其自动配置。
-# qc.captcha.enabled 为业务侧开关，不排除第三方 Starter，故同时使用 exclude。
+# 天爱验证码：默认 qc.captcha.store=local（见 application.yml），无需本机 Redis。
 qc:
   captcha:
-    enabled: false
+    enabled: true
 
 spring:
   devtools:
@@ -13,20 +12,20 @@ spring:
       enabled: true
     livereload:
       enabled: true
-  autoconfigure:
-    exclude:
-      - cloud.tianai.captcha.spring.autoconfiguration.ImageCaptchaAutoConfiguration
   datasource:
     url: jdbc:h2:file:./data/qcc;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE
     username: sa
     password:
     driver-class-name: org.h2.Driver
     # Druid Wall 按 MySQL 语法解析时易误判 Flyway 内置 DDL（flyway_schema_history），开发库关闭 Wall。
+    # StatFilter.mergeSql 在 JDBC 为 H2 时仍按 h2 解析，无法识别 Flyway 脚本中的 MySQL 方言（如 ADD COLUMN … AFTER、CREATE INDEX IF NOT EXISTS），会刷 ERROR 但不影响执行；开发环境关闭合并。
     druid:
       validation-query: SELECT 1
       filter:
         wall:
           enabled: false
+        stat:
+          merge-sql: false
   h2:
     console:
       enabled: true

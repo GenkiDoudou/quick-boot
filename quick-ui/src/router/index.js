@@ -18,114 +18,7 @@ export const constantRoutes = [
     component: () => import('@/views/login'),
     hidden: true
   },
-  {
-    path: '/dev/c7-button-e2e',
-    component: () => import('@/views/dev/C7ButtonE2E.vue'),
-    hidden: false,
-    meta: { title: 'C7Button E2E' }
-  },
-  {
-    path: '/dev/c7-select-e2e',
-    component: () => import('@/views/dev/C7SelectE2E.vue'),
-    hidden: false,
-    meta: { title: 'C7Select Dev' }
-  },
-  {
-    path: '/dev/c7-cascader-e2e',
-    component: () => import('@/views/dev/C7CascaderE2E.vue'),
-    hidden: false,
-    meta: { title: 'C7Cascader Dev' }
-  },
-  {
-    path: '/dev/c7-pagination-e2e',
-    component: () => import('@/views/dev/C7PaginationE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Pagination Dev' }
-  },
-  {
-    path: '/dev/c7-copy-e2e',
-    component: () => import('@/views/dev/C7CopyE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Copy Dev' }
-  },
-  {
-    path: '/dev/c7-card-e2e',
-    component: () => import('@/views/dev/C7CardE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Card Dev' }
-  },
-  {
-    path: '/dev/c7-checkbox-e2e',
-    component: () => import('@/views/dev/C7CheckboxE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Checkbox Dev' }
-  },
-  {
-    path: '/dev/c7-radio-e2e',
-    component: () => import('@/views/dev/C7RadioE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Radio Dev' }
-  },
-  {
-    path: '/dev/c7-switch-e2e',
-    component: () => import('@/views/dev/C7SwitchE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Switch Dev' }
-  },
-  {
-    path: '/dev/c7-datepicker-e2e',
-    component: () => import('@/views/dev/C7DatePickerE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7DatePicker Dev' }
-  },
-  {
-    path: '/dev/c7-timepicker-e2e',
-    component: () => import('@/views/dev/C7TimePickerE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7TimePicker Dev' }
-  },
-  {
-    path: '/dev/c7-title-e2e',
-    component: () => import('@/views/dev/C7TitleE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Title Dev' }
-  },
-  {
-    path: '/dev/c7-dialog-e2e',
-    component: () => import('@/views/dev/C7DialogE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Dialog Dev' }
-  },
-  {
-    path: '/dev/c7-dict-tag-e2e',
-    component: () => import('@/views/dev/C7DictTagE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7DictTag Dev' }
-  },
-  {
-    path: '/dev/c7-watermark-e2e',
-    component: () => import('@/views/dev/C7WatermarkE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Watermark Dev' }
-  },
-  {
-    path: '/dev/c7-preview-e2e',
-    component: () => import('@/views/dev/C7PreviewE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7Preview Dev' }
-  },
-  {
-    path: '/dev/c7-json-table-column-e2e',
-    component: () => import('@/views/dev/C7JsonTableColumnE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7JsonTableColumn Dev' }
-  },
-  {
-    path: '/dev/c7-json-table-e2e',
-    component: () => import('@/views/dev/C7JsonTableE2E.vue'),
-    hidden: true,
-    meta: { title: 'C7JsonTable Dev' }
-  },
+  // C7 组件演示页：已由 Flyway V9 写入 sys_menu（顶级「组件演示」/demo），登录后由 /getRouters 动态挂载，勿在此重复注册以免冲突。
   {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404'),
@@ -163,47 +56,47 @@ export const constantRoutes = [
       }
     ]
   },
-  {
-    path: '/user2',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: 'profile',
-        component: () => import('@/views/system/user/index.vue'),
-        name: 'userList',
-        meta: { title: '用户管理', icon: 'user' }
-      }
-    ]
-
-
-  },
-  {
-    path: '/system/dept',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/system/dept/index.vue'),
-        name: 'Dept',
-        meta: { title: '部门管理', icon: 'tree' }
-      }
-    ]
-  },
-  {
-    path: '/system/dict/type',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/system/dict/type/index.vue'),
-        name: 'DictType',
-        meta: { title: '字典管理', icon: 'setting' }
-      }
-    ]
-  },
+  // {
+  //   path: '/user2',
+  //   component: Layout,
+  //   hidden: false,
+  //   children: [
+  //     {
+  //       path: 'profile',
+  //       component: () => import('@/views/system/user/index.vue'),
+  //       name: 'userList',
+  //       meta: { title: '用户管理', icon: 'user' }
+  //     }
+  //   ]
+  //
+  //
+  // },
+  // {
+  //   path: '/system/dept',
+  //   component: Layout,
+  //   hidden: false,
+  //   children: [
+  //     {
+  //       path: '',
+  //       component: () => import('@/views/system/dept/index.vue'),
+  //       name: 'Dept',
+  //       meta: { title: '部门管理', icon: 'tree' }
+  //     }
+  //   ]
+  // },
+  // {
+  //   path: '/system/dict/type',
+  //   component: Layout,
+  //   hidden: false,
+  //   children: [
+  //     {
+  //       path: '',
+  //       component: () => import('@/views/system/dict/type/index.vue'),
+  //       name: 'DictType',
+  //       meta: { title: '字典管理', icon: 'setting' }
+  //     }
+  //   ]
+  // },
   {
     path: '/system/dict/data/:dictType',
     component: Layout,
@@ -217,32 +110,33 @@ export const constantRoutes = [
       }
     ]
   },
-  {
-    path: '/system/config',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/system/config/index.vue'),
-        name: 'SysConfig',
-        meta: { title: '参数设置', icon: 'tools' }
-      }
-    ]
-  },
-  {
-    path: '/system/notice',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/system/notice/index.vue'),
-        name: 'SysNotice',
-        meta: { title: '通知公告', icon: 'message' }
-      }
-    ]
-  },
+  // 参数设置：已由 Flyway V9 写入 sys_menu（系统管理下），登录后由 /getRouters 动态挂载。
+  // {
+  //   path: '/system/notice',
+  //   component: Layout,
+  //   hidden: false,
+  //   children: [
+  //     {
+  //       path: '',
+  //       component: () => import('@/views/system/notice/index.vue'),
+  //       name: 'SysNotice',
+  //       meta: { title: '通知公告', icon: 'message' }
+  //     }
+  //   ]
+  // },
+  // {
+  //   path: '/system/role',
+  //   component: Layout,
+  //   hidden: false,
+  //   children: [
+  //     {
+  //       path: '',
+  //       component: () => import('@/views/system/role/index.vue'),
+  //       name: 'SysRole',
+  //       meta: { title: '角色管理', icon: 'peoples' }
+  //     }
+  //   ]
+  // },
 
 ]
 

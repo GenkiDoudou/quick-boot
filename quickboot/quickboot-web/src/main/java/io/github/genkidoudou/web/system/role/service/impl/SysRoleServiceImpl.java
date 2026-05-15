@@ -34,9 +34,11 @@ import io.github.genkidoudou.web.system.user.domain.SysUser;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -62,6 +64,8 @@ public class SysRoleServiceImpl implements SysRoleService {
     private final SysUserMapper userMapper;
     private final SysUserRoleBindService userRoleBindService;
 
+    private final JdbcTemplate jdbcTemplate;
+
     /**
      * @param roleMapper      角色表
      * @param roleMenuMapper  角色菜单关联
@@ -69,6 +73,7 @@ public class SysRoleServiceImpl implements SysRoleService {
      * @param userRoleMapper  用户角色关联
      * @param userMapper      用户表
      * @param userRoleBindService 用户角色写入统一入口
+     * @param jdbcTemplate    用于绕过 MP 逻辑删除 SQL 改写，释放已删除行占用的 {@code role_key} 唯一键
      */
     public SysRoleServiceImpl(
             SysRoleMapper roleMapper,
@@ -76,13 +81,15 @@ public class SysRoleServiceImpl implements SysRoleService {
             SysRoleDeptMapper roleDeptMapper,
             SysUserRoleMapper userRoleMapper,
             SysUserMapper userMapper,
-            SysUserRoleBindService userRoleBindService) {
+            SysUserRoleBindService userRoleBindService,
+            JdbcTemplate jdbcTemplate) {
         this.roleMapper = roleMapper;
         this.roleMenuMapper = roleMenuMapper;
         this.roleDeptMapper = roleDeptMapper;
         this.userRoleMapper = userRoleMapper;
         this.userMapper = userMapper;
         this.userRoleBindService = userRoleBindService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -134,10 +141,17 @@ public class SysRoleServiceImpl implements SysRoleService {
     public void add(SysRoleBo req) {
         checkRoleKeyUnique(req.getRoleKey(), null);
         SysRole entity = BeanUtil.copyProperties(req, SysRole.class);
+        if (StrUtil.isNotBlank(entity.getRoleKey())) {
+            entity.setRoleKey(entity.getRoleKey().trim());
+        }
         if (StrUtil.isBlank(entity.getStatus())) {
             entity.setStatus("0");
         }
-        entity.setDataScope("1");
+        String scope = normalizeDataScope(req.getDataScope(), "1");
+        if ("2".equals(scope)) {
+            assertCustomDeptIdsNonEmpty(req.getDeptIds());
+        }
+        entity.setDataScope(scope);
         entity.setDelFlag("0");
         LocalDateTime now = LocalDateTime.now();
         entity.setCreateTime(now);
@@ -145,6 +159,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         entity.setCreateBy(currentOperator());
         entity.setUpdateBy(currentOperator());
         roleMapper.insert(entity);
+        replaceRoleDeptBindings(entity.getRoleId(), scope, req.getDeptIds());
     }
 
     @Override
@@ -156,13 +171,28 @@ public class SysRoleServiceImpl implements SysRoleService {
         }
         checkRoleKeyUnique(req.getRoleKey(), req.getRoleId());
         SysRole entity = BeanUtil.copyProperties(req, SysRole.class);
-        entity.setDataScope(old.getDataScope());
+        if (StrUtil.isNotBlank(entity.getRoleKey())) {
+            entity.setRoleKey(entity.getRoleKey().trim());
+        }
+        String effectiveScope;
+        if (ADMIN_ROLE_ID.equals(req.getRoleId())) {
+            effectiveScope = old.getDataScope();
+        } else {
+            effectiveScope = normalizeDataScope(req.getDataScope(), old.getDataScope());
+            if ("2".equals(effectiveScope)) {
+                assertCustomDeptIdsNonEmpty(req.getDeptIds());
+            }
+        }
+        entity.setDataScope(effectiveScope);
         entity.setCreateTime(old.getCreateTime());
         entity.setCreateBy(old.getCreateBy());
         entity.setDelFlag(old.getDelFlag());
         entity.setUpdateTime(LocalDateTime.now());
         entity.setUpdateBy(currentOperator());
         roleMapper.updateById(entity);
+        if (!ADMIN_ROLE_ID.equals(req.getRoleId())) {
+            replaceRoleDeptBindings(req.getRoleId(), effectiveScope, req.getDeptIds());
+        }
     }
 
     @Override
@@ -188,6 +218,8 @@ public class SysRoleServiceImpl implements SysRoleService {
         if (rows.size() != roleIds.size()) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "存在无效的角色ID");
         }
+        // 逻辑删除前改写 role_key，避免 uk_sys_role_key 仍占用已删除行导致无法新建同权限字符
+        tombstoneRoleKeysBeforeLogicalRemove(rows);
         roleMapper.deleteByIds(roleIds);
     }
 
@@ -229,27 +261,12 @@ public class SysRoleServiceImpl implements SysRoleService {
         patch.setUpdateTime(LocalDateTime.now());
         patch.setUpdateBy(currentOperator());
         roleMapper.updateById(patch);
-
-        roleDeptMapper.delete(Wrappers.<SysRoleDept>lambdaQuery().eq(SysRoleDept::getRoleId, req.getRoleId()));
-        if ("2".equals(req.getDataScope())) {
-            for (Long deptId : req.getDeptIds()) {
-                if (deptId == null || deptId < 1) {
-                    continue;
-                }
-                SysRoleDept rd = new SysRoleDept();
-                rd.setRoleId(req.getRoleId());
-                rd.setDeptId(deptId);
-                roleDeptMapper.insert(rd);
-            }
-        }
+        replaceRoleDeptBindings(req.getRoleId(), req.getDataScope(), req.getDeptIds());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateMenus(RoleMenuRequest req) {
-        if (ADMIN_ROLE_ID.equals(req.getRoleId())) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "内置超级管理员角色的菜单权限不允许修改");
-        }
         SysRole old = roleMapper.selectById(req.getRoleId());
         if (old == null) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "角色不存在或已删除");
@@ -396,12 +413,67 @@ public class SysRoleServiceImpl implements SysRoleService {
     }
 
     private void checkRoleKeyUnique(String roleKey, Long excludeId) {
-        var q = Wrappers.<SysRole>lambdaQuery().eq(SysRole::getRoleKey, roleKey);
+        if (StrUtil.isBlank(roleKey)) {
+            return;
+        }
+        String key = roleKey.trim();
+        // 历史数据：已逻辑删除行仍占用 role_key，MP 默认查询看不到，但唯一索引仍会拦截 INSERT
+        releaseRoleKeyHeldByDeletedRows(key);
+        var q = Wrappers.<SysRole>lambdaQuery().eq(SysRole::getRoleKey, key);
         if (excludeId != null) {
             q.ne(SysRole::getRoleId, excludeId);
         }
         if (roleMapper.selectCount(q) > 0) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "权限字符已存在");
+        }
+    }
+
+    /**
+     * 将已删除且仍占用目标 role_key 的行改为墓碑值，避免与 uk_sys_role_key 冲突。
+     */
+    private void releaseRoleKeyHeldByDeletedRows(String normalizedKey) {
+        // MP 逻辑删除会改写 SELECT/UPDATE，无法可靠处理 del_flag=1 的行；JdbcTemplate 走原生 SQL 且参与当前事务
+        String selectSql = "SELECT role_id FROM sys_role WHERE del_flag = '1' AND TRIM(role_key) = ?";
+        List<Long> ids = jdbcTemplate.query(selectSql, (rs, rowNum) -> rs.getLong(1), normalizedKey);
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        Timestamp ts = Timestamp.valueOf(now);
+        String updateSql = "UPDATE sys_role SET role_key = ?, update_time = ? WHERE role_id = ?";
+        for (Long rid : ids) {
+            if (rid == null) {
+                continue;
+            }
+            String suffix = "_del_" + rid;
+            String base = normalizedKey;
+            int maxLen = 100;
+            if (base.length() + suffix.length() > maxLen) {
+                base = StrUtil.subPre(base, Math.max(1, maxLen - suffix.length()));
+            }
+            jdbcTemplate.update(updateSql, base + suffix, ts, rid);
+        }
+    }
+
+    /**
+     * 逻辑删除前为 role_key 追加墓碑后缀，使全局唯一索引可被新角色复用（与 {@link SysRole#getDelFlag} 逻辑删除配合）。
+     */
+    private void tombstoneRoleKeysBeforeLogicalRemove(List<SysRole> rows) {
+        for (SysRole row : rows) {
+            if (row == null || StrUtil.isBlank(row.getRoleKey())) {
+                continue;
+            }
+            String suffix = "_del_" + row.getRoleId();
+            String base = row.getRoleKey().trim();
+            int maxLen = 100;
+            if (base.length() + suffix.length() > maxLen) {
+                base = StrUtil.subPre(base, Math.max(1, maxLen - suffix.length()));
+            }
+            String nextKey = base + suffix;
+            SysRole patch = new SysRole();
+            patch.setRoleId(row.getRoleId());
+            patch.setRoleKey(nextKey);
+            roleMapper.updateById(patch);
         }
     }
 
@@ -436,5 +508,43 @@ public class SysRoleServiceImpl implements SysRoleService {
             // 非 Web 线程或未登录
         }
         return "system";
+    }
+
+    /**
+     * 解析数据范围：请求值合法则采用，否则采用 fallback（须合法），最终默认全部。
+     */
+    private String normalizeDataScope(String requested, String fallback) {
+        if (StrUtil.isNotBlank(requested) && DATA_SCOPES.contains(requested)) {
+            return requested;
+        }
+        if (StrUtil.isNotBlank(fallback) && DATA_SCOPES.contains(fallback)) {
+            return fallback;
+        }
+        return "1";
+    }
+
+    private void assertCustomDeptIdsNonEmpty(List<Long> deptIds) {
+        if (deptIds == null || deptIds.isEmpty()) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "自定义数据权限时至少选择一个部门");
+        }
+    }
+
+    /**
+     * 重写角色与部门的数据权限关联表（非自定义范围时清空）。
+     */
+    private void replaceRoleDeptBindings(Long roleId, String dataScope, List<Long> deptIds) {
+        roleDeptMapper.delete(Wrappers.<SysRoleDept>lambdaQuery().eq(SysRoleDept::getRoleId, roleId));
+        if (!"2".equals(dataScope) || deptIds == null) {
+            return;
+        }
+        for (Long deptId : deptIds) {
+            if (deptId == null || deptId < 1) {
+                continue;
+            }
+            SysRoleDept rd = new SysRoleDept();
+            rd.setRoleId(roleId);
+            rd.setDeptId(deptId);
+            roleDeptMapper.insert(rd);
+        }
     }
 }

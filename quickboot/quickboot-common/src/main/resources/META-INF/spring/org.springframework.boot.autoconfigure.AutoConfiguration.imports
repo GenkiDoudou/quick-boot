@@ -9,3 +9,4 @@ io.github.genkidoudou.common.security.firewall.password.FirewallPasswordCodecAut
 io.github.genkidoudou.common.security.firewall.xss.XssFirewallAutoConfiguration
 io.github.genkidoudou.common.security.firewall.sqlinjection.SqlInjectionFirewallAutoConfiguration
 io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordFirewallAutoConfiguration
+io.github.genkidoudou.common.captcha.TianaiCacheStoreAutoConfiguration

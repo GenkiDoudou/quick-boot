@@ -1,9 +1,7 @@
 package io.github.genkidoudou.web.common.exception;
 
 import cn.dev33.satoken.exception.NotLoginException;
-import io.github.genkidoudou.common.api.HttpCodes;
 import io.github.genkidoudou.common.api.R;
-import io.github.genkidoudou.common.exception.BaseException;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.exception.WarningException;
@@ -12,6 +10,7 @@ import io.github.genkidoudou.common.security.firewall.idempotent.IdempotentExcep
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -75,6 +74,21 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(code, null, "未登录或登录已过期");
         log.warn("not login, code={}, msg={}", code, message);
         return ResponseEntity.status(HttpStatus.OK).body(R.error(code, message));
+    }
+
+    /**
+     * 数据库唯一约束冲突（含 MyBatis 包装的 {@link DuplicateKeyException}），映射为 400 与可读文案。
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<R<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String text = collectThrowableMessages(ex).toLowerCase();
+        String message = "数据已存在，请勿重复提交";
+        if (text.contains("uk_sys_role_key")) {
+            message = "权限字符已存在";
+        }
+        int code = ErrorCodes.Common.INVALID_PARAM;
+        log.warn("data integrity violation, code={}, msg={}", code, message, ex);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(R.error(code, message));
     }
 
     /**
@@ -150,5 +164,16 @@ public class GlobalExceptionHandler {
             return fallback;
         }
         return i18n;
+    }
+
+    /** 拼接异常链上的 message，便于识别底层库返回的唯一约束名。 */
+    private static String collectThrowableMessages(Throwable ex) {
+        StringBuilder sb = new StringBuilder();
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t.getMessage() != null) {
+                sb.append(' ').append(t.getMessage());
+            }
+        }
+        return sb.toString();
     }
 }

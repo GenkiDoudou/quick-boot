@@ -49,18 +49,21 @@ const useUserStore = defineStore(
           })
         })
       },
+      /**
+       * 退出登录：始终请求注销接口，但无论成功失败都清空本地 token 与权限态，
+       * 避免接口失败导致 Promise 一直 reject、上层无法完成跳转或重复触发。
+       */
       logOut() {
-        return new Promise((resolve, reject) => {
-          logout(this.token).then(() => {
+        return logout()
+          .catch(() => {
+            /* 忽略服务端注销失败，仍执行本地清理 */
+          })
+          .finally(() => {
             this.token = ''
             this.roles = []
             this.permissions = []
             removeToken()
-            resolve()
-          }).catch(error => {
-            reject(error)
           })
-        })
       }
     }
   })

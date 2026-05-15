@@ -3,7 +3,7 @@
     <router-view v-slot="{ Component, route }">
       <transition name="fade-transform" mode="out-in">
         <keep-alive :include="tagsViewStore.cachedViews">
-          <component v-if="!route.meta.link" :is="Component" :key="route.path"/>
+          <component v-if="!route.meta.link" :is="Component" :key="route.path" />
         </keep-alive>
       </transition>
     </router-view>
@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import iframeToggle from "./IframeToggle/index"
+import IframeToggle from './IframeToggle/index.vue'
 import useTagsViewStore from '@/store/modules/tagsView'
 
 const tagsViewStore = useTagsViewStore()
@@ -20,11 +20,11 @@ const tagsViewStore = useTagsViewStore()
 
 <style lang="scss" scoped>
 .app-main {
-  /* 50= navbar  50  */
   min-height: calc(100vh - 50px);
   width: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .fixed-header + .app-main {
@@ -33,7 +33,6 @@ const tagsViewStore = useTagsViewStore()
 
 .hasTagsView {
   .app-main {
-    /* 84 = navbar + tags-view = 50 + 34 */
     min-height: calc(100vh - 84px);
   }
 
@@ -44,7 +43,6 @@ const tagsViewStore = useTagsViewStore()
 </style>
 
 <style lang="scss">
-// fix css style bug in open el-dialog
 .el-popup-parent--hidden {
   .fixed-header {
     padding-right: 6px;
@@ -65,4 +63,3 @@ const tagsViewStore = useTagsViewStore()
   border-radius: 3px;
 }
 </style>
-

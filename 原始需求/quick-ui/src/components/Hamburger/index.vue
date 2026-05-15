@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 0 15px;" @click="toggleClick">
     <svg
-      :class="{'is-active':isActive}"
+      :class="{ 'is-active': isActive }"
       class="hamburger"
       viewBox="0 0 1024 1024"
       xmlns="http://www.w3.org/2000/svg"
@@ -21,9 +21,9 @@ defineProps({
   }
 })
 
-const emit = defineEmits()
+const emit = defineEmits(['toggleClick'])
 const toggleClick = () => {
-  emit('toggleClick');
+  emit('toggleClick')
 }
 </script>
 

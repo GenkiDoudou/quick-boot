@@ -57,34 +57,27 @@
       </el-form-item>
     </el-form>
 
-    <el-row :gutter="10" style="margin-bottom: 12px;">
-      <el-col :span="1.5">
-        <el-button type="primary" icon="Plus" @click="handleAdd" v-hasPermi="['system:user:add']">新增</el-button>
-      </el-col>
-      <el-col :span="1.5">
+    <el-row class="user-toolbar" :gutter="8" align="middle">
+      <el-col :span="12">
+        <el-button type="primary" plain @click="handleAdd" v-hasPermi="['system:user:add']">新增</el-button>
         <el-button
           type="danger"
-          icon="Delete"
+          plain
           :disabled="multipleSelection.length === 0"
           @click="handleBatchDelete"
           v-hasPermi="['system:user:remove']"
         >删除</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="warning" icon="Download" @click="handleExport" v-hasPermi="['system:user:export']">导出</el-button>
-      </el-col>
-      <el-col :span="1.5">
+        <el-button type="warning" plain @click="handleExport" v-hasPermi="['system:user:export']">导出</el-button>
         <el-upload
           v-hasPermi="['system:user:import']"
           :show-file-list="false"
           :http-request="handleImport"
           accept=".xlsx,.xls"
+          class="user-toolbar__upload"
         >
-          <el-button type="success" icon="Upload">导入</el-button>
+          <el-button type="warning" plain>导入</el-button>
         </el-upload>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="info" icon="Document" @click="handleImportTemplate" v-hasPermi="['system:user:import']">模板</el-button>
+        <el-button type="info" plain @click="handleImportTemplate" v-hasPermi="['system:user:import']">模板</el-button>
       </el-col>
     </el-row>
 
@@ -372,3 +365,17 @@ function handleStatusChange(row) {
 
 handleQuery()
 </script>
+
+<style scoped>
+.user-toolbar {
+  margin-bottom: 12px;
+}
+.user-toolbar :deep(.el-button + .el-button),
+.user-toolbar .user-toolbar__upload {
+  margin-left: 8px;
+}
+.user-toolbar__upload {
+  display: inline-block;
+  vertical-align: middle;
+}
+</style>

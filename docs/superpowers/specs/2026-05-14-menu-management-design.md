@@ -135,6 +135,6 @@
 - Service：建树、无参全树、名称/状态剪枝、删子拦截、改父成环。
 - 可选：固定种子数据下 `getRouters` JSON 结构断言。
 
-## 10. 开放式问题（实现阶段必须收口）
+## 10. 开放式问题（已收口）
 
-- **用户与角色的绑定**：若尚无 `sys_user`/`sys_user_role`，本迭代采用 **最小 `sys_user_role` 表** 还是 **开发配置默认用户→管理员角色**；选定后更新 `openspec/changes/system-menu-management/design.md` 并完成任务 1.3。
+- **用户与角色绑定**：已采用 Flyway **`sys_user_role`** 种子（`user_id=1`、`role_id=1`）与占位登录 `StpUtil.login(1L)` 对齐；后续用户管理迭代改为真实用户-角色数据即可。

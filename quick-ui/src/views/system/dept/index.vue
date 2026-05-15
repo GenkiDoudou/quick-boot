@@ -4,20 +4,30 @@
       ref="tableRef"
       row-key="deptId"
       :show-index="false"
-      :show-selection="false"
+      :show-selection="true"
       :list-function="listFunction"
       :table-columns="tableColumns"
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
+      :delete-function="batchDeleteFunction"
       :show-add-button="true"
-      :show-edit-button="false"
-      :show-delete-button="false"
+      :show-edit-button="true"
+      :show-delete-button="true"
       :show-export-button="false"
       :show-import-button="false"
       :on-add="openAdd"
+      :on-edit="openEdit"
+      :check-delete-success="() => true"
       rows-key="data.records"
       total-key="data.total"
     >
+      <template #toolbar-right>
+        <el-tooltip content="部门树暂不支持导出" placement="top">
+          <span class="dept-toolbar-export-wrap">
+            <el-button type="warning" plain disabled>导出</el-button>
+          </span>
+        </el-tooltip>
+      </template>
       <template #status="{ row }">
         <c7-dict-tag :model-value="row.status" :options="sys_normal_disable" dict-type="success" />
       </template>
@@ -61,6 +71,8 @@ import { delDept, getDept, listDept } from '@/api/system/dept'
 import AddOrUpdate from './add-or-update.vue'
 
 defineOptions({ name: 'Dept' })
+
+const ROOT_PARENT_ID = -1
 
 const { sys_normal_disable } = useDict('sys_normal_disable')
 const tableRef = ref(null)
@@ -107,7 +119,7 @@ const deptNameMap = computed(() => {
 
 const detailParentName = computed(() => {
   const parentId = detail.value?.parentId
-  if (parentId === 0 || parentId === -1 || parentId == null) {
+  if (parentId === ROOT_PARENT_ID || parentId == null) {
     return '顶级部门'
   }
   return deptNameMap.value.get(parentId) || String(parentId)
@@ -122,7 +134,7 @@ function listFunction(params) {
 }
 
 function openAdd(row) {
-  formRef.value?.open({ parentId: row?.deptId ?? '-1' })
+  formRef.value?.open({ parentId: row?.deptId ?? ROOT_PARENT_ID })
 }
 
 function openEdit(row) {
@@ -140,4 +152,20 @@ function handleView(row) {
 function removeRow(row) {
   return delDept(row.deptId).then(() => tableRef.value?.refreshData?.())
 }
+
+function batchDeleteFunction(ids) {
+  const list = ids || []
+  return list.reduce(
+    (p, id) => p.then(() => delDept(id)),
+    Promise.resolve()
+  )
+}
 </script>
+
+<style scoped>
+.dept-toolbar-export-wrap {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+</style>

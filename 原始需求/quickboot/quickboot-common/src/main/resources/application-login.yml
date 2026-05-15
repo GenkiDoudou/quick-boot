@@ -1,0 +1,23 @@
+# ================================
+# 登录模块配置
+# ================================
+# 基于 Spring Security，支持账号密码、社交、扫码等登录方式
+
+qc:
+  security:
+    login:
+      enabled: true
+      token-name: Authorization
+      timeout: 2592000
+      active-timeout: -1
+      is-concurrent: true
+      is-share: false
+      token-style: uuid
+      max-login-count: -1
+      max-session-count: 12
+      exclude-urls:
+        - /auth/login
+        - /auth/logout
+        - /captcha/**
+        - /actuator/**
+        - /error

@@ -1,6 +1,6 @@
 #FileLock
-#Tue May 12 22:57:19 CST 2026
-server=198.18.0.1\:63595
+#Fri May 15 21:36:22 CST 2026
+server=192.168.50.121\:57149
 hostName=DESKTOP-ILBBMNP
 method=file
-id=19e1cb14311a1ce1020a3913c3db68d765532f0b0d8
+id=19e2bda3a8303f673dce8a3a09bf898a0b8a1eb4d68

@@ -1,12 +1,7 @@
 import request from '@/utils/request'
 
-// 账号密码登录
+// 账号密码登录（天爱二次校验：validate 成功后回传 captchaId）
 export function login(username, password, captchaId) {
-    const data = {
-        username,
-        password,
-        captchaId
-    }
     return request({
         url: '/login',
         headers: {
@@ -14,7 +9,7 @@ export function login(username, password, captchaId) {
             repeatSubmit: false
         },
         method: 'post',
-        params: data
+        params: { username, password, captchaId }
     })
 }
 
@@ -73,18 +68,6 @@ export function logout() {
     return request({
         url: '/logout',
         method: 'post'
-    })
-}
-
-// 获取验证码
-export function getCodeImg() {
-    return request({
-        url: '/captchaImage',
-        headers: {
-            isToken: false
-        },
-        method: 'get',
-        timeout: 20000
     })
 }
 

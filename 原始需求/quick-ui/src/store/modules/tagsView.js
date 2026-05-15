@@ -1,3 +1,5 @@
+import { defineStore } from 'pinia'
+
 const useTagsViewStore = defineStore(
   'tags-view',
   {
@@ -144,7 +146,7 @@ const useTagsViewStore = defineStore(
             if (i > -1) {
               this.cachedViews.splice(i, 1)
             }
-            if(item.meta.link) {
+            if (item.meta.link) {
               const fi = this.iframeViews.findIndex(v => v.path === item.path)
               this.iframeViews.splice(fi, 1)
             }
@@ -167,7 +169,7 @@ const useTagsViewStore = defineStore(
             if (i > -1) {
               this.cachedViews.splice(i, 1)
             }
-            if(item.meta.link) {
+            if (item.meta.link) {
               const fi = this.iframeViews.findIndex(v => v.path === item.path)
               this.iframeViews.splice(fi, 1)
             }

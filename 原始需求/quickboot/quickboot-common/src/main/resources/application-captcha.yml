@@ -1,0 +1,23 @@
+# ================================
+# 验证码模块配置
+# ================================
+# 基于 tianai-captcha，支持滑块、旋转、点选、滑动还原等行为验证码
+
+# tianai-captcha 原生配置
+captcha:
+  prefix: captcha
+  expire:
+    default: 120000
+    WORD_IMAGE_CLICK: 20000
+  init-default-resource: true
+  local-cache-enabled: true
+  local-cache-size: 20
+
+qc:
+  security:
+    captcha:
+      enabled: true
+      default-type: SLIDER
+      ignore-urls:
+        - /actuator/**
+        - /error

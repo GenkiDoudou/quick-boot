@@ -1,53 +1,39 @@
 <template>
   <svg :class="svgClass" aria-hidden="true">
-    <use :xlink:href="iconName" :fill="color" />
+    <use :xlink:href="iconName" />
   </svg>
 </template>
 
-<script>
-export default defineComponent({
-  props: {
-    iconClass: {
-      type: String,
-      required: true
-    },
-    className: {
-      type: String,
-      default: ''
-    },
-    color: {
-      type: String,
-      default: ''
-    },
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  iconClass: {
+    type: String,
+    required: true
   },
-  setup(props) {
-    return {
-      iconName: computed(() => `#icon-${props.iconClass}`),
-      svgClass: computed(() => {
-        if (props.className) {
-          return `svg-icon ${props.className}`
-        }
-        return 'svg-icon'
-      })
-    }
+  className: {
+    type: String,
+    default: ''
+  }
+})
+
+const iconName = computed(() => `#icon-${props.iconClass}`)
+const svgClass = computed(() => {
+  if (props.className) {
+    return 'svg-icon ' + props.className
+  } else {
+    return 'svg-icon'
   }
 })
 </script>
 
-<style scope lang="scss">
-.sub-el-icon,
-.nav-icon {
-  display: inline-block;
-  font-size: 15px;
-  margin-right: 12px;
-  position: relative;
-}
-
+<style scoped>
 .svg-icon {
   width: 1em;
   height: 1em;
-  position: relative;
+  vertical-align: -0.15em;
   fill: currentColor;
-  vertical-align: -2px;
+  overflow: hidden;
 }
 </style>

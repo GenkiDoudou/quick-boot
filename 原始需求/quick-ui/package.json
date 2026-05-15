@@ -1,56 +1,39 @@
 {
-  "name": "ruoyi",
-  "version": "3.8.8",
-  "description": "若依管理系统",
-  "author": "若依",
+  "name": "quick-ui",
+  "version": "1.0.0",
+  "description": "Quick UI - 核心登录框架",
+  "author": "quickboot",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "vite",
     "build:prod": "vite build",
     "build:stage": "vite build --mode staging",
-    "preview": "vite preview",
-    "deploy": "zsh scripts/gh-pages.sh",
-
-    "setup:env": "node setup-env.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://gitee.com/y_project/RuoYi-Vue.git"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "2.3.1",
-    "@vueup/vue-quill": "1.2.0",
+    "@element-plus/icons-vue": "2.3.2",
     "@vueuse/core": "10.11.0",
     "axios": "^1.7.9",
-    "echarts": "5.5.1",
-    "element-plus": "^2.9.3",
+    "element-plus": "^2.10.0",
     "file-saver": "2.0.5",
-    "fuse.js": "6.6.2",
     "js-cookie": "3.0.5",
     "jsencrypt": "3.3.2",
     "crypto-js": "^4.2.0",
-    "sm-crypto": "^0.3.13",
     "lodash": "^4.17.21",
     "nprogress": "0.2.0",
-    "pinia": "2.1.7",
+    "pinia": "2.2.2",
     "vue": "^3.5.13",
-    "vue-cropper": "1.1.1",
     "vue-router": "4.4.0"
   },
   "devDependencies": {
-    "vite-plugin-dts": "3.9.1",
     "@vitejs/plugin-vue": "5.0.5",
-    "@vitejs/plugin-vue-jsx": "^3.1.0",
     "sass": "1.77.5",
     "unplugin-auto-import": "0.17.6",
     "unplugin-vue-setup-extend-plus": "1.0.1",
     "vite": "5.3.2",
     "vite-plugin-compression": "0.5.1",
-    "vite-plugin-mock": "^3.0.2",
-    "vite-plugin-svg-icons": "2.0.1",
-    "vitepress": "^1.6.2",
-    "vitepress-theme-demoblock": "^3.0.5",
-    "@vue/shared": "^3.4.29"
+    "vite-plugin-svg-icons": "2.0.1"
   }
 }

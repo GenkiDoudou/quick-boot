@@ -1,12 +1,11 @@
 import request from '@/utils/request'
 
-// 登录方法
-export function login(username, password, code, uuid) {
+// 账号密码登录
+export function login(username, password, captchaId) {
     const data = {
         username,
         password,
-        code,
-        uuid
+        captchaId
     }
     return request({
         url: '/login',
@@ -19,15 +18,45 @@ export function login(username, password, code, uuid) {
     })
 }
 
-// 注册方法
-export function register(data) {
+// 手机号登录
+export function phoneLogin(phone, smsCode) {
+    const data = {
+        phone,
+        smsCode
+    }
     return request({
-        url: '/register',
+        url: '/phoneLogin',
+        headers: {
+            isToken: false,
+            repeatSubmit: false
+        },
+        method: 'post',
+        data: data
+    })
+}
+
+// 发送短信验证码
+export function sendSms(phone) {
+    return request({
+        url: '/sendSms',
         headers: {
             isToken: false
         },
         method: 'post',
-        data: data
+        data: { phone }
+    })
+}
+
+// 扫码登录
+export function qrcodeLogin(qrcodeId) {
+    return request({
+        url: '/qrcodeLogin',
+        headers: {
+            isToken: false,
+            repeatSubmit: false
+        },
+        method: 'post',
+        data: { qrcodeId }
     })
 }
 
@@ -51,6 +80,18 @@ export function logout() {
 export function getCodeImg() {
     return request({
         url: '/captchaImage',
+        headers: {
+            isToken: false
+        },
+        method: 'get',
+        timeout: 20000
+    })
+}
+
+// 获取二维码
+export function getQRCode() {
+    return request({
+        url: '/qrcodeImage',
         headers: {
             isToken: false
         },

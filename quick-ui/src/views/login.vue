@@ -97,7 +97,6 @@
                 </el-input>
               </el-form-item>
 
-
               <el-checkbox v-model="passwordForm.rememberMe" style="margin: 0 0 20px 0">
                 记住密码
               </el-checkbox>
@@ -203,7 +202,7 @@
       <span>{{ appConfig.copyright }}</span>
     </div>
 
-    <!-- tianai 验证码遮罩层 -->
+    <!-- 天爱行为验证码 -->
     <div v-if="captchaVisible" class="tianai-captcha-mask" @click.self="closeCaptcha">
       <div class="tianai-captcha-wrapper">
         <div id="tianai-captcha-box"></div>
@@ -213,25 +212,25 @@
 </template>
 
 <script setup>
-import {ref, getCurrentInstance, nextTick} from 'vue'
-import {useRoute, useRouter} from 'vue-router'
+import { ref, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Cookies from 'js-cookie'
-import {ElMessage} from 'element-plus'
-import {phoneLogin, sendSms as sendSmsApi, getQRCode, login} from '@/api/login'
+import { ElMessage } from 'element-plus'
+import { phoneLogin, sendSms as sendSmsApi, getQRCode } from '@/api/login'
 import useUserStore from '@/store/modules/user'
-import {appConfig} from '@/config/env'
-import request from '@/utils/request'
+import { appConfig } from '@/config/env'
 
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
-const {proxy} = getCurrentInstance()
+
+const passwordFormRef = ref(null)
+const phoneFormRef = ref(null)
 
 // 标签页状态
 const activeTab = ref('password')
 
 // 账号密码登录
-const passwordFormRef = ref(null)
 const passwordForm = ref({
   username: 'admin',
   password: 'admin',
@@ -240,16 +239,84 @@ const passwordForm = ref({
 })
 
 const passwordRules = {
-  username: [{required: true, trigger: 'blur', message: '请输入账号'}],
-  password: [{required: true, trigger: 'blur', message: '请输入密码'}]
+  username: [{ required: true, trigger: 'blur', message: '请输入账号' }],
+  password: [{ required: true, trigger: 'blur', message: '请输入密码' }],
 }
 
 const passwordLoading = ref(false)
 const captchaVisible = ref(false)
 let tacInstance = null
 
+/** 与 axios baseURL 一致，供 TAC 内 fetch 使用绝对地址 */
+function captchaApiBase() {
+  const base = import.meta.env.VITE_APP_BASE_API || ''
+  const normalized = base.endsWith('/') ? base.slice(0, -1) : base
+  if (!normalized) {
+    return window.location.origin
+  }
+  if (normalized.startsWith('http')) {
+    return normalized
+  }
+  const prefix = normalized.startsWith('/') ? normalized : `/${normalized}`
+  return `${window.location.origin}${prefix}`
+}
+
+function closeCaptcha() {
+  captchaVisible.value = false
+  if (tacInstance) {
+    tacInstance.destroyWindow()
+    tacInstance = null
+  }
+}
+
+function openCaptcha() {
+  closeCaptcha()
+  captchaVisible.value = true
+  nextTick(() => {
+    const base = captchaApiBase()
+    const config = {
+      requestCaptchaDataUrl: `${base}/api/captcha/generate`,
+      validCaptchaUrl: `${base}/api/captcha/validate`,
+      bindEl: '#tianai-captcha-box',
+      validSuccess: (res, _c, tac) => {
+        tac.destroyWindow()
+        tacInstance = null
+        captchaVisible.value = false
+        const id = res?.data?.id ?? res?.id
+        passwordForm.value.captchaId = id || ''
+        doLogin()
+      },
+      validFail: (_res, _c, tac) => {
+        tac.reloadCaptcha()
+      },
+      btnRefreshFun: (_el, tac) => {
+        tac.reloadCaptcha()
+      },
+      btnCloseFun: (_el, tac) => {
+        tac.destroyWindow()
+        closeCaptcha()
+      },
+    }
+    const style = { logoUrl: null }
+    if (typeof window.initTAC !== 'function') {
+      ElMessage.error('验证码脚本未加载，请刷新页面重试')
+      captchaVisible.value = false
+      return
+    }
+    window
+      .initTAC('./tac', config, style)
+      .then((tac) => {
+        tacInstance = tac
+        tac.init()
+      })
+      .catch(() => {
+        ElMessage.error('验证码初始化失败')
+        captchaVisible.value = false
+      })
+  })
+}
+
 // 手机号登录
-const phoneFormRef = ref(null)
 const phoneForm = ref({
   phone: '',
   smsCode: ''
@@ -269,77 +336,11 @@ const smsCountdown = ref(0)
 // 扫码登录
 const qrcodeUrl = ref('')
 
-// 关闭验证码
-function closeCaptcha() {
-  captchaVisible.value = false
-  if (tacInstance) {
-    tacInstance.destroyWindow()
-    tacInstance = null
-  }
-}
-
-// 打开 tianai 验证码
-function openCaptcha() {
-  captchaVisible.value = true
-  nextTick(() => {
-    // config 对象为TAC验证码的一些配置和验证的回调
-    const config = {
-      // 生成接口 (必选项,必须配置, 要符合tianai-captcha默认验证码生成接口规范)
-      requestCaptchaDataUrl: "http://localhost:9991/api/captcha/generate",
-      // 验证接口 (必选项,必须配置, 要符合tianai-captcha默认验证码校验接口规范)
-      validCaptchaUrl: "http://localhost:9991/api/captcha/validate",
-      // 验证码绑定的div块 (必选项,必须配置)
-      bindEl: "#tianai-captcha-box",
-      // 验证成功回调函数(必选项,必须配置)
-      validSuccess: (res, c, tac) => {
-        // 销毁验证码服务
-        tac.destroyWindow();
-        console.log("验证成功，后端返回的数据为", res);
-        // 调用具体的login方法
-        captchaVisible.value = false
-        passwordForm.value.captchaId = res.data.id
-        doLogin();
-      },
-      // 验证失败的回调函数(可忽略，如果不自定义 validFail 方法时，会使用默认的)
-      validFail: (res, c, tac) => {
-        console.log("验证码验证失败回调...")
-        // 验证失败后重新拉取验证码
-        tac.reloadCaptcha();
-      },
-      // 刷新按钮回调事件
-      btnRefreshFun: (el, tac) => {
-        console.log("刷新按钮触发事件...")
-        tac.reloadCaptcha();
-      },
-      // 关闭按钮回调事件
-      btnCloseFun: (el, tac) => {
-        console.log("关闭按钮触发事件...")
-        tac.destroyWindow();
-      }
-    }
-    // 一些样式配置， 可不传
-    let style = {
-      logoUrl: null
-      // logoUrl: "/xx/xx/xxx.png" // 替换成自定义的logo
-    }
-    // 参数1 为 tac文件是目录地址， 目录里包含 tac的js和css等文件
-    // 参数2 为 tac验证码相关配置
-    // 参数3 为 tac窗口一些样式配置
-    window.initTAC("./tac", config, style).then(tac => {
-      tac.init(); // 调用init则显示验证码
-    }).catch(e => {
-      console.log("初始化tac失败", e);
-    })
-  })
-}
-
-// 账号密码登录：占位阶段跳过滑块验证码（后端亦不校验 captchaId），直接提交。
+// 账号密码登录：校验通过后弹出天爱验证码
 function handlePasswordLogin() {
-  proxy.$refs.passwordFormRef.validate(valid => {
-    if (valid) {
-      passwordForm.value.captchaId = ''
-      doLogin()
-    }
+  passwordFormRef.value?.validate((valid) => {
+    if (!valid) return
+    openCaptcha()
   })
 }
 
@@ -347,34 +348,36 @@ function handlePasswordLogin() {
 function doLogin() {
   passwordLoading.value = true
   if (passwordForm.value.rememberMe) {
-    Cookies.set('username', passwordForm.value.username, {expires: 30})
-    Cookies.set('password', passwordForm.value.password, {expires: 30})
-    Cookies.set('rememberMe', passwordForm.value.rememberMe, {expires: 30})
+    Cookies.set('username', passwordForm.value.username, { expires: 30 })
+    Cookies.set('password', passwordForm.value.password, { expires: 30 })
+    Cookies.set('rememberMe', passwordForm.value.rememberMe, { expires: 30 })
   } else {
     Cookies.remove('username')
     Cookies.remove('password')
     Cookies.remove('rememberMe')
   }
-  userStore.login(passwordForm.value)
-      .then(() => {
-        passwordLoading.value = false
-        const query = route.query
-        const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
-          if (cur !== 'redirect') {
-            acc[cur] = query[cur]
-          }
-          return acc
-        }, {})
-        router.push({path: route.query.redirect || '/', query: otherQueryParams})
-      })
-      .catch(() => {
-        passwordLoading.value = false
-      })
+  userStore
+    .login(passwordForm.value)
+    .then(() => {
+      passwordLoading.value = false
+      const query = route.query
+      const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
+        if (cur !== 'redirect') {
+          acc[cur] = query[cur]
+        }
+        return acc
+      }, {})
+      router.push({ path: route.query.redirect || '/', query: otherQueryParams })
+    })
+    .catch(() => {
+      passwordLoading.value = false
+      passwordForm.value.captchaId = ''
+    })
 }
 
 // 发送短信验证码
 function sendSms() {
-  proxy.$refs.phoneFormRef.validateField('phone', valid => {
+  phoneFormRef.value?.validateField('phone', (valid) => {
     if (!valid) {
       ElMessage.warning('请输入正确的手机号')
       return
@@ -398,26 +401,25 @@ function sendSms() {
 
 // 手机号登录
 function handlePhoneLogin() {
-  proxy.$refs.phoneFormRef.validate(valid => {
-    if (valid) {
-      phoneLoading.value = true
+  phoneFormRef.value?.validate((valid) => {
+    if (!valid) return
+    phoneLoading.value = true
 
-      phoneLogin(phoneForm.value.phone, phoneForm.value.smsCode)
-          .then(() => {
-            ElMessage.success('登录成功')
-            const query = route.query
-            const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
-              if (cur !== 'redirect') {
-                acc[cur] = query[cur]
-              }
-              return acc
-            }, {})
-            router.push({path: route.query.redirect || '/', query: otherQueryParams})
-          })
-          .catch(() => {
-            phoneLoading.value = false
-          })
-    }
+    phoneLogin(phoneForm.value.phone, phoneForm.value.smsCode)
+      .then(() => {
+        ElMessage.success('登录成功')
+        const query = route.query
+        const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
+          if (cur !== 'redirect') {
+            acc[cur] = query[cur]
+          }
+          return acc
+        }, {})
+        router.push({ path: route.query.redirect || '/', query: otherQueryParams })
+      })
+      .catch(() => {
+        phoneLoading.value = false
+      })
   })
 }
 
@@ -869,7 +871,7 @@ generateQRCode()
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-// ============ tianai 验证码遮罩 ============
+// ============ 天爱行为验证码遮罩 ============
 
 .tianai-captcha-mask {
   position: fixed;

@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${custom.db.host}/qcc?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+    username: ENC(fF8555kWfIEGNtLhp3mn0++zXRM/UupTJH4jahGo6B6HXw3jgmnwmN7Ib2FpgSQo)
+    password: ENC(+kRG20ToqfB18dWeVJG6S4Tyj127TYjx+p3PJRwWvtW8ulJK5VvK3Vl4LHMecAbP)
+    driver-class-name: com.mysql.cj.jdbc.Driver
+custom:
+  db:
+    host: ENC(GpVad7YZj+6AB8MdEUoi77BMqmvePBduCgJSa7SW2u62+o30ezlqMbpSGENF85YCVK3k7mvNt/k7wPgvF5Xd7w==)

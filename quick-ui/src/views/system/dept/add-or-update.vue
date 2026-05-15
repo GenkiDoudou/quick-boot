@@ -1,15 +1,16 @@
 <template>
   <c7-dialog v-model="visible" :title="form.deptId ? '修改部门' : '新增部门'" width="680px" :on-confirm="submit">
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="dept-dialog-form">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
       <el-form-item label="上级部门" prop="parentId">
         <c7-tree-select
           v-model="form.parentId"
-          :data="treeData"
+          :data-list="treeData"
           value-key="id"
           label-key="label"
           children-key="children"
           :check-strictly="true"
           :default-expand-all="true"
+          value-type="string"
         />
       </el-form-item>
       <el-form-item label="部门名称" prop="deptName"><el-input v-model="form.deptName" /></el-form-item>
@@ -33,13 +34,15 @@ import { ElMessage } from 'element-plus'
 import { addDept, getDept, listTreeDept, updateDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
 
+const ROOT_PARENT_ID = '-1'
+
 const emit = defineEmits(['success'])
 const { sys_normal_disable } = useDict('sys_normal_disable')
 
 const visible = ref(false)
 const formRef = ref(null)
 const treeData = ref([])
-const form = ref({ deptId: null, parentId: 0, deptName: '', orderNum: 0, leader: '', phone: '', email: '', status: '0', remark: '' })
+const form = ref({ deptId: null, parentId: ROOT_PARENT_ID, deptName: '', orderNum: 0, leader: '', phone: '', email: '', status: '0', remark: '' })
 
 const rules = {
   parentId: [{ required: true, message: '请选择上级部门', trigger: 'change' }],
@@ -48,13 +51,19 @@ const rules = {
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
-
+function normalizeParentId(value) {
+  if (value == null || value === '') {
+    return ROOT_PARENT_ID
+  }
+  return String(value)
+}
 
 function open(payload = {}) {
   visible.value = true
+  treeData.value = [{ id: ROOT_PARENT_ID, label: '顶级部门', children: [] }]
   form.value = {
     deptId: null,
-    parentId: payload.parentId ?? '-1',
+    parentId: normalizeParentId(payload.parentId ?? ROOT_PARENT_ID),
     deptName: '',
     orderNum: 0,
     leader: '',
@@ -63,10 +72,21 @@ function open(payload = {}) {
     status: '0',
     remark: ''
   }
+
   listTreeDept().then((res) => {
-    treeData.value = [{ id: '-1', label: '顶级部门', children: res.data || [] }]
+    treeData.value = [{ id: ROOT_PARENT_ID, label: '顶级部门', children: res.data || [] }]
   })
 
+  if (payload.deptId) {
+    getDept(payload.deptId).then((res) => {
+      const row = res.data || {}
+      form.value = {
+        ...form.value,
+        ...row,
+        parentId: normalizeParentId(row.parentId)
+      }
+    })
+  }
 }
 
 function submit() {
@@ -88,7 +108,3 @@ function submit() {
 
 defineExpose({ open })
 </script>
-
-<style scoped>
-
-</style>
