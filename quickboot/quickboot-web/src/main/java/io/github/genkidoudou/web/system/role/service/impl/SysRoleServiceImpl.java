@@ -7,9 +7,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.excel.ExcelImportResult;
+import io.github.genkidoudou.common.excel.ExcelResult;
 import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.excel.exception.ExcelDataCheckException;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.validation.ValidatorUtils;
+import io.github.genkidoudou.common.validation.group.AddGroup;
+import io.github.genkidoudou.common.validation.group.UpdateGroup;
 import io.github.genkidoudou.web.system.menu.domain.SysRole;
 import io.github.genkidoudou.web.system.menu.domain.SysRoleMenu;
 import io.github.genkidoudou.web.system.menu.domain.SysUserRole;
@@ -25,6 +31,7 @@ import io.github.genkidoudou.web.system.role.dto.RoleMenuRequest;
 import io.github.genkidoudou.web.system.role.dto.SysRoleAuthUserQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleExcelRow;
+import io.github.genkidoudou.web.system.role.dto.SysRoleImportExcelRow;
 import io.github.genkidoudou.web.system.role.dto.SysRoleQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleUserVo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
@@ -37,7 +44,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -385,6 +394,116 @@ public class SysRoleServiceImpl implements SysRoleService {
             out.add(er);
         }
         ExcelUtils.exportExcel(out, "sys-role", SysRoleExcelRow.class, response);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException {
+        ExcelResult<SysRoleImportExcelRow> readResult = ExcelUtils.importExcel(
+                file.getInputStream(),
+                SysRoleImportExcelRow.class,
+                (row, context) -> importOneRoleRow(row, updateSupport),
+                (rows, context) -> {
+                });
+        return ExcelImportResult.build(readResult);
+    }
+
+    /**
+     * 处理单行导入；失败抛出 {@link ExcelDataCheckException} 以便写入失败明细。
+     */
+    private void importOneRoleRow(SysRoleImportExcelRow row, boolean updateSupport) {
+        if (isBlankImportRow(row)) {
+            return;
+        }
+        String roleKey = StrUtil.trim(row.getRoleKey());
+        String roleName = StrUtil.trim(row.getRoleName());
+        if (StrUtil.isBlank(roleKey) || StrUtil.isBlank(roleName)) {
+            throw new ExcelDataCheckException("角色名称、权限字符不能为空");
+        }
+        SysRole existed = roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getRoleKey, roleKey), false);
+        String resolvedScope = parseDataScopeLabel(row.getDataScope());
+        List<Long> deptIds = Collections.emptyList();
+        if ("2".equals(resolvedScope)) {
+            if (existed == null) {
+                throw new ExcelDataCheckException("新建角色不允许使用自定义数据范围");
+            }
+            if (!"2".equals(existed.getDataScope())) {
+                throw new ExcelDataCheckException("不能通过导入将数据范围改为自定义，请在界面配置");
+            }
+            SysRoleVo vo = getById(existed.getRoleId());
+            if (vo != null && vo.getDeptIds() != null && !vo.getDeptIds().isEmpty()) {
+                deptIds = new ArrayList<>(vo.getDeptIds());
+            }
+            if (deptIds.isEmpty()) {
+                throw new ExcelDataCheckException("该角色为自定义但未配置部门，请先在界面保存部门后再导入");
+            }
+        }
+
+        SysRoleBo bo = new SysRoleBo();
+        bo.setRoleName(roleName);
+        bo.setRoleKey(roleKey);
+        bo.setRoleSort(row.getRoleSort() != null ? row.getRoleSort() : 0);
+        bo.setStatus(normalizeImportStatus(row.getStatus()));
+        bo.setRemark(StrUtil.trim(StrUtil.nullToDefault(row.getRemark(), "")));
+
+        try {
+            if (existed == null) {
+                bo.setDataScope(resolvedScope);
+                bo.setDeptIds(Collections.emptyList());
+                ValidatorUtils.validate(bo, AddGroup.class);
+                add(bo);
+            } else {
+                if (!updateSupport) {
+                    throw new ExcelDataCheckException("权限字符已存在：" + roleKey);
+                }
+                bo.setRoleId(existed.getRoleId());
+                if (ADMIN_ROLE_ID.equals(existed.getRoleId())) {
+                    bo.setRoleKey("admin");
+                    bo.setDataScope(null);
+                    bo.setDeptIds(null);
+                } else {
+                    bo.setDataScope(resolvedScope);
+                    bo.setDeptIds(deptIds);
+                }
+                ValidatorUtils.validate(bo, UpdateGroup.class);
+                update(bo);
+            }
+        } catch (WarningException e) {
+            throw new ExcelDataCheckException(e.getMessage());
+        }
+    }
+
+    private boolean isBlankImportRow(SysRoleImportExcelRow row) {
+        if (row == null) {
+            return true;
+        }
+        return StrUtil.isAllBlank(row.getRoleName(), row.getRoleKey(), row.getStatus(), row.getRemark(), row.getDataScope())
+                && row.getRoleSort() == null;
+    }
+
+    private static String normalizeImportStatus(String status) {
+        if (StrUtil.equalsAny(status, "0", "1")) {
+            return status;
+        }
+        return "0";
+    }
+
+    private String parseDataScopeLabel(String raw) {
+        if (StrUtil.isBlank(raw)) {
+            return "1";
+        }
+        String s = raw.trim();
+        if (DATA_SCOPES.contains(s)) {
+            return s;
+        }
+        return switch (s) {
+            case "全部" -> "1";
+            case "自定义" -> "2";
+            case "本部门" -> "3";
+            case "本部门及以下" -> "4";
+            case "仅本人" -> "5";
+            default -> throw new ExcelDataCheckException("数据范围取值无效: " + s);
+        };
     }
 
     private static String dataScopeLabel(String ds) {

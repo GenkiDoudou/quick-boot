@@ -3,6 +3,8 @@ package io.github.genkidoudou.web.system.role.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.excel.ExcelImportResult;
+import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.validation.group.AddGroup;
@@ -14,6 +16,7 @@ import io.github.genkidoudou.web.system.role.dto.RoleGrantUsersRequest;
 import io.github.genkidoudou.web.system.role.dto.RoleMenuRequest;
 import io.github.genkidoudou.web.system.role.dto.SysRoleAuthUserQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleBo;
+import io.github.genkidoudou.web.system.role.dto.SysRoleImportExcelRow;
 import io.github.genkidoudou.web.system.role.dto.SysRoleQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleUserVo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
@@ -30,8 +33,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -155,5 +163,20 @@ public class SysRoleController {
     @PostMapping("/export")
     public void export(SysRoleQueryBo query, HttpServletResponse response) {
         service.export(query, response);
+    }
+
+    @Operation(summary = "导入角色")
+    @SaCheckPermission("system:role:import")
+    @PostMapping("/import")
+    public R<ExcelImportResult> importData(@RequestPart("file") MultipartFile file,
+                                           @RequestParam(defaultValue = "false") boolean updateSupport) throws IOException {
+        return R.ok(service.importData(file, updateSupport));
+    }
+
+    @Operation(summary = "下载角色导入模板")
+    @SaCheckPermission("system:role:import")
+    @PostMapping("/import/template")
+    public void importTemplate(HttpServletResponse response) {
+        ExcelUtils.exportExcel(Collections.emptyList(), "role-import-template", SysRoleImportExcelRow.class, response);
     }
 }

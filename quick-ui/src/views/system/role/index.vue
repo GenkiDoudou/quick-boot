@@ -14,6 +14,10 @@
       :export-function="exportFunction"
       :show-add-button="true"
       :show-edit-button="true"
+      :show-import-button="true"
+      :import-function="importFunction"
+      :import-template-function="importTemplateFunction"
+      import-template-file-name="role-import-template.xlsx"
       :show-delete-button="true"
       :show-export-button="true"
       :on-add="openAdd"
@@ -194,6 +198,8 @@ import {
   exportRole,
   getRole,
   grantRoleUsers,
+  importRole,
+  importRoleTemplate,
   listRole,
   listRoleAllocatedUsers,
   listRoleUnallocatedUsers,
@@ -419,6 +425,18 @@ function exportFunction(searchParam) {
   req.endTime = endTime
   delete req.createTimeRange
   return exportRole(req)
+}
+
+function importFunction(file, strategy) {
+  return importRole(file, strategy === 'overwrite').then((res) => {
+    tableRef.value?.refreshData()
+    const payload = res?.data ?? res
+    return payload || { total: 0, successCount: 0, failCount: 0 }
+  })
+}
+
+function importTemplateFunction() {
+  return importRoleTemplate()
 }
 
 /** ---------- 菜单权限 ---------- */

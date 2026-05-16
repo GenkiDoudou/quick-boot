@@ -127,6 +127,32 @@ export function cancelRoleUsers(data) {
 }
 
 /**
+ * 导入角色。
+ * @param {File} file 上传文件
+ * @param {boolean} [updateSupport=false] 是否更新已存在（按权限字符）
+ * @returns {Promise<any>}
+ */
+export function importRole(file, updateSupport = false) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('updateSupport', updateSupport ? 'true' : 'false')
+  return request({
+    url: '/system/role/import',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+/**
+ * 下载角色导入模板。
+ * @returns {Promise<{ data: Blob, headers: import('axios').AxiosResponse['headers'] }>}
+ */
+export function importRoleTemplate() {
+  return downloadRequest('/system/role/import/template', {}, { returnBlobWithHeaders: true })
+}
+
+/**
  * 导出角色。
  * @param {Record<string, any>} data 筛选条件
  * @returns {Promise<{ data: Blob, headers: import('axios').AxiosResponse['headers'] }>}

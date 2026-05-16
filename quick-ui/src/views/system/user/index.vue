@@ -1,156 +1,85 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryFormRef" :inline="true">
-      <el-form-item label="用户账号" prop="userName">
-        <el-input v-model="queryParams.userName" placeholder="请输入用户账号" clearable @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="用户昵称" prop="nickName">
-        <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="手机号码" prop="phonenumber">
-        <el-input v-model="queryParams.phonenumber" placeholder="请输入手机号码" clearable @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="部门" prop="deptId">
+    <C7JsonTable
+      ref="tableRef"
+      row-key="userId"
+      export-default-file-name="user-export.xlsx"
+      :show-index="false"
+      :show-selection="true"
+      :list-function="listFunction"
+      :table-columns="tableColumns"
+      :search-columns="searchColumns"
+      :default-search-param="defaultSearchParam"
+      :delete-function="batchDeleteFunction"
+      :export-function="exportFunction"
+      :show-add-button="true"
+      :show-edit-button="true"
+      :show-delete-button="true"
+      :show-export-button="true"
+      :show-import-button="true"
+      :import-function="importFunction"
+      :import-template-function="importTemplateFunction"
+      import-template-file-name="user-import-template.xlsx"
+      :on-add="openAdd"
+      :on-edit="openEdit"
+      :before-delete="beforeBatchDelete"
+      :check-delete-success="() => true"
+      rows-key="data.records"
+      total-key="data.total"
+    >
+      <template #deptId="{ formData }">
         <el-tree-select
-          v-model="queryParams.deptId"
+          v-model="formData.deptId"
           :data="deptTree"
           :props="{ value: 'id', label: 'label', children: 'children' }"
           value-key="id"
           placeholder="请选择部门"
           clearable
           check-strictly
-          style="width: 220px"
+          style="width: 100%"
         />
-      </el-form-item>
-      <el-form-item label="帐号状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="请选择帐号状态" clearable>
-          <el-option
-            v-for="dict in sys_normal_disable"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="创建时间" prop="createTimeRange">
-        <el-date-picker
-          v-model="queryParams.createTimeRange"
-          type="daterange"
-          range-separator="-"
-          start-placeholder="开始"
-          end-placeholder="结束"
-          value-format="YYYY-MM-DD"
-        />
-      </el-form-item>
-      <el-form-item>
-        <c7-button
-          btn-type="query"
-          :validate="true"
-          :validate-ref="queryFormRef"
-          :click-function="fetchUserList"
-        />
-        <c7-button
-          btn-type="refresh"
-          style="margin-left: 8px"
-          :click-function="resetAndQuery"
-        />
-      </el-form-item>
-    </el-form>
+      </template>
 
-    <el-row class="user-toolbar" :gutter="8" align="middle">
-      <el-col :span="12">
-        <el-button type="primary" plain @click="handleAdd" v-hasPermi="['system:user:add']">新增</el-button>
-        <el-button
-          type="danger"
-          plain
-          :disabled="multipleSelection.length === 0"
-          @click="handleBatchDelete"
+      <template #status="{ row }">
+        <el-switch
+          :model-value="String(row.status ?? '0')"
+          active-value="0"
+          inactive-value="1"
+          :disabled="row.userId === 1"
+          @update:model-value="(v) => handleUserStatusInput(row, v)"
+        />
+      </template>
+
+      <template #action="{ row }">
+        <el-button link type="primary" @click="openEdit(row)" v-hasPermi="['system:user:edit']">修改</el-button>
+        <el-button link type="primary" @click="handleAuthRole(row)" v-hasPermi="['system:user:edit']">分配角色</el-button>
+        <c7-button
+          v-if="row.userId !== 1"
+          btn-type="delete"
+          link
+          confirm
+          :confirm-message="`确认要删除用户「${row.userName}」吗？`"
+          :click-function="() => deleteOne(row)"
           v-hasPermi="['system:user:remove']"
-        >删除</el-button>
-        <el-button type="warning" plain @click="handleExport" v-hasPermi="['system:user:export']">导出</el-button>
-        <el-upload
-          v-hasPermi="['system:user:import']"
-          :show-file-list="false"
-          :http-request="handleImport"
-          accept=".xlsx,.xls"
-          class="user-toolbar__upload"
+        />
+        <el-button
+          v-if="row.userId !== 1"
+          link
+          type="warning"
+          @click="handleResetPwd(row)"
+          v-hasPermi="['system:user:resetPwd']"
         >
-          <el-button type="warning" plain>导入</el-button>
-        </el-upload>
-        <el-button type="info" plain @click="handleImportTemplate" v-hasPermi="['system:user:import']">模板</el-button>
-      </el-col>
-    </el-row>
+          重置密码
+        </el-button>
+      </template>
+    </C7JsonTable>
 
-    <el-table v-loading="loading" :data="userList" border stripe @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="50" align="center" />
-      <el-table-column label="用户编号" prop="userId" width="100" />
-      <el-table-column label="用户账号" prop="userName" show-overflow-tooltip />
-      <el-table-column label="用户昵称" prop="nickName" show-overflow-tooltip />
-      <el-table-column label="部门" prop="deptName" />
-      <el-table-column label="手机号码" prop="phonenumber" />
-      <el-table-column label="角色" prop="roleNames" show-overflow-tooltip />
-      <el-table-column label="帐号状态" align="center" width="100">
-        <template #default="scope">
-          <el-switch
-            v-model="scope.row.status"
-            active-value="0"
-            inactive-value="1"
-            @change="handleStatusChange(scope.row)"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" prop="createTime" width="170" />
-      <el-table-column label="操作" width="280" fixed="right" align="center">
-        <template #default="scope">
-          <el-button
-            type="primary" link icon="Edit"
-            @click="handleEdit(scope.row)"
-            v-hasPermi="['system:user:edit']"
-          >修改</el-button>
-          <el-button
-            type="primary" link icon="User"
-            @click="handleAuthRole(scope.row)"
-            v-hasPermi="['system:user:edit']"
-          >分配角色</el-button>
-          <c7-button
-            btn-type="delete"
-            link
-            confirm
-            :confirm-message="'确认要删除用户「' + scope.row.userName + '」吗？'"
-            :click-function="() => deleteUser(scope.row)"
-            success-message="删除成功"
-            v-hasPermi="['system:user:remove']"
-          />
-          <el-button
-            type="warning" link icon="Key"
-            @click="handleResetPwd(scope.row)"
-            v-hasPermi="['system:user:resetPwd']"
-          >重置密码</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-pagination
-      v-model:current-page="queryParams.pageNum"
-      v-model:page-size="queryParams.pageSize"
-      :page-sizes="[10, 20, 50, 100]"
-      :total="total"
-      layout="total, sizes, prev, pager, next, jumper"
-      @size-change="handleQuery"
-      @current-change="handleQuery"
-      style="margin-top: 16px;"
-    />
-
-    <add-or-update
-      :key="addKey"
-      ref="addOrUpdateRef"
-      @refreshDataList="handleQuery"
-    />
+    <add-or-update :key="addKey" ref="addOrUpdateRef" @refreshDataList="onFormSuccess" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { saveAs } from 'file-saver'
@@ -163,7 +92,7 @@ import {
   exportUser,
   importUser,
   importTemplate,
-  importError
+  importError,
 } from '@/api/system/user'
 import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
@@ -173,113 +102,147 @@ defineOptions({ name: 'User' })
 const router = useRouter()
 const { sys_normal_disable } = useDict('sys_normal_disable')
 
-const loading = ref(false)
-const total = ref(0)
-const userList = ref([])
+const tableRef = ref(null)
 const addKey = ref(0)
 const addOrUpdateRef = ref(null)
-const queryFormRef = ref(null)
 const deptTree = ref([])
-const multipleSelection = ref([])
 
-const queryParams = reactive({
-  pageNum: 1,
-  pageSize: 10,
+const defaultSearchParam = {
   userName: '',
   nickName: '',
   phonenumber: '',
   status: '',
   deptId: undefined,
-  createTimeRange: []
-})
+  createTimeRange: [],
+}
+
+const searchColumns = computed(() => [
+  { prop: 'userName', label: '用户账号', type: 'input', span: 8, props: { placeholder: '请输入', clearable: true } },
+  { prop: 'nickName', label: '用户昵称', type: 'input', span: 8, props: { placeholder: '请输入', clearable: true } },
+  { prop: 'phonenumber', label: '手机号码', type: 'input', span: 8, props: { placeholder: '请输入', clearable: true } },
+  { prop: 'deptId', label: '部门', type: 'slot', span: 8 },
+  {
+    prop: 'status',
+    label: '帐号状态',
+    type: 'select',
+    span: 8,
+    options: sys_normal_disable.value,
+    props: { placeholder: '请选择', clearable: true },
+  },
+  {
+    prop: 'createTimeRange',
+    label: '创建时间',
+    type: 'daterange',
+    span: 8,
+    props: { 'value-format': 'YYYY-MM-DD', 'range-separator': '-', 'start-placeholder': '开始', 'end-placeholder': '结束' },
+  },
+])
+
+const tableColumns = computed(() => [
+  { prop: 'userId', label: '用户编号', width: 100 },
+  { prop: 'userName', label: '用户账号', minWidth: 120 },
+  { prop: 'nickName', label: '用户昵称', minWidth: 120 },
+  { prop: 'deptName', label: '部门', width: 120 },
+  { prop: 'phonenumber', label: '手机号码', width: 120 },
+  { prop: 'roleNames', label: '角色', minWidth: 140 },
+  { prop: 'status', label: '帐号状态', width: 110, columnType: 'slot', slotName: 'status' },
+  { prop: 'createTime', label: '创建时间', width: 170 },
+  { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 280, fixed: 'right' },
+])
 
 onMounted(() => {
-  listTreeDept().then((res) => {
+  listTreeDept({}).then((res) => {
     deptTree.value = res.data || res || []
   })
 })
 
-function handleSelectionChange(rows) {
-  multipleSelection.value = rows || []
-}
-
-function handleQuery() {
-  loading.value = true
-  const params = { ...queryParams }
-  const range = params.createTimeRange
-  if (range && range.length === 2) {
-    params.beginTime = range[0]
-    params.endTime = range[1]
+function listFunction(params) {
+  const req = { ...params }
+  const [beginTime, endTime] = req.createTimeRange || []
+  if (beginTime && endTime) {
+    req.beginTime = beginTime
+    req.endTime = endTime
   }
-  delete params.createTimeRange
-  return listUser(params).then((res) => {
-    const page = res.data || res
-    userList.value = page.records || []
-    total.value = page.total || 0
-    loading.value = false
-  }).catch(() => {
-    loading.value = false
-    return Promise.reject(new Error('查询失败'))
+  delete req.createTimeRange
+  // 避免 tree-select 清空后传 '' 导致 Long 等类型绑定失败；去掉 JsonTable 自带的排序参数（用户接口未声明）
+  if (req.deptId === '' || req.deptId === null) delete req.deptId
+  if (req.status === '' || req.status === null) delete req.status
+  delete req.orderByColumn
+  delete req.isAsc
+
+  return listUser(req).then((res) => {
+    const page = res?.data
+    if (page && Array.isArray(page.records)) {
+      for (const row of page.records) {
+        row.status = row.status == null || row.status === '' ? '0' : String(row.status)
+      }
+    }
+    return res
   })
 }
 
-/** @returns {Promise<void>} */
-function fetchUserList() {
-  return handleQuery()
+function openAdd() {
+  addKey.value += 1
+  nextTick(() => addOrUpdateRef.value?.init())
 }
 
-/** @returns {Promise<void>} */
-function resetAndQuery() {
-  queryFormRef.value?.resetFields()
-  queryParams.createTimeRange = []
-  queryParams.deptId = undefined
-  return handleQuery()
+/**
+ * 工具栏「修改」传入选中行；表格行「修改」传入当前行。
+ * @param {Record<string, any>} [row]
+ */
+function openEdit(row) {
+  if (!row?.userId) return
+  addKey.value += 1
+  nextTick(() => addOrUpdateRef.value?.init(row.userId))
 }
 
-function handleAdd() {
-  addKey.value++
-  nextTick(() => { addOrUpdateRef.value.init() })
-}
-
-function handleEdit(row) {
-  addKey.value++
-  nextTick(() => { addOrUpdateRef.value.init(row.userId) })
+function onFormSuccess() {
+  tableRef.value?.refreshData()
 }
 
 function handleAuthRole(row) {
   router.push({ path: '/system/user/auth-role', query: { userId: row.userId } })
 }
 
-function handleBatchDelete() {
-  const ids = multipleSelection.value.map((r) => r.userId)
-  if (ids.length === 0) {
-    return
-  }
-  if (ids.includes(1)) {
+/**
+ * 批量删除前校验（禁止包含内置管理员 userId=1）。
+ * @param {Array<number|string>} ids
+ * @returns {Promise<boolean>}
+ */
+async function beforeBatchDelete(ids) {
+  if ((ids || []).includes(1)) {
     ElMessage.error('选中行包含内置超级管理员，无法删除')
-    return
+    return false
   }
-  ElMessageBox.confirm('确认删除选中的用户吗？', '系统提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => delUser(ids).then(() => {
-    ElMessage.success('删除成功')
-    handleQuery()
-  })).catch(() => {})
+  return true
 }
 
-function handleExport() {
-  const params = { ...queryParams }
-  const range = params.createTimeRange
-  if (range && range.length === 2) {
-    params.beginTime = range[0]
-    params.endTime = range[1]
+function batchDeleteFunction(ids) {
+  return delUser(ids || [])
+}
+
+function deleteOne(row) {
+  return delUser([row.userId]).then(() => {
+    ElMessage.success('删除成功')
+    return tableRef.value?.refreshData()
+  })
+}
+
+function exportFunction(searchParam) {
+  const req = { ...searchParam }
+  const [beginTime, endTime] = req.createTimeRange || []
+  if (beginTime && endTime) {
+    req.beginTime = beginTime
+    req.endTime = endTime
   }
-  delete params.createTimeRange
-  delete params.pageNum
-  delete params.pageSize
-  return exportUser(params).then(({ data, headers }) => {
+  delete req.createTimeRange
+  delete req.pageNum
+  delete req.pageSize
+  delete req.orderByColumn
+  delete req.isAsc
+  if (req.deptId === '' || req.deptId === null) delete req.deptId
+  if (req.status === '' || req.status === null) delete req.status
+  return exportUser(req).then(({ data, headers }) => {
     const cd = headers['content-disposition'] || headers['Content-Disposition']
     let filename = 'user-export.xlsx'
     if (cd) {
@@ -291,49 +254,37 @@ function handleExport() {
   })
 }
 
-function handleImportTemplate() {
-  importTemplate().then((blob) => {
-    saveAs(blob, 'user-import-template.xlsx')
-  })
+function importTemplateFunction() {
+  return importTemplate()
 }
 
 /**
- * @param {{ file: File }} opt
+ * 用户导入结果与字典/角色导入字段名不同，在此映射为 C7ExcelUpload 所需结构。
+ * @param {File} file
+ * @param {string} strategy overwrite | ignore
  */
-function handleImport(opt) {
-  ElMessageBox.confirm('已存在同名用户时是否更新记录？', '导入用户', {
-    distinguishCancelAndClose: true,
-    confirmButtonText: '更新已存在',
-    cancelButtonText: '仅新增'
-  }).then(() => doImport(opt.file, true))
-    .catch((action) => {
-      if (action === 'cancel') {
-        return doImport(opt.file, false)
-      }
-      return Promise.resolve()
-    })
-}
-
-function doImport(file, updateSupport) {
+function importFunction(file, strategy) {
+  const updateSupport = strategy === 'overwrite'
   return importUser(file, updateSupport).then((res) => {
-    const r = res.data || res
-    ElMessage.success(`导入完成：成功 ${r.success}，失败 ${r.failure}，共 ${r.total}`)
-    if (r.errorKey) {
-      ElMessageBox.confirm('存在失败行，是否下载失败明细？', '提示', { type: 'info' })
-        .then(() => importError(r.errorKey).then((blob) => saveAs(blob, 'user-import-error.xlsx')))
-        .catch(() => {})
+    const r = res?.data ?? res
+    const total = Number(r?.total ?? 0)
+    const successCount = Number(r?.success ?? r?.successCount ?? 0)
+    const failCount = Number(r?.failure ?? r?.failCount ?? 0)
+    const errorKey = r?.errorKey
+    if (failCount > 0 && errorKey) {
+      nextTick(() => {
+        ElMessageBox.confirm('存在失败行，是否下载失败明细？', '提示', { type: 'info' })
+          .then(() =>
+            importError(errorKey).then((blob) => {
+              saveAs(blob, 'user-import-error.xlsx')
+            }),
+          )
+          .catch(() => {})
+      })
     }
-    handleQuery()
+    tableRef.value?.refreshData()
+    return { total, successCount, failCount, errorFileName: '', errorFileBase64: '' }
   })
-}
-
-/**
- * @param row 当前行
- * @returns {Promise<void>}
- */
-async function deleteUser(row) {
-  await delUser([row.userId])
-  await handleQuery()
 }
 
 function handleResetPwd(row) {
@@ -342,40 +293,36 @@ function handleResetPwd(row) {
     cancelButtonText: '取消',
     inputType: 'password',
     inputPattern: /.{6,}/,
-    inputErrorMessage: '密码至少 6 位'
-  }).then(({ value }) => {
-    return resetUserPwd({ userId: row.userId, newPassword: value })
-  }).then(() => {
-    ElMessage.success('重置成功')
-  }).catch(() => {})
-}
-
-function handleStatusChange(row) {
-  const text = row.status === '0' ? '启用' : '停用'
-  ElMessageBox.confirm('确认要' + text + '用户"' + row.userName + '"吗？', '系统提示', {
-    confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
-  }).then(() => {
-    return changeUserStatus({ userId: row.userId, status: row.status })
-  }).then(() => {
-    ElMessage.success(text + '成功')
-  }).catch(() => {
-    row.status = row.status === '0' ? '1' : '0'
+    inputErrorMessage: '密码至少 6 位',
   })
+    .then(({ value }) => resetUserPwd({ userId: row.userId, newPassword: value }))
+    .then(() => {
+      ElMessage.success('重置成功')
+    })
+    .catch(() => {})
 }
 
-handleQuery()
+/**
+ * 仅响应用户操作切换状态（受控开关），避免 v-model+@change 在 status 未对齐时挂载即触发确认框。
+ * @param {Record<string, any>} row
+ * @param {string} newStatus
+ */
+function handleUserStatusInput(row, newStatus) {
+  const next = String(newStatus)
+  const prev = String(row.status ?? '0')
+  if (prev === next) return
+  const text = next === '0' ? '启用' : '停用'
+  const name = row.userName ?? row.nickName ?? String(row.userId ?? '')
+  ElMessageBox.confirm('确认要' + text + '用户「' + name + '」吗？', '系统提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+    .then(() => changeUserStatus({ userId: row.userId, status: next }))
+    .then(() => {
+      row.status = next
+      ElMessage.success(text + '成功')
+    })
+    .catch(() => {})
+}
 </script>
-
-<style scoped>
-.user-toolbar {
-  margin-bottom: 12px;
-}
-.user-toolbar :deep(.el-button + .el-button),
-.user-toolbar .user-toolbar__upload {
-  margin-left: 8px;
-}
-.user-toolbar__upload {
-  display: inline-block;
-  vertical-align: middle;
-}
-</style>

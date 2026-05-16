@@ -1,6 +1,7 @@
 package io.github.genkidoudou.web.system.role.service;
 
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.excel.ExcelImportResult;
 import io.github.genkidoudou.web.system.role.dto.RoleCancelUserRequest;
 import io.github.genkidoudou.web.system.role.dto.RoleChangeStatusRequest;
 import io.github.genkidoudou.web.system.role.dto.RoleDataScopeRequest;
@@ -13,7 +14,9 @@ import io.github.genkidoudou.web.system.role.dto.SysRoleUserVo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
 import io.github.genkidoudou.web.system.user.datascope.DataPermission;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -126,4 +129,13 @@ public interface SysRoleService {
      * @param response HTTP 响应
      */
     void export(SysRoleQueryBo query, HttpServletResponse response);
+
+    /**
+     * 从 Excel 批量导入角色。
+     *
+     * @param file          上传文件
+     * @param updateSupport 是否按权限字符更新已存在数据
+     * @return 导入统计与失败明细
+     */
+    ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException;
 }
