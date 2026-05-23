@@ -16,6 +16,11 @@ spring:
   autoconfigure:
     exclude:
       - cloud.tianai.captcha.spring.autoconfiguration.CacheStoreAutoConfiguration
+      # qc.oauth2.token-store=local 时禁用 Redis 与 Sa-Token Redis DAO（见 application-prod.yml 恢复）
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - cn.dev33.satoken.dao.SaTokenDaoForRedisTemplate
   data:
     redis:
       timeout: 10000ms
@@ -114,6 +119,18 @@ jasypt:
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
 qc:
+  oauth2:
+    # local：内存（默认，无需 Redis）；redis：多实例部署时在 prod 配置 spring.data.redis 并改为 redis
+    token-store: local
+    server:
+      enabled: true
+      issuer: ''
+      grant:
+        password-enabled: false
+        implicit-enabled: false
+    client:
+      enabled: true
+      default-redirect-after-login: /
   # 登录页天爱行为验证码：为 false 时 /login 不校验 captchaId；前端登录页 GET /login/captcha-config 同步隐藏验证码
   login:
     captcha-enabled: false
@@ -131,6 +148,17 @@ qc:
     web:
       # 额外匿名路径（生产保持空；开发见 application-dev.yml）
       anonymous-paths: []
+    # 首方/第三方 Client HMAC 签名校验（见 docs/superpowers/specs/2026-05-23-oauth2-integration-design.md §16）
+    client-sign:
+      enabled: true
+      window-seconds: 300
+      nonce-cache-name: clientSignNonce#300
+      exclude-paths:
+        - /error
+        - /oauth2/**
+        - /swagger-ui.html
+        - /swagger-ui/**
+        - /v3/api-docs/**
     firewall:
       headers:
         enabled: true
@@ -167,6 +195,9 @@ qc:
           - localhost:9992
       sql-injection:
         enabled: true
+        # Ant 路径 /** 会误命中关键字 /*；OAuth 客户端「接口授权」字段默认已跳过
+        ignore-json-fields:
+          - apiPathPatterns
       xss:
         enabled: true
         forbidden-message: 您的请求包含非法字符，请检查！
@@ -270,6 +301,7 @@ quickboot:
 
 ############## Sa-Token 配置 (文档: https://sa-token.cc) ##############
 sa-token:
+  # 会话持久化：qc.oauth2.token-store=redis 且配置 spring.data.redis 时由 SaTokenDaoForRedisTemplate 接管
   # 与 quick-ui axios 拦截器一致：Authorization: Bearer <token>
   token-name: Authorization
   token-prefix: Bearer

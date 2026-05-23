@@ -111,6 +111,18 @@
               >
                 {{ passwordLoading ? '登录中...' : '登 录' }}
               </el-button>
+              <div v-if="oauthProviders.length" class="oauth-provider-list">
+                <div class="oauth-divider">第三方登录</div>
+                <el-button
+                    v-for="p in oauthProviders"
+                    :key="p.providerCode"
+                    size="default"
+                    style="width: 100%; margin-top: 8px"
+                    @click="goOauthProvider(p)"
+                >
+                  {{ p.providerName }}
+                </el-button>
+              </div>
             </el-form>
           </div>
 
@@ -217,6 +229,8 @@ import { useRoute, useRouter } from 'vue-router'
 import Cookies from 'js-cookie'
 import { ElMessage } from 'element-plus'
 import { getLoginCaptchaConfig, phoneLogin, sendSms as sendSmsApi, getQRCode } from '@/api/login'
+import { listLoginProviders } from '@/api/oauth/authorize'
+import { getToken, setToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
 import { appConfig } from '@/config/env'
 
@@ -244,12 +258,19 @@ const passwordRules = {
 }
 
 const passwordLoading = ref(false)
+const oauthProviders = ref([])
 const captchaVisible = ref(false)
 /** 与后端 qc.login.captcha-enabled 一致；未拉取前默认 true，避免短暂放开校验 */
 const loginCaptchaEnabled = ref(true)
 let tacInstance = null
 
 onMounted(() => {
+    const tokenFromQuery = route.query.access_token
+    if (tokenFromQuery && !getToken()) {
+        setToken(tokenFromQuery)
+        router.push({ path: route.query.redirect || '/' })
+        return
+    }
     getLoginCaptchaConfig()
         .then((body) => {
             const v = body?.data?.captchaEnabled
@@ -258,7 +279,21 @@ onMounted(() => {
         .catch(() => {
             loginCaptchaEnabled.value = true
         })
+    listLoginProviders()
+        .then((res) => {
+            oauthProviders.value = res.data || []
+        })
+        .catch(() => {
+            oauthProviders.value = []
+        })
 })
+
+function goOauthProvider(p) {
+  const base = import.meta.env.VITE_APP_BASE_API || ''
+  const prefix = base.endsWith('/') ? base.slice(0, -1) : base
+  const path = p.authorizePath || `/oauth2/client/authorize/${p.providerCode}`
+  window.location.href = `${prefix.startsWith('http') ? prefix : window.location.origin + (prefix.startsWith('/') ? prefix : '/' + prefix)}${path}`
+}
 
 /** 与 axios baseURL 一致，供 TAC 内 fetch 使用绝对地址 */
 function captchaApiBase() {

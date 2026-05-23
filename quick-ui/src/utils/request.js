@@ -5,6 +5,7 @@ import errorCode from '@/utils/errorCode'
 import {tansParams, blobValidate} from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import {saveAs} from 'file-saver'
+import {applyClientSignHeaders} from '@/utils/clientSign'
 
 let downloadLoadingInstance;
 let isShowReloginDialog = false;
@@ -16,12 +17,12 @@ const service = axios.create({
     timeout: 10000
 })
 
-service.interceptors.request.use(config => {
+service.interceptors.request.use(async (config) => {
     const isToken = (config.headers || {}).isToken === false
     if (getToken() && !isToken) {
         config.headers['Authorization'] = 'Bearer ' + getToken()
     }
-    return config
+    return applyClientSignHeaders(config)
 }, error => {
     console.error('请求拦截器错误:', error)
     return Promise.reject(error)

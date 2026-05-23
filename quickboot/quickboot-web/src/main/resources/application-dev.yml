@@ -6,12 +6,30 @@ qc:
   captcha:
     enabled: true
   security:
+    client-sign:
+      exclude-paths:
+        - /error
+        - /oauth2/**
+        - /swagger-ui.html
+        - /swagger-ui/**
+        - /v3/api-docs/**
+        - /actuator/**
+        - /h2-console
+        - /h2-console/**
     web:
       # 仅开发：Actuator / H2 控制台不要求登录（生产 profile 勿配置）
       anonymous-paths:
         - /actuator/**
         - /h2-console
         - /h2-console/**
+    firewall:
+      password:
+        codec:
+          # OAuth client_secret / IdP secret 入库 SM4 加密（Oauth2SecretSupport 使用 encrypt(..., "sm4")）
+          sm4:
+            default-key-id: default
+            keys:
+              default: "0123456789abcdef0123456789abcdef"
 
 spring:
   devtools:

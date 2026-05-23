@@ -80,6 +80,12 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
 
         paths.add("/qrcodeImage");
 
+        paths.add("/oauth2/**");
+
+        paths.add("/open-api/**");
+
+        paths.add("/oauth/login/providers");
+
         paths.add("/error");
 
         paths.add("/swagger-ui.html");

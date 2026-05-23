@@ -1,4 +1,20 @@
 export default {
+    // 首页：左侧也显示文档入口（否则首页侧栏为空）
+    "/": [
+        {
+            text: "📚 文档入口",
+            collapsed: false,
+            items: [
+                {text: "💡 项目介绍", link: "/docs/guide/introduction"},
+                {text: "📑 能力文档大纲", link: "/docs/guide/capabilities-outline"},
+                {text: "⚡ 快速上手", link: "/docs/guide/quick-start"},
+                {text: "⚙️ 后端概述", link: "/docs/backend/"},
+                {text: "🎨 前端概述", link: "/docs/frontend/"},
+                {text: "🔐 OAuth2 集成", link: "/docs/backend/modules/oauth2"},
+            ]
+        },
+    ],
+
     // 指南
     "/docs/guide/": [
         {
@@ -6,6 +22,7 @@ export default {
             collapsed: false,
             items: [
                 {text: '💡 项目介绍', link: '/docs/guide/introduction'},
+                {text: '📑 能力文档大纲', link: '/docs/guide/capabilities-outline'},
                 {text: '⚡ 快速上手', link: '/docs/guide/quick-start'},
                 {text: '🔧 环境搭建', link: '/docs/guide/installation'},
             ]
@@ -136,8 +153,13 @@ export default {
             collapsed: false,
             items: [
                 {text: '📦 模块总览', link: '/docs/backend/modules/index'},
+                {text: '🔐 OAuth2 集成', link: '/docs/backend/modules/oauth2'},
                 {text: '👤 用户管理', link: '/docs/backend/modules/user-management'},
                 {text: '🔐 权限管理', link: '/docs/backend/modules/permission-management'},
+                {text: '🏢 部门/字典/参数/公告', link: '/docs/backend/modules/system-management'},
+                {text: '📊 监控审计', link: '/docs/backend/modules/monitor-audit'},
+                {text: '⏰ 定时任务', link: '/docs/backend/modules/job-scheduler'},
+                {text: '🛠️ 代码生成', link: '/docs/backend/modules/codegen'},
                 {text: '🛡️ 安全防护', link: '/docs/backend/modules/security-module'},
                 {text: '📱 客户端管理', link: '/docs/backend/modules/client-management'},
             ]
@@ -205,6 +227,8 @@ export default {
                 {text: '📖 前端概述', link: '/docs/frontend/index'},
                 {text: '📝 开发规范', link: '/docs/frontend/development-guide'},
                 {text: '🎯 项目结构', link: '/docs/frontend/structure'},
+                {text: '📄 业务页面总览', link: '/docs/frontend/modules/index'},
+                {text: '📋 列表页模板', link: '/docs/frontend/list-page-template'},
             ]
         },
         {

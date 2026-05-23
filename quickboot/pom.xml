@@ -29,8 +29,8 @@
         <!-- Hutool 5.8.27 (稳定版本) -->
         <hutool.version>5.8.27</hutool.version>
 
-        <!-- Sa-Token 1.38.0 (支持 Spring Boot 3) -->
-        <sa-token.version>1.38.0</sa-token.version>
+        <!-- Sa-Token 1.45.0（OAuth2 模块对齐） -->
+        <sa-token.version>1.45.0</sa-token.version>
 
         <!-- EasyExcel 3.3.4 (稳定版本) -->
         <easyexcel.version>3.3.4</easyexcel.version>
@@ -96,7 +96,16 @@
                 <artifactId>sa-token-spring-boot3-starter</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
-
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-oauth2</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-redis-jackson</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
 
             <!-- EasyExcel -->
             <dependency>

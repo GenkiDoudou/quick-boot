@@ -89,7 +89,8 @@ class ServletUtilsTest {
         @Test
         void msgFormatsArgs() throws Exception {
             MockHttpServletResponse resp = new MockHttpServletResponse();
-            ServletUtils.writeResponse(resp, 40302, "x");
+            // 单字符串参数须显式传 null fallback，否则会命中 writeResponse(code, fallbackMessage, args) 重载
+            ServletUtils.writeResponse(resp, 40302, null, "x");
 
             JsonNode root = TEST_MAPPER.readTree(resp.getContentAsString(StandardCharsets.UTF_8));
             assertThat(root.get("code").asInt()).isEqualTo(40302);

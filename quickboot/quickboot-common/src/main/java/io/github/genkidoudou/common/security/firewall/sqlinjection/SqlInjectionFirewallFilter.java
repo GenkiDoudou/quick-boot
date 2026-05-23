@@ -129,6 +129,9 @@ public class SqlInjectionFirewallFilter extends OncePerRequestFilter {
             ObjectNode obj = (ObjectNode) node;
             for (var it = obj.fieldNames(); it.hasNext(); ) {
                 String name = it.next();
+                if (isIgnoredJsonField(name)) {
+                    continue;
+                }
                 SqlHit h = scanJsonTree(obj.get(name), path + "." + name, keywords);
                 if (h != null) {
                     return h;
@@ -181,6 +184,19 @@ public class SqlInjectionFirewallFilter extends OncePerRequestFilter {
                 hit.context(),
                 hit.keywords());
         ServletUtils.writeResponse(response, HttpCodes.SQL_INJECTION_DETECTED, properties.getForbiddenMessage());
+    }
+
+    private boolean isIgnoredJsonField(String fieldName) {
+        List<String> fields = properties.getIgnoreJsonFields();
+        if (fieldName == null || fields == null || fields.isEmpty()) {
+            return false;
+        }
+        for (String f : fields) {
+            if (fieldName.equals(f)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean matchesAny(String path, List<String> patterns) {

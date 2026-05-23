@@ -1,3 +1,0 @@
-io.github.genkidoudou.common.exception.GlobalExceptionHandler
-io.github.genkidoudou.common.file.FileConfiguration
-io.github.genkidoudou.common.file.MinioClientConfiguration

@@ -29,6 +29,14 @@ public class SqlInjectionFirewallProperties {
     private List<String> ignoreUrls = new ArrayList<>();
 
     /**
+     * JSON body 中跳过 SQL 关键字扫描的字段名（精确匹配属性名）。
+     * <p>
+     * 例如 {@code apiPathPatterns} 含 Ant 路径 {@code /**}，会误命中内置关键字 {@code /*}。
+     * </p>
+     */
+    private List<String> ignoreJsonFields = new ArrayList<>(List.of("apiPathPatterns"));
+
+    /**
      * 自定义关键字；非空时<strong>仅</strong>使用本列表，否则使用内置默认关键字。
      */
     private List<String> keywords = new ArrayList<>();

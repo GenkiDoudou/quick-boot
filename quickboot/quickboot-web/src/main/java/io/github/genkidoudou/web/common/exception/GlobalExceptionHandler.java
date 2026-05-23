@@ -151,7 +151,8 @@ public class GlobalExceptionHandler {
 
   private HttpStatus resolveWarningStatus(WarningException ex) {
     Integer code = ex.getCode();
-    if (Objects.equals(code, ErrorCodes.Security.UNAUTHORIZED)) {
+    if (Objects.equals(code, ErrorCodes.Security.UNAUTHORIZED)
+        || Objects.equals(code, ErrorCodes.Security.CLIENT_SIGN_INVALID)) {
       return HttpStatus.UNAUTHORIZED;
     }
     if (Objects.equals(code, ErrorCodes.Security.FORBIDDEN) || Objects.equals(code, ErrorCodes.Security.HOST_NOT_ALLOWED)) {

@@ -69,6 +69,26 @@ class SqlInjectionFirewallFilterTest {
     }
 
     @Test
+    void json_apiPathPatterns_antWildcard_notBlocked() throws Exception {
+        SqlInjectionFirewallProperties props = new SqlInjectionFirewallProperties();
+        SqlInjectionFirewallFilter filter = new SqlInjectionFirewallFilter(props, new ObjectMapper());
+
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/system/oauthClient/update");
+        req.setContextPath("");
+        req.setContentType("application/json;charset=UTF-8");
+        req.setContent("""
+                {"clientId":"quick-ui","apiPathPatterns":"/system/**\\n/monitor/**","clientSecret":""}
+                """.strip().getBytes(StandardCharsets.UTF_8));
+
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+        filter.doFilter(req, resp, chain);
+
+        assertThat(resp.getContentAsString(StandardCharsets.UTF_8)).isEmpty();
+        assertThat(chain.getRequest()).isNotNull();
+    }
+
+    @Test
     void json_nested_blocked() throws Exception {
         SqlInjectionFirewallProperties props = new SqlInjectionFirewallProperties();
         SqlInjectionFirewallFilter filter = new SqlInjectionFirewallFilter(props, new ObjectMapper());

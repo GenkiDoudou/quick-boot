@@ -2,13 +2,13 @@ package io.github.genkidoudou.common.security.firewall.password;
 
 import cn.hutool.core.util.HexUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.Mode;
-import cn.hutool.crypto.Padding;
 import cn.hutool.crypto.digest.BCrypt;
 import cn.hutool.crypto.symmetric.SM4;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.Security;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -17,12 +17,18 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
- * 基于 Hutool 的 {@link PasswordCodec} 默认实现：bcrypt 与 SM4（CBC/PKCS5Padding，密文负载为 Hutool 生成的 IV||ciphertext 整体的十六进制）。
+ * 基于 Hutool 的 {@link PasswordCodec} 默认实现：bcrypt 与 SM4（Hutool 默认 ECB，密文负载为十六进制）。
  * <p>
- * SM4 工作模式与 Hutool {@link SM4} 一致，保证 encrypt / decrypt / matches 闭环；请勿手工构造十六进制负载。
+ * 使用 {@code new SM4(key)} 保证 encrypt / decrypt / matches 闭环；请勿手工构造十六进制负载。
  * </p>
  */
 public class DefaultPasswordCodec implements PasswordCodec {
+
+    static {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     private static final String PREFIX_BEGIN = "{";
     private static final String SM4_PREFIX = "sm4:";
@@ -129,7 +135,8 @@ public class DefaultPasswordCodec implements PasswordCodec {
             String keyId = inner.substring(SM4_PREFIX.length());
             try {
                 String plain = decryptSm4(keyId, payload);
-                return constantTimeEquals(plain.getBytes(StandardCharsets.UTF_8),
+                return MessageDigest.isEqual(
+                        plain.getBytes(StandardCharsets.UTF_8),
                         rawPassword.getBytes(StandardCharsets.UTF_8));
             } catch (RuntimeException ignored) {
                 return false;
@@ -160,7 +167,7 @@ public class DefaultPasswordCodec implements PasswordCodec {
 
     private String encryptSm4(String raw, String keyId) {
         byte[] key = requireSm4Key(keyId);
-        SM4 sm4 = new SM4(Mode.CBC, Padding.PKCS5Padding, key);
+        SM4 sm4 = newSm4(key);
         byte[] cipher = sm4.encrypt(raw.getBytes(StandardCharsets.UTF_8));
         String hex = HexUtil.encodeHexStr(cipher).toLowerCase(Locale.ROOT);
         return "{" + SM4_PREFIX + keyId + "}" + hex;
@@ -171,10 +178,14 @@ public class DefaultPasswordCodec implements PasswordCodec {
             throw new IllegalArgumentException("SM4 负载为空");
         }
         byte[] key = requireSm4Key(keyId);
-        SM4 sm4 = new SM4(Mode.CBC, Padding.PKCS5Padding, key);
+        SM4 sm4 = newSm4(key);
         byte[] cipherBytes = HexUtil.decodeHex(hexPayload.trim());
         byte[] plain = sm4.decrypt(cipherBytes);
         return new String(plain, StandardCharsets.UTF_8);
+    }
+
+    private static SM4 newSm4(byte[] key) {
+        return new SM4(key);
     }
 
     private byte[] requireSm4Key(String keyId) {
@@ -197,13 +208,6 @@ public class DefaultPasswordCodec implements PasswordCodec {
         String id = encoded.substring(1, end);
         String payload = encoded.substring(end + 1);
         return new ParsedPrefix(id, payload);
-    }
-
-    private static boolean constantTimeEquals(byte[] a, byte[] b) {
-        if (a == null || b == null) {
-            return false;
-        }
-        return MessageDigest.isEqual(a, b);
     }
 
     private static final class ParsedPrefix {

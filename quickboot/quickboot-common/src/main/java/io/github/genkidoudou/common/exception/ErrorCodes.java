@@ -40,6 +40,8 @@ public final class ErrorCodes {
         public static final int SENSITIVE_WORD = HttpCodes.SENSITIVE_WORD;
         public static final int SQL_INJECTION_DETECTED = HttpCodes.SQL_INJECTION_DETECTED;
         public static final int XSS_SCRIPT_DETECTED = HttpCodes.XSS_SCRIPT_DETECTED;
+        /** Client HMAC 签名校验失败 */
+        public static final int CLIENT_SIGN_INVALID = 30002;
 
         private Security() {
         }
