@@ -6,6 +6,36 @@ spring:
     username: ENC(fF8555kWfIEGNtLhp3mn0++zXRM/UupTJH4jahGo6B6HXw3jgmnwmN7Ib2FpgSQo)
     password: ENC(+kRG20ToqfB18dWeVJG6S4Tyj127TYjx+p3PJRwWvtW8ulJK5VvK3Vl4LHMecAbP)
     driver-class-name: com.mysql.cj.jdbc.Driver
+    druid:
+      stat-view-servlet:
+        enabled: false
+      web-stat-filter:
+        enabled: false
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+qc:
+  monitor:
+    operlog:
+      print: false
+  security:
+    web:
+      anonymous-paths: []
+
+sa-token:
+  is-log: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
 custom:
   db:
     host: ENC(GpVad7YZj+6AB8MdEUoi77BMqmvePBduCgJSa7SW2u62+o30ezlqMbpSGENF85YCVK3k7mvNt/k7wPgvF5Xd7w==)

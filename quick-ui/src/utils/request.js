@@ -53,6 +53,78 @@ function handleUnauthorized(msg = '登录状态已过期，请重新登录') {
     return Promise.reject(msg)
 }
 
+/**
+ * 解析 axios 响应体为统一 R 形态对象（JSON 对象或 JSON 字符串）。
+ *
+ * @param {unknown} data `response.data`
+ * @returns {Record<string, unknown> | null}
+ */
+function parseJsonResponseBody(data) {
+    if (data == null) {
+        return null
+    }
+    if (typeof data === 'object' && !Array.isArray(data)) {
+        return /** @type {Record<string, unknown>} */ (data)
+    }
+    if (typeof data === 'string') {
+        try {
+            const o = JSON.parse(data)
+            return typeof o === 'object' && o !== null && !Array.isArray(o) ? o : null
+        } catch {
+            return null
+        }
+    }
+    return null
+}
+
+/**
+ * HTTP 非 2xx 时走 axios 失败分支：若响应体为 R，则优先展示服务端 `msg`，
+ * 业务码处理与成功分支对齐（含 401 登录失败 / 会话失效）。
+ *
+ * @param {import('axios').AxiosError} error
+ * @returns {Promise<never> | null} 已提示并终结链路时返回 Promise，否则 null
+ */
+function tryHandleAxiosErrorResponseBody(error) {
+    const res = error.response
+    if (!res) {
+        return null
+    }
+    const body = parseJsonResponseBody(res.data)
+    if (!body) {
+        return null
+    }
+    const serverMsg = typeof body.msg === 'string' ? body.msg.trim() : ''
+    const bizCodeRaw = body.code
+    const bizCode = bizCodeRaw !== undefined && bizCodeRaw !== null ? Number(bizCodeRaw) : NaN
+    const hasBizCode = Number.isFinite(bizCode)
+    const tip = serverMsg !== ''
+        ? body.msg
+        : (hasBizCode ? (errorCode[String(bizCode)] || errorCode['default']) : '')
+
+    if (hasBizCode && bizCode === 401) {
+        const msg = serverMsg !== '' ? body.msg : (errorCode['401'] || errorCode['default'])
+        return handleUnauthorized(msg)
+    }
+    if (hasBizCode && bizCode === 500) {
+        const msg = tip || errorCode['500']
+        ElMessage({ message: msg, type: 'error' })
+        return Promise.reject(new Error(msg))
+    }
+    if (hasBizCode && bizCode !== 200) {
+        const msg = tip || errorCode[String(bizCode)] || errorCode['default']
+        ElMessage({ message: msg, type: 'error', duration: 5 * 1000 })
+        return Promise.reject(error)
+    }
+    if (!hasBizCode && res.status >= 400 && serverMsg !== '') {
+        if (res.status === 401) {
+            return handleUnauthorized(body.msg)
+        }
+        ElMessage({ message: body.msg, type: 'error', duration: 5 * 1000 })
+        return Promise.reject(error)
+    }
+    return null
+}
+
 service.interceptors.response.use(async (res) => {
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
             // 导出等二进制场景：若后端返回的是 JSON 错误体，需要提前识别 401 并跳转登录。
@@ -97,6 +169,10 @@ service.interceptors.response.use(async (res) => {
     },
     error => {
         console.error('响应拦截器错误:', error)
+        const fromBody = tryHandleAxiosErrorResponseBody(error)
+        if (fromBody != null) {
+            return fromBody
+        }
         let {message} = error;
         if (message == "Network Error") {
             message = "后端接口连接异常";

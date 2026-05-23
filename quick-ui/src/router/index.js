@@ -1,4 +1,4 @@
-﻿import { createWebHistory, createRouter } from 'vue-router'
+import { createWebHistory, createRouter } from 'vue-router'
 import Layout from '@/layout/index.vue'
 
 export const constantRoutes = [
@@ -137,6 +137,21 @@ export const constantRoutes = [
   //     }
   //   ]
   // },
+  // 勿占用 /tool/gen 父路径：列表页由菜单动态路由挂载（component: tool/gen/index）。
+  // 若在此注册 path: '/tool/gen' 且无默认子路由，访问列表会只渲染 Layout 导致空白。
+  {
+    path: '/tool',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'gen/edit',
+        component: () => import('@/views/tool/gen/edit.vue'),
+        name: 'ToolGenEdit',
+        meta: { title: '编辑生成配置', activeMenu: '/tool/gen' }
+      }
+    ]
+  }
 
 ]
 

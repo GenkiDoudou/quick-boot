@@ -131,14 +131,25 @@ export function filterDynamicRoutes(routes) {
 }
 
 export const loadView = (view) => {
-  let res;
+  if (!view) {
+    return undefined
+  }
+  const normalizedView = String(view).replace(/\\/g, '/')
+  let res
   for (const path in modules) {
-    const dir = path.split('views/')[1].split('.vue')[0];
-    if (dir === view) {
-      res = () => modules[path]();
+    const chunk = path.split(/views[/\\]/)[1]
+    if (!chunk) {
+      continue
+    }
+    const dir = chunk.split('.vue')[0].replace(/\\/g, '/')
+    if (dir === normalizedView) {
+      res = () => modules[path]()
     }
   }
-  return res;
+  if (!res && import.meta.env.DEV) {
+    console.warn(`[loadView] 未找到视图组件: ${normalizedView}`)
+  }
+  return res
 }
 
 export default usePermissionStore

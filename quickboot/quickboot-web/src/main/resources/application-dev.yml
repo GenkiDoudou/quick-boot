@@ -5,6 +5,13 @@
 qc:
   captcha:
     enabled: true
+  security:
+    web:
+      # 仅开发：Actuator / H2 控制台不要求登录（生产 profile 勿配置）
+      anonymous-paths:
+        - /actuator/**
+        - /h2-console
+        - /h2-console/**
 
 spring:
   devtools:

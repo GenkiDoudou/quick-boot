@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.system.dict.type.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.bean.BeanUtil;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelImportResult;
@@ -37,6 +38,7 @@ public class DictTypeController {
   private final DictTypeService service;
 
   @Operation(summary = "字典类型列表")
+  @SaCheckPermission("system:dict:list")
   @GetMapping("/list")
   public R<List<SysDictTypeVo>> list(@RequestParam(required = false) String dictName,
                                      @RequestParam(required = false) String dictType,
@@ -50,6 +52,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "字典类型详情")
+  @SaCheckPermission("system:dict:query")
   @GetMapping("/{dictId}")
   public R<SysDictTypeVo> get(@PathVariable @Min(1) Long dictId) {
     SysDictType row = service.getById(dictId);
@@ -60,6 +63,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "新增字典类型")
+  @SaCheckPermission("system:dict:add")
   @PostMapping
   public R<Void> add(@Validated(AddGroup.class) @RequestBody SysDictTypeBo req) {
     service.add(req);
@@ -67,6 +71,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "修改字典类型")
+  @SaCheckPermission("system:dict:edit")
   @PostMapping("/update")
   public R<Void> update(@Validated(UpdateGroup.class) @RequestBody SysDictTypeBo req) {
     service.update(req);
@@ -74,6 +79,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "删除字典类型")
+  @SaCheckPermission("system:dict:remove")
   @PostMapping("/remove/{dictId}")
   public R<Void> remove(@PathVariable @Min(1) Long dictId) {
     service.remove(dictId);
@@ -81,6 +87,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "导出字典类型")
+  @SaCheckPermission("system:dict:export")
   @PostMapping("/export")
   public void export(@RequestParam(required = false) String dictName,
                      @RequestParam(required = false) String dictType,
@@ -95,6 +102,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "刷新全部字典缓存")
+  @SaCheckPermission("system:dict:refresh")
   @PostMapping("/refresh")
   public R<Void> refreshAll() {
     service.refreshAllCache();
@@ -102,6 +110,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "刷新单个字典缓存")
+  @SaCheckPermission("system:dict:refresh")
   @PostMapping("/refresh/{dictType}")
   public R<Void> refresh(@Parameter(description = "字典类型") @PathVariable String dictType) {
     service.refreshTypeCache(dictType);
@@ -109,6 +118,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "导入字典类型")
+  @SaCheckPermission("system:dict:import")
   @PostMapping("/import")
   public R<ExcelImportResult> importData(@RequestPart("file") MultipartFile file,
                                          @RequestParam(defaultValue = "false") boolean updateSupport) throws IOException {
@@ -116,6 +126,7 @@ public class DictTypeController {
   }
 
   @Operation(summary = "下载字典类型导入模板")
+  @SaCheckPermission("system:dict:import")
   @PostMapping("/import/template")
   public void importTemplate(HttpServletResponse response) {
     ExcelUtils.exportExcel(Collections.emptyList(), "dict-type-template", SysDictTypeExcelRow.class, response);

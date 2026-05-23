@@ -644,11 +644,29 @@ function syncPermsFromList() {
 
 
 function normalizeParentId(v) {
-
   if (v == null || v === '') return ROOT
+  const s = String(v).trim()
+  if (s === ROOT || s === '-1' || s === '0') return ROOT
+  return s
+}
 
-  return String(v)
+/**
+ * 提交给后端的 Long 字段：安全整数用 number，雪花 ID 用 string（避免 JS Number 精度丢失）。
+ * @param {string|number|null|undefined} value
+ * @returns {number|string|null}
+ */
+function toApiLongId(value) {
+  if (value == null || value === '') return null
+  const s = String(value).trim()
+  const n = Number(s)
+  return Number.isSafeInteger(n) ? n : s
+}
 
+/** 上级菜单：顶级为 -1，其余走 {@link toApiLongId} */
+function toApiParentId(value) {
+  const normalized = normalizeParentId(value)
+  if (normalized === ROOT) return -1
+  return toApiLongId(normalized)
 }
 
 
@@ -707,7 +725,10 @@ function toPayload() {
 
   const f = { ...form.value }
 
-  f.parentId = Number(f.parentId)
+  f.parentId = toApiParentId(f.parentId)
+  if (f.menuId != null && f.menuId !== '') {
+    f.menuId = toApiLongId(f.menuId)
+  }
 
   if (f.menuType === 'M' && !f.component) {
 

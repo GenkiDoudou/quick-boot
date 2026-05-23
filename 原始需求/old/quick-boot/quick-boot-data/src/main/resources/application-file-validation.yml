@@ -1,0 +1,69 @@
+# 文件上传校验配置示例
+file:
+  # 文件存储类型: local | minio
+  type: local
+  
+  # 文件域名（用于生成访问URL）
+  domain: http://127.0.0.1:12000/
+  
+  # 基础路径
+  basePath: file/view/
+  
+  # 文件上传校验配置
+  validation:
+    # 是否启用文件校验
+    enabled: true
+    
+    # 最大文件大小（字节），默认 10MB
+    maxSize: 10485760  # 10MB
+    
+    # 允许的文件后缀列表（小写），如：jpg,jpeg,png,gif,pdf,doc,docx
+    allowedExtensions:
+      - jpg
+      - jpeg
+      - png
+      - gif
+      - pdf
+      - doc
+      - docx
+      - xls
+      - xlsx
+      - ppt
+      - pptx
+      - txt
+      - zip
+      - rar
+    
+    # 允许的 MIME 类型列表，如：image/jpeg,image/png,application/pdf
+    allowedMimeTypes:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - application/pdf
+      - application/msword
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/vnd.ms-excel
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/vnd.ms-powerpoint
+      - application/vnd.openxmlformats-officedocument.presentationml.presentation
+      - text/plain
+      - application/zip
+      - application/x-rar-compressed
+    
+    # 是否检查文件头魔数（更安全的文件类型检测）
+    checkFileMagic: true
+    
+    # 是否允许空文件
+    allowEmptyFile: false
+  
+  # 本地存储配置
+  local:
+    path: E:/Temp/
+  
+  # MinIO 存储配置（当 type=minio 时使用）
+  s3:
+    endpoint: http://127.0.0.1:9000
+    accessKey: minioadmin
+    secretKey: minioadmin
+    bucket: quick-boot
+    pathStyleAccess: true

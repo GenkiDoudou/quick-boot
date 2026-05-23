@@ -1,5 +1,7 @@
 package io.github.genkidoudou.web.system.dict.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import cn.hutool.core.bean.BeanUtil;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelImportResult;
@@ -35,6 +37,7 @@ public class DictDataController {
     private final DictDataService service;
 
     @Operation(summary = "字典项列表")
+    @SaCheckPermission("system:dict:list")
     @GetMapping("/list")
     public R<List<SysDictDataVo>> list(@RequestParam String dictType,
                                        @RequestParam(required = false) String dictLabel,
@@ -48,6 +51,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "按类型查询字典项")
+    @SaCheckPermission(value = {"system:dict:query", "system:dict:list"}, mode = SaMode.OR)
     @GetMapping("/type/{dictType}")
     public R<List<SysDictDataVo>> byType(@PathVariable String dictType) {
         List<SysDictData> rows = service.listByType(dictType);
@@ -59,6 +63,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "字典项详情")
+    @SaCheckPermission("system:dict:query")
     @GetMapping("/{dictCode}")
     public R<SysDictDataVo> get(@PathVariable @Min(1) Long dictCode) {
         SysDictData row = service.getById(dictCode);
@@ -69,6 +74,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "新增字典项")
+    @SaCheckPermission("system:dict:add")
     @PostMapping
     public R<Void> add(@Validated(AddGroup.class) @RequestBody SysDictDataBo req) {
         service.add(req);
@@ -76,6 +82,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "修改字典项")
+    @SaCheckPermission("system:dict:edit")
     @PostMapping("/update")
     public R<Void> update(@Validated(UpdateGroup.class) @RequestBody SysDictDataBo req) {
         service.update(req);
@@ -83,6 +90,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "删除字典项")
+    @SaCheckPermission("system:dict:remove")
     @PostMapping("/remove/{dictCode}")
     public R<Void> remove(@PathVariable @Min(1) Long dictCode) {
         service.remove(dictCode);
@@ -90,6 +98,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "导出字典项")
+    @SaCheckPermission("system:dict:export")
     @PostMapping("/export")
     public void export(@RequestParam String dictType,
                        @RequestParam(required = false) String dictLabel,
@@ -104,6 +113,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "导入字典项")
+    @SaCheckPermission("system:dict:import")
     @PostMapping("/import")
     public R<ExcelImportResult> importData(@RequestPart("file") MultipartFile file,
                                            @RequestParam String dictType,
@@ -112,6 +122,7 @@ public class DictDataController {
     }
 
     @Operation(summary = "下载字典项导入模板")
+    @SaCheckPermission("system:dict:import")
     @PostMapping("/import/template")
     public void importTemplate(HttpServletResponse response) {
         ExcelUtils.exportExcel(Collections.emptyList(), "dict-data-template", SysDictDataExcelRow.class, response);

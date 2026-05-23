@@ -114,15 +114,23 @@ jasypt:
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
 qc:
-  # 登录页天爱行为验证码；关闭后 /login 不再校验 captchaId（仅用于自动化等场景）
+  # 登录页天爱行为验证码：为 false 时 /login 不校验 captchaId；前端登录页 GET /login/captcha-config 同步隐藏验证码
   login:
-    captcha-enabled: true
-  appinfo:
-    copyright: 2026
-    application-title: qc快速开发平台
-    data:
-      key: 'qc'
+    captcha-enabled: false
+  monitor:
+    operlog:
+      capture-enabled: true
+      # 控制台打印请求摘要（methodName/uri/params/result 等，参照旧栈 WebPrintLoggerEventListener）
+      print: true
+      # 异步落库，避免同步 insert 拖慢接口（生产建议保持 true）
+      async-enabled: true
+      export-max-rows: 10000
+    job:
+      export-max-rows: 10000
   security:
+    web:
+      # 额外匿名路径（生产保持空；开发见 application-dev.yml）
+      anonymous-paths: []
     firewall:
       headers:
         enabled: true
@@ -133,7 +141,7 @@ qc:
         #   - /swagger-ui/**
       sensitive-word:
         # 是否启用敏感词过滤（BREAKING：旧键 enable 已更名为 enabled，与 headers.enabled 一致）
-        enabled: false
+        enabled: true
         # 敏感词白名单文件路径（多个）
         # 白名单中的词不会被过滤
         whiteList:
@@ -157,31 +165,13 @@ qc:
         enabled: true
         allowed-hosts:
           - localhost:9992
-          - localhost:9991
-      referer:
-        enabled: false
-      client:
-        enabled: false
-
-        exclude-urls:
-          - /v3/api-docs
-          - /favicon.ico
-          - /swagger-ui.html
-          - /swagger-ui/index.html
-          - /.well-known/appspecific/com.chrome.devtools.json
-          - /swagger-ui/**
-          - /v3/api-docs/**
-          - /api/captcha/generate
-          - /api/captcha/validate
-        clients:
-          - client-id: cs
-            client-secret: cs
       sql-injection:
-        enabled: false
+        enabled: true
       xss:
-        enabled: false
+        enabled: true
+        forbidden-message: 您的请求包含非法字符，请检查！
       idempotent:
-        enabled: false
+        enabled: true
         # TOKEN-only：仅当请求头非空时占位；缺头不报错。cache-type: auto|redis|caffeine（auto=有 RedisConnectionFactory 则用 Redis）
         # intercept-methods: [ POST, PUT, DELETE ]
         # exclude-urls: []
@@ -193,10 +183,6 @@ qc:
         enabled: true
         allowed-origins:
           - '*'
-  # 日志配置
-  logger:
-    enabled: true
-    print: true
   captcha:
     enabled: true
     type: SLIDER
@@ -272,6 +258,15 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
+
+############## 代码生成 ##############
+quickboot:
+  gen:
+    author: quickboot
+    package-name: io.github.genkidoudou.web
+    module-name: system
+    zip-file-name: quickboot.zip
+    create-table-max-statements: 10
 
 ############## Sa-Token 配置 (文档: https://sa-token.cc) ##############
 sa-token:

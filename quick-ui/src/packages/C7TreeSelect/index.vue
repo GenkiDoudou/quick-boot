@@ -247,6 +247,15 @@ watch(autoCoerceKind, () => {
   innerModel.value = outerToInner(modelValue.value)
 })
 
+/** 静态树数据晚于 modelValue 到达时需重新匹配节点以显示 label */
+watch(
+  () => displayTreeData.value,
+  () => {
+    innerModel.value = outerToInner(modelValue.value)
+  },
+  { deep: true }
+)
+
 let fetchGeneration = 0
 const inFlightCount = ref(0)
 const loadingInternal = computed(() => inFlightCount.value > 0)

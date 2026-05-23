@@ -9,9 +9,13 @@ export function listMenu(query) {
   return request({ url: '/system/menu/list', method: 'get', params: query })
 }
 
-/** 菜单下拉树 */
-export function treeselectMenu() {
-  return request({ url: '/system/menu/treeselect', method: 'get' })
+/**
+ * 菜单下拉树
+ * @param {{ excludeButton?: boolean, directoryOnly?: boolean }} [params]
+ * directoryOnly 为 true 时仅目录（M）；excludeButton 为 true 时排除按钮（F）
+ */
+export function treeselectMenu(params) {
+  return request({ url: '/system/menu/treeselect', method: 'get', params })
 }
 
 /** 角色菜单树（含已勾选 id） */

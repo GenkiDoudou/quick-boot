@@ -69,7 +69,7 @@ B ……（推荐）
 cd quickboot
 mvn clean install -DskipTests
 
-# 启动 web 模块（端口默认 9991）
+# 启动 web 模块（端口默认 9992）
 mvn -pl quickboot-web spring-boot:run
 ```
 
@@ -111,6 +111,8 @@ pnpm dev
 ### 前端设计规范补充（DESIGN.md）
 
 在新建、生成或改造任何前端页面/组件（Vue、TS、样式）前，必须先读取仓库根目录 `DESIGN.md`，并按其中设计系统要求实现视觉与交互。
+
+**列表页（C7JsonTable）**：还须阅读 `sdd/前端代码规范.md` 中「列表页样式与代码模板」，并对照同域已有页面（默认 **`views/system/config/index.vue`**）实现，避免单页自造布局或样式。
 
 执行要求：
 - 禁止将 `DESIGN.md` 正文复制到本文件或其他规则文件中替代阅读。

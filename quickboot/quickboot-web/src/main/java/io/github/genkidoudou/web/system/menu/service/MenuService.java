@@ -25,6 +25,16 @@ public interface MenuService {
     List<SysMenuTreeSelectVo> treeselect();
 
     /**
+     * 代码生成等场景：下拉树仅含目录（M）与菜单（C），不含按钮（F）。
+     */
+    List<SysMenuTreeSelectVo> treeselectExcludeButton();
+
+    /**
+     * 代码生成挂载点：仅含目录（M）。
+     */
+    List<SysMenuTreeSelectVo> treeselectDirectoryOnly();
+
+    /**
      * 按主键查询未逻辑删除的菜单。
      */
     SysMenu getById(Long menuId);

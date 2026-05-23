@@ -32,6 +32,6 @@ public class SensitiveJacksonAutoConfiguration {
      */
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer sensitiveJacksonCustomizer(SensitiveJacksonModule module) {
-        return builder -> builder.modules(module);
+        return builder -> builder.postConfigurer(mapper -> mapper.registerModule(module));
     }
 }

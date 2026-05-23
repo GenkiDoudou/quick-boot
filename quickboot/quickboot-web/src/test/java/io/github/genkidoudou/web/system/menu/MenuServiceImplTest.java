@@ -45,6 +45,30 @@ class MenuServiceImplTest {
     }
 
     @Test
+    void shouldUpdateParentWhenParentExists() {
+        SysMenuMapper menuMapper = mock(SysMenuMapper.class);
+        when(menuMapper.selectById(2001L)).thenReturn(menu(2001L, 2000L, "C", "菜单管理"));
+        when(menuMapper.selectById(2000L)).thenReturn(menu(2000L, -1L, "M", "系统管理"));
+        when(menuMapper.selectList(ArgumentMatchers.<Wrapper<SysMenu>>any())).thenReturn(sampleMenus());
+
+        MenuServiceImpl service = new MenuServiceImpl(
+                menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class), mock(SysUserRoleMapper.class));
+
+        SysMenuSaveRequest req = new SysMenuSaveRequest();
+        req.setMenuId(2001L);
+        req.setParentId(2000L);
+        req.setMenuType("C");
+        req.setMenuName("菜单管理");
+        req.setOrderNum(1);
+        req.setPath("menu");
+        req.setComponent("system/menu/index");
+        req.setVisible("0");
+        req.setStatus("0");
+
+        service.update(req);
+    }
+
+    @Test
     void shouldRejectCycleWhenUpdatingParent() {
         SysMenuMapper menuMapper = mock(SysMenuMapper.class);
         when(menuMapper.selectById(2001L)).thenReturn(menu(2001L, 2000L, "C", "菜单管理"));

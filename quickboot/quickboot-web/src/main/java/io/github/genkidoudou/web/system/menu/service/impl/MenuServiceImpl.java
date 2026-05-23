@@ -81,6 +81,20 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    public List<SysMenuTreeSelectVo> treeselectExcludeButton() {
+        List<SysMenu> all = loadAllMenus();
+        return buildSelectVosExcludeButton(all);
+    }
+
+    @Override
+    public List<SysMenuTreeSelectVo> treeselectDirectoryOnly() {
+        List<SysMenu> all = loadAllMenus().stream()
+            .filter(m -> "M".equals(m.getMenuType()))
+            .toList();
+        return buildSelectVos(all);
+    }
+
+    @Override
     public SysMenu getById(Long menuId) {
         return sysMenuMapper.selectById(menuId);
     }
@@ -91,6 +105,7 @@ public class MenuServiceImpl implements MenuService {
         Objects.requireNonNull(req, "req");
         SysMenu m = toEntity(req);
         normalizeNew(m);
+        m.setParentId(normalizeParentId(m.getParentId()));
         validateTypeFields(m, true);
         validateParentExists(m.getParentId(), null);
         sysMenuMapper.insert(m);
@@ -109,7 +124,8 @@ public class MenuServiceImpl implements MenuService {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "菜单不存在或已删除");
         }
         validateTypeFields(m, false);
-        Long parentId = m.getParentId() != null ? m.getParentId() : existing.getParentId();
+        Long rawParent = m.getParentId() != null ? m.getParentId() : existing.getParentId();
+        Long parentId = normalizeParentId(rawParent);
         validateParentExists(parentId, m.getMenuId());
         if (parentId.equals(m.getMenuId())) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "上级菜单不能为自身");
@@ -450,16 +466,59 @@ public class MenuServiceImpl implements MenuService {
     }
 
     private SysMenuTreeSelectVo toSelectVo(SysMenu m, Map<Long, List<SysMenu>> childrenMap) {
+        return toSelectVo(m, childrenMap, false);
+    }
+
+    private List<SysMenuTreeSelectVo> buildSelectVosExcludeButton(List<SysMenu> rows) {
+        if (rows.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Comparator<SysMenu> order = Comparator
+            .comparing(SysMenu::getOrderNum, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(SysMenu::getMenuName, Comparator.nullsLast(String::compareTo));
+        Map<Long, List<SysMenu>> childrenMap = new LinkedHashMap<>();
+        for (SysMenu m : rows) {
+            if ("F".equals(m.getMenuType())) {
+                continue;
+            }
+            Long pid = m.getParentId() != null ? m.getParentId() : ROOT_PARENT_ID;
+            childrenMap.computeIfAbsent(pid, k -> new ArrayList<>()).add(m);
+        }
+        for (List<SysMenu> list : childrenMap.values()) {
+            list.sort(order);
+        }
+        List<SysMenu> roots = childrenMap.getOrDefault(ROOT_PARENT_ID, Collections.emptyList());
+        List<SysMenuTreeSelectVo> out = new ArrayList<>();
+        for (SysMenu r : roots) {
+            out.add(toSelectVo(r, childrenMap, true));
+        }
+        return out;
+    }
+
+    private SysMenuTreeSelectVo toSelectVo(SysMenu m, Map<Long, List<SysMenu>> childrenMap, boolean excludeButton) {
         SysMenuTreeSelectVo vo = new SysMenuTreeSelectVo();
         vo.setId(m.getMenuId());
         vo.setLabel(m.getMenuName());
         List<SysMenu> ch = childrenMap.getOrDefault(m.getMenuId(), Collections.emptyList());
         List<SysMenuTreeSelectVo> vos = new ArrayList<>();
         for (SysMenu c : ch) {
-            vos.add(toSelectVo(c, childrenMap));
+            if (excludeButton && "F".equals(c.getMenuType())) {
+                continue;
+            }
+            vos.add(toSelectVo(c, childrenMap, excludeButton));
         }
         vo.setChildren(vos);
         return vo;
+    }
+
+    /**
+     * 统一上级菜单 ID：null/0 视为顶级 {@link #ROOT_PARENT_ID}（-1）。
+     */
+    private static Long normalizeParentId(Long parentId) {
+        if (parentId == null || Long.valueOf(0L).equals(parentId)) {
+            return ROOT_PARENT_ID;
+        }
+        return parentId;
     }
 
     private void normalizeNew(SysMenu m) {

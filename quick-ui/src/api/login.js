@@ -1,5 +1,17 @@
 import request from '@/utils/request'
 
+/**
+ * 是否启用登录行为验证码（与后端 qc.login.captcha-enabled 一致）。
+ * @returns {Promise<{ code: number, msg?: string, data: { captchaEnabled: boolean } }>}
+ */
+export function getLoginCaptchaConfig() {
+    return request({
+        url: '/login/captcha-config',
+        headers: { isToken: false },
+        method: 'get'
+    })
+}
+
 // 账号密码登录（天爱二次校验：validate 成功后回传 captchaId）
 export function login(username, password, captchaId) {
     return request({

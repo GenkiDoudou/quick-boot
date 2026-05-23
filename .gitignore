@@ -27,3 +27,9 @@ target
 *.iml
 bak
 node_modules
+
+# 本地 H2 数据库（勿提交）
+/data/
+*.mv.db
+*.trace.db
+*.lock.db

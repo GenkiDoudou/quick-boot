@@ -12,9 +12,13 @@
       :delete-function="batchDeleteFunction"
       :export-function="exportFunction"
       :show-add-button="true"
+      :add-button-permi="['system:config:add']"
       :show-edit-button="true"
+      :edit-button-permi="['system:config:edit']"
       :show-delete-button="true"
+      :delete-button-permi="['system:config:remove']"
       :show-export-button="true"
+      :export-button-permi="['system:config:export']"
       :on-add="openAdd"
       :on-edit="openEdit"
       :check-delete-success="() => true"
@@ -50,7 +54,7 @@
           <el-input v-model="form.configName" placeholder="请输入参数名称" />
         </el-form-item>
         <el-form-item label="参数键名" prop="configKey">
-          <el-input v-model="form.configKey" placeholder="请输入参数键名，如 system.config.theme" :disabled="isBuiltinEdit" />
+          <el-input v-model="form.configKey" placeholder="如 qc.login.fail-lock-enabled" :disabled="isBuiltinEdit" />
         </el-form-item>
         <el-form-item label="参数键值" prop="configValue">
           <el-input v-model="form.configValue" type="textarea" :rows="3" placeholder="请输入参数键值" />
@@ -130,16 +134,25 @@ const tableColumns = computed(() => [
   { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 170, fixed: 'right' }
 ])
 
-const rules = {
+const isBuiltinEdit = computed(() => !!form.value.configId && form.value.configType === '1')
+
+/** 与后端 SysConfigBo 一致：点分段，段内可用连字符（如 qc.login.fail-lock-enabled） */
+const CONFIG_KEY_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/
+
+const rules = computed(() => ({
   configName: [{ required: true, message: '请输入参数名称', trigger: 'blur' }],
   configKey: [
     { required: true, message: '请输入参数键名', trigger: 'blur' },
-    { pattern: /^[a-z0-9]+(\.[a-z0-9]+)*$/, message: '参数键名仅支持小写字母、数字和点分隔', trigger: 'blur' }
+    ...(isBuiltinEdit.value
+      ? []
+      : [{
+          pattern: CONFIG_KEY_PATTERN,
+          message: '参数键名仅支持小写字母、数字、点号与连字符',
+          trigger: 'blur'
+        }])
   ],
   configValue: [{ required: true, message: '请输入参数键值', trigger: 'blur' }]
-}
-
-const isBuiltinEdit = computed(() => !!form.value.configId && form.value.configType === '1')
+}))
 
 function listFunction(params) {
   const [beginTime, endTime] = params.createTimeRange || []

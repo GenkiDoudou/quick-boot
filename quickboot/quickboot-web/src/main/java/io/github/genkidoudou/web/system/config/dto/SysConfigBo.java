@@ -26,7 +26,7 @@ public class SysConfigBo {
 
     @NotBlank(message = "参数键名不能为空", groups = {AddGroup.class, UpdateGroup.class})
     @Size(max = 100, message = "参数键名长度不能超过100", groups = {AddGroup.class, UpdateGroup.class})
-    @Pattern(regexp = "^[a-z0-9]+(\\.[a-z0-9]+)*$", message = "参数键名格式不正确，仅支持小写字母、数字和点分隔", groups = {AddGroup.class, UpdateGroup.class})
+    @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$", message = "参数键名格式不正确，仅支持小写字母、数字、点号与连字符", groups = {AddGroup.class, UpdateGroup.class})
     @Schema(description = "参数键名")
     private String configKey;
 

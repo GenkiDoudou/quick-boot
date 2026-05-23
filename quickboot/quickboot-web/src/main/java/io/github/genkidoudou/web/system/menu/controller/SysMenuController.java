@@ -1,5 +1,7 @@
 package io.github.genkidoudou.web.system.menu.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
@@ -39,6 +41,7 @@ public class SysMenuController {
     private final MenuService menuService;
 
     @Operation(summary = "查询菜单树")
+    @SaCheckPermission("system:menu:list")
     @GetMapping("/list")
     public R<List<SysMenuTreeVo>> list(
             @Parameter(description = "菜单名称（模糊）") @RequestParam(required = false) String menuName,
@@ -47,12 +50,21 @@ public class SysMenuController {
     }
 
     @Operation(summary = "菜单下拉树")
+    @SaCheckPermission(value = {"system:menu:list", "system:menu:query"}, mode = SaMode.OR)
     @GetMapping("/treeselect")
-    public R<List<SysMenuTreeSelectVo>> treeselect() {
-        return R.ok(menuService.treeselect());
+    public R<List<SysMenuTreeSelectVo>> treeselect(
+            @Parameter(description = "为 true 时仅返回目录（M），用于代码生成上级菜单")
+            @RequestParam(value = "directoryOnly", defaultValue = "false") boolean directoryOnly,
+            @Parameter(description = "为 true 时排除按钮类型（F），仅目录与菜单")
+            @RequestParam(value = "excludeButton", defaultValue = "false") boolean excludeButton) {
+        if (directoryOnly) {
+            return R.ok(menuService.treeselectDirectoryOnly());
+        }
+        return R.ok(excludeButton ? menuService.treeselectExcludeButton() : menuService.treeselect());
     }
 
     @Operation(summary = "角色菜单树勾选")
+    @SaCheckPermission(value = {"system:role:edit", "system:menu:query"}, mode = SaMode.OR)
     @GetMapping("/roleMenuTreeselect/{roleId:\\d+}")
     public R<RoleMenuTreeselectVo> roleMenuTreeselect(
             @Parameter(description = "角色ID", required = true) @PathVariable @Min(1) Long roleId) {
@@ -60,6 +72,7 @@ public class SysMenuController {
     }
 
     @Operation(summary = "菜单详情")
+    @SaCheckPermission("system:menu:query")
     @GetMapping("/{menuId:\\d+}")
     public R<SysMenu> getInfo(
             @Parameter(description = "菜单ID", required = true) @PathVariable @Min(1) Long menuId) {
@@ -71,6 +84,7 @@ public class SysMenuController {
     }
 
     @Operation(summary = "新增菜单")
+    @SaCheckPermission("system:menu:add")
     @PostMapping
     public R<Void> add(@Valid @RequestBody SysMenuSaveRequest body) {
         menuService.add(body);
@@ -78,6 +92,7 @@ public class SysMenuController {
     }
 
     @Operation(summary = "修改菜单")
+    @SaCheckPermission("system:menu:edit")
     @PostMapping("/update")
     public R<Void> update(@Valid @RequestBody SysMenuSaveRequest body) {
         menuService.update(body);
@@ -85,6 +100,7 @@ public class SysMenuController {
     }
 
     @Operation(summary = "删除菜单")
+    @SaCheckPermission("system:menu:remove")
     @PostMapping("/remove/{menuId:\\d+}")
     public R<Void> remove(
             @Parameter(description = "菜单ID", required = true) @PathVariable @Min(1) Long menuId) {

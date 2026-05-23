@@ -1,36 +1,103 @@
 package io.github.genkidoudou.web.auth;
 
+
+
 import cn.dev33.satoken.interceptor.SaInterceptor;
+
 import cn.dev33.satoken.stp.StpUtil;
+
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.annotation.Configuration;
+
+import org.springframework.util.CollectionUtils;
+
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+
+
+import java.util.ArrayList;
+
+import java.util.List;
+
+
+
 /**
+
  * Sa-Token 登录校验拦截：除匿名接口外需携带有效 {@code Authorization: Bearer}。
+
+ * <p>
+
+ * Actuator、H2 控制台等敏感路径不再默认匿名；由 {@link WebSecurityProperties#getAnonymousPaths()} 按环境配置。
+
  */
+
 @Configuration
+
+@RequiredArgsConstructor
+
 public class SaTokenWebMvcConfig implements WebMvcConfigurer {
 
+
+
+    private final WebSecurityProperties webSecurityProperties;
+
+
+
     @Override
+
     public void addInterceptors(InterceptorRegistry registry) {
+
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
+
                 .addPathPatterns("/**")
-                .excludePathPatterns(
-                        "/login",
-                        "/logout",
-                        "/phoneLogin",
-                        "/sendSms",
-                        "/qrcodeLogin",
-                        "/api/captcha/**",
-                        "/qrcodeImage",
-                        "/actuator/**",
-                        "/error",
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/h2-console",
-                        "/h2-console/**"
-                );
+
+                .excludePathPatterns(buildExcludePaths());
+
     }
+
+
+
+    private List<String> buildExcludePaths() {
+
+        List<String> paths = new ArrayList<>();
+
+        paths.add("/login");
+
+        paths.add("/login/captcha-config");
+
+        paths.add("/logout");
+
+        paths.add("/phoneLogin");
+
+        paths.add("/sendSms");
+
+        paths.add("/qrcodeLogin");
+
+        paths.add("/api/captcha/**");
+
+        paths.add("/qrcodeImage");
+
+        paths.add("/error");
+
+        paths.add("/swagger-ui.html");
+
+        paths.add("/swagger-ui/**");
+
+        paths.add("/v3/api-docs/**");
+
+        if (!CollectionUtils.isEmpty(webSecurityProperties.getAnonymousPaths())) {
+
+            paths.addAll(webSecurityProperties.getAnonymousPaths());
+
+        }
+
+        return paths;
+
+    }
+
 }
+
+

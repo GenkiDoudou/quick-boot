@@ -101,6 +101,7 @@ pnpm dev
 - 业务增强组件库放在 `quick-ui/src/packages`。
 - 新建或改造页面需遵循 `DESIGN.md`。
 - 表格/查询页优先复用统一模式（如 `C7JsonTable` 体系），减少重复实现。
+- **列表页结构与样式须对照已有页面**：默认参照 `quick-ui/src/views/system/config/index.vue`，细则见 `sdd/前端代码规范.md`「列表页样式与代码模板」；代码生成模板 `vm/quickboot/index.vue.ftl` 与之保持一致。
 
 ## Excel 约定
 - Excel 公共能力统一沉淀在 `quickboot-common`。

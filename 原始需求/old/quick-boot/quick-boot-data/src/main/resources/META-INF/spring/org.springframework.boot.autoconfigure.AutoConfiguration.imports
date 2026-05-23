@@ -1,0 +1,4 @@
+com.su60.quickboot.data.spring.SpringExtendAutoConfiguration
+com.su60.quickboot.data.mybatisplus.MybatisPlusExtendAutoConfiguration
+com.su60.quickboot.data.logger.config.LoggerAutoConfiguration
+com.su60.quickboot.data.file.FileConfiguration

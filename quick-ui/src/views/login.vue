@@ -212,11 +212,11 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Cookies from 'js-cookie'
 import { ElMessage } from 'element-plus'
-import { phoneLogin, sendSms as sendSmsApi, getQRCode } from '@/api/login'
+import { getLoginCaptchaConfig, phoneLogin, sendSms as sendSmsApi, getQRCode } from '@/api/login'
 import useUserStore from '@/store/modules/user'
 import { appConfig } from '@/config/env'
 
@@ -245,7 +245,20 @@ const passwordRules = {
 
 const passwordLoading = ref(false)
 const captchaVisible = ref(false)
+/** 与后端 qc.login.captcha-enabled 一致；未拉取前默认 true，避免短暂放开校验 */
+const loginCaptchaEnabled = ref(true)
 let tacInstance = null
+
+onMounted(() => {
+    getLoginCaptchaConfig()
+        .then((body) => {
+            const v = body?.data?.captchaEnabled
+            loginCaptchaEnabled.value = v !== false
+        })
+        .catch(() => {
+            loginCaptchaEnabled.value = true
+        })
+})
 
 /** 与 axios baseURL 一致，供 TAC 内 fetch 使用绝对地址 */
 function captchaApiBase() {
@@ -336,10 +349,15 @@ const smsCountdown = ref(0)
 // 扫码登录
 const qrcodeUrl = ref('')
 
-// 账号密码登录：校验通过后弹出天爱验证码
+// 账号密码登录：开启验证码时弹出天爱；关闭时与后端一致直接登录
 function handlePasswordLogin() {
   passwordFormRef.value?.validate((valid) => {
     if (!valid) return
+    if (!loginCaptchaEnabled.value) {
+      passwordForm.value.captchaId = ''
+      doLogin()
+      return
+    }
     openCaptcha()
   })
 }

@@ -4,6 +4,14 @@
 
 .app-container {
   padding: 20px;
+  /* 管理端表格/详情需可选中复制；body 为移动端做了 user-select:none */
+  -webkit-user-select: text;
+  user-select: text;
+
+  .el-table .cell {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 .el-form .el-form-item__label {

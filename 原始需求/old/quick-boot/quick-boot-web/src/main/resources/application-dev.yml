@@ -1,0 +1,85 @@
+spring:
+  datasource:
+    username: root
+    password: 4abyVSymUHOG
+    url: jdbc:mysql://14.29.233.185:13306/qc?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  cache:
+    type: caffeine
+logging:
+  level:
+    com.su60.quickboot: debug
+
+security:
+  sensitive-word:
+    enabled: true
+    strategy: throw
+    log-enabled: true
+  xss:
+    enabled: true
+  sql-inject:
+    enabled: true
+  # 加密配置（独立功能）
+  encryption:
+    enabled: false  # 加密总开关（测试时关闭）
+    request:
+      enabled: false  # 请求加密开关
+      algorithm: AES  # 加密算法：AES/RSA
+      key-exchange: RSA  # 密钥交换方式：RSA
+    response:
+      enabled: false  # 响应加密开关
+      algorithm: AES
+    ignore-urls: # 忽略加密的URL
+      - /actuator/**
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /doc.html
+      - /file/view/**
+  sign:
+    enabled: true                              # 启用签名验证
+    algorithm: SM3                             # 签名算法
+    secret-key: your-secret-key-2026          # 签名密钥
+    expire-time: 300                          # 有效期（秒）
+    ignore-urls: # 忽略验签的URL
+      - /actuator/**
+      - /public/**
+    ip-whitelist: # IP白名单
+      - 127.0.0.1
+      - 192.168.1.100
+
+  # SM2加密解密（新增）
+  crypto:
+    # 是否启用加密
+    enabled: true
+    request:
+      private-key: 9feb081f8038577210b78af71f4f8476c71f3da91b823f70045d9e07cc30f8de
+      public-key: 04c280ff4adb4052336ea7caeec4fc00cda7bd3f782f243a7011e1b8e266a1efb6f05dbd80849853c52056f6cb9df8c33faceb7f5f691a7b15df3599828b024917
+    response:
+      private-key: 9feb081f8038577210b78af71f4f8476c71f3da91b823f70045d9e07cc30f8de
+      public-key: 04c280ff4adb4052336ea7caeec4fc00cda7bd3f782f243a7011e1b8e266a1efb6f05dbd80849853c52056f6cb9df8c33faceb7f5f691a7b15df3599828b024917
+      enable: true
+
+
+
+management:
+  tracing:
+    enabled: true
+    propagation:
+      type: w3c          # 🔴 关键：解析 traceparent
+    sampling:
+      probability: 1.0
+
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+jasypt:
+  encryptor:
+    bootstrap: true
+    password: qc2026
+    algorithm: PBEWithHMACSHA256AndAES_128
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator

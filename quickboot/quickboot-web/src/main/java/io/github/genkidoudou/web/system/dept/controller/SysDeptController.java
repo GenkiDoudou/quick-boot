@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.system.dept.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
@@ -38,6 +39,7 @@ public class SysDeptController {
     private final DeptService deptService;
 
     @Operation(summary = "查询部门树")
+    @SaCheckPermission("system:dept:list")
     @GetMapping("/list")
     public R<List<SysDeptTreeVo>> list(
             @Parameter(description = "部门名称") @RequestParam(required = false) String deptName,
@@ -47,12 +49,14 @@ public class SysDeptController {
     }
 
     @Operation(summary = "查询部门下拉树")
+    @SaCheckPermission("system:dept:query")
     @GetMapping("/treeselect")
     public R<List<SysDeptTreeSelectVo>> treeselect() {
         return R.ok(deptService.treeselect());
     }
 
     @Operation(summary = "查询部门详情")
+    @SaCheckPermission("system:dept:query")
     @GetMapping("/{deptId:\\d+}")
     public R<SysDept> getInfo(
             @Parameter(description = "部门ID", required = true) @PathVariable @Min(value = 1, message = "部门ID必须大于0") Long deptId) {
@@ -64,6 +68,7 @@ public class SysDeptController {
     }
 
     @Operation(summary = "新增部门")
+    @SaCheckPermission("system:dept:add")
     @PostMapping
     public R<Void> add(@Valid @RequestBody SysDeptSaveRequest body) {
         deptService.add(body);
@@ -71,6 +76,7 @@ public class SysDeptController {
     }
 
     @Operation(summary = "修改部门（使用POST，避免PUT）")
+    @SaCheckPermission("system:dept:edit")
     @PostMapping("/update")
     public R<Void> edit(@Valid @RequestBody SysDeptSaveRequest body) {
         deptService.update(body);
@@ -78,6 +84,7 @@ public class SysDeptController {
     }
 
     @Operation(summary = "删除部门（使用POST，避免DELETE）")
+    @SaCheckPermission("system:dept:remove")
     @PostMapping("/remove/{deptId:\\d+}")
     public R<Void> remove(
             @Parameter(description = "部门ID", required = true) @PathVariable @Min(value = 1, message = "部门ID必须大于0") Long deptId) {

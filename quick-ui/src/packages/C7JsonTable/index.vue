@@ -85,14 +85,14 @@
             :get-data-list="getDataList"
         />
         <el-button
-            v-if="showAddButton"
+            v-if="showAddButtonResolved"
             type="primary"
             plain
             v-bind="addButtonProps"
             @click="handleBuiltInAddClick"
         >{{ addButtonText }}</el-button>
         <el-button
-            v-if="showEditButton"
+            v-if="showEditButtonResolved"
             type="success"
             plain
             :disabled="selectedRows.length !== 1"
@@ -217,6 +217,8 @@ import C7Select from '../C7Select/index.vue'
 import C7DatePicker from '../C7DatePicker/index.vue'
 import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
+import {checkPermission} from '@/directive/permission/permissionUtils'
+import useUserStore from '@/store/modules/user'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
@@ -293,6 +295,12 @@ const props = defineProps({
   showDeleteButton: {type: Boolean, default: undefined},
   showExportButton: {type: Boolean, default: undefined},
   showImportButton: {type: Boolean, default: false},
+  /** 工具栏「新增」所需权限（与 v-hasPermi 一致）；非空时无权限则不展示 */
+  addButtonPermi: {type: Array, default: () => []},
+  editButtonPermi: {type: Array, default: () => []},
+  deleteButtonPermi: {type: Array, default: () => []},
+  exportButtonPermi: {type: Array, default: () => []},
+  importButtonPermi: {type: Array, default: () => []},
   addButtonText: {type: String, default: '新增'},
   editButtonText: {type: String, default: '修改'},
   deleteButtonText: {type: String, default: '删除'},
@@ -354,13 +362,49 @@ const importUploadRef = ref(null)
 const columnCheck = reactive({})
 
 const STORAGE_PREFIX = 'c7-json-table:columns:'
-const showDeleteButtonResolved = computed(() =>
-    props.showDeleteButton === undefined ? !!props.deleteFunction : !!props.showDeleteButton
-)
-const showExportButtonResolved = computed(() =>
-    props.showExportButton === undefined ? !!props.exportFunction : !!props.showExportButton
-)
-const showImportButtonResolved = computed(() => !!props.showImportButton && typeof props.importFunction === 'function')
+const userStore = useUserStore()
+
+/**
+ * 结合开关与权限标识决定是否展示内置工具栏按钮（对齐 RuoYi v-hasPermi）。
+ *
+ * @param {boolean | undefined} showFlag 页面是否启用该按钮
+ * @param {string[]} permiList 所需权限；空数组表示不做权限过滤
+ * @param {boolean} [fallbackWhenUndefined] showFlag 为 undefined 时的默认展示条件
+ */
+function resolveToolbarButtonVisible(showFlag, permiList, fallbackWhenUndefined = false) {
+  const enabled = showFlag === undefined ? fallbackWhenUndefined : !!showFlag
+  if (!enabled) {
+    return false
+  }
+  if (!permiList || permiList.length === 0) {
+    return true
+  }
+  return checkPermission(permiList)
+}
+
+const showAddButtonResolved = computed(() => {
+  void userStore.permissions
+  return resolveToolbarButtonVisible(props.showAddButton, props.addButtonPermi)
+})
+const showEditButtonResolved = computed(() => {
+  void userStore.permissions
+  return resolveToolbarButtonVisible(props.showEditButton, props.editButtonPermi)
+})
+const showDeleteButtonResolved = computed(() => {
+  void userStore.permissions
+  const enabled = props.showDeleteButton === undefined ? !!props.deleteFunction : !!props.showDeleteButton
+  return resolveToolbarButtonVisible(enabled, props.deleteButtonPermi)
+})
+const showExportButtonResolved = computed(() => {
+  void userStore.permissions
+  const enabled = props.showExportButton === undefined ? !!props.exportFunction : !!props.showExportButton
+  return resolveToolbarButtonVisible(enabled, props.exportButtonPermi)
+})
+const showImportButtonResolved = computed(() => {
+  void userStore.permissions
+  const enabled = !!props.showImportButton && typeof props.importFunction === 'function'
+  return resolveToolbarButtonVisible(enabled, props.importButtonPermi)
+})
 
 function warnDev(msg) {
   if (import.meta.env.DEV) console.warn(`[C7JsonTable] ${msg}`)

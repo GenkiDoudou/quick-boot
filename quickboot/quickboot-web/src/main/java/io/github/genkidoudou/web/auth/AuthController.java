@@ -6,15 +6,20 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import io.github.genkidoudou.common.api.HttpCodes;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.exception.ErrorCodes;
+import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSession;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSessionStore;
 import io.github.genkidoudou.web.system.user.datascope.LoginDataScopeService;
 import io.github.genkidoudou.web.system.user.domain.SysUser;
+import io.github.genkidoudou.web.monitor.online.support.OnlineSessionRecorder;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,6 +41,9 @@ public class AuthController {
     private final AuthLoginService authLoginService;
     private final LoginDataScopeService loginDataScopeService;
     private final SysUserMapper userMapper;
+    private final LoginLockService loginLockService;
+    private final SysLogininforLogService sysLogininforLogService;
+    private final OnlineSessionRecorder onlineSessionRecorder;
 
     private final ObjectProvider<ImageCaptchaApplication> imageCaptchaApplicationProvider;
 
@@ -44,19 +52,35 @@ public class AuthController {
     private boolean loginCaptchaEnabled;
 
     /**
+     * 供登录页读取：是否与 {@code qc.login.captcha-enabled} 一致启用天爱行为验证码。
+     *
+     * @return data 中含 {@code captchaEnabled} 布尔
+     */
+    @Operation(summary = "登录页是否启用行为验证码")
+    @GetMapping("/login/captcha-config")
+    public R<Map<String, Object>> loginCaptchaConfig() {
+        Map<String, Object> payload = new LinkedHashMap<>(2);
+        payload.put("captchaEnabled", loginCaptchaEnabled);
+        return R.ok(payload);
+    }
+
+    /**
      * 账号密码登录。
      *
      * @param username  登录名
      * @param password  密码
-     * @param captchaId 天爱验证码二次校验 id（{@code /api/captcha/validate} 成功后返回）
+     * @param captchaId 天爱验证码二次校验 id（{@code /api/captcha/validate} 成功后返回）；{@code qc.login.captcha-enabled=false} 时可不传
      * @return {@code data.access_token} 供前端存入 Storage/Cookie
      */
-
-
     @PostMapping("/login")
-    public R<Map<String, Object>> login(@RequestParam String username,
+    public R<Map<String, Object>> login(HttpServletRequest request,
+                                        @RequestParam String username,
                                         @RequestParam String password,
                                         @RequestParam(required = false) String captchaId) {
+        String name = loginLockService.normalizeUserName(username);
+        if (name.isEmpty()) {
+            return R.error(HttpCodes.UNAUTHORIZED, "用户名或密码错误");
+        }
         if (loginCaptchaEnabled) {
             ImageCaptchaApplication imageCaptchaApplication = imageCaptchaApplicationProvider.getIfAvailable();
             if (imageCaptchaApplication == null) {
@@ -69,12 +93,24 @@ public class AuthController {
                 return R.error(HttpCodes.UNAUTHORIZED, "验证码已失效，请重试");
             }
         }
-        long userId = authLoginService.authenticate(username, password);
-        StpUtil.login(userId);
-        loginDataScopeService.refreshSession(userId);
-        Map<String, Object> data = new HashMap<>(2);
-        data.put("access_token", StpUtil.getTokenValue());
-        return R.ok(data);
+        loginLockService.assertNotLocked(name);
+        try {
+            long userId = authLoginService.authenticate(name, password);
+            loginLockService.onLoginSuccess(name);
+            StpUtil.login(userId);
+            onlineSessionRecorder.record(request, userId);
+            loginDataScopeService.refreshSession(userId);
+            sysLogininforLogService.recordSuccess(request, userId, name);
+            Map<String, Object> data = new HashMap<>(2);
+            data.put("access_token", StpUtil.getTokenValue());
+            return R.ok(data);
+        } catch (WarningException ex) {
+            if (ex.getCode() == ErrorCodes.Security.UNAUTHORIZED) {
+                loginLockService.recordFailure(name);
+                sysLogininforLogService.recordFailure(request, name, ex.getMessage());
+            }
+            throw ex;
+        }
     }
 
     /**

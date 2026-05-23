@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds" debug="false">
+
+	<contextName>rest-api-starter</contextName>
+
+	<!-- ================== Spring 配置读取 ================== -->
+	<springProperty scope="context" name="LOG_PATH"
+					source="logging.file.path" defaultValue="./logs"/>
+	<springProperty scope="context" name="LOG_MAX_HISTORY"
+					source="logging.max-history" defaultValue="90"/>
+	<springProperty scope="context" name="LOG_MAX_FILE_SIZE"
+					source="logging.max-file-size" defaultValue="3MB"/>
+	<springProperty scope="context" name="LOG_MAX_TOTAL_SIZE_CAP"
+					source="logging.max-total-size-cap" defaultValue="1GB"/>
+
+	<!-- ================== 日志 Pattern ================== -->
+
+	<!-- 控制台（彩色 + OpenTelemetry） -->
+	<property name="log.colorPattern"
+			  value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread]
+%highlight(%-5level)
+%cyan(%logger{36})
+traceId=%yellow(%X{traceId}) spanId=%yellow(%X{spanId})
+- %msg%n"/>
+
+	<!-- 文件日志（统一 OpenTelemetry） -->
+	<property name="log.pattern"
+			  value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}
+traceId=%X{traceId} spanId=%X{spanId}
+- %msg%n"/>
+
+	<!-- ================== Console ================== -->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>${log.colorPattern}</pattern>
+		</encoder>
+	</appender>
+
+	<!-- ================== INFO 文件 ================== -->
+	<appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/info/info.%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+			<maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
+			<maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+			<totalSizeCap>${LOG_MAX_TOTAL_SIZE_CAP}</totalSizeCap>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>INFO</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<!-- ================== ERROR 文件 ================== -->
+	<appender name="file_error" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/error/error.%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+			<maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
+			<maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+			<totalSizeCap>${LOG_MAX_TOTAL_SIZE_CAP}</totalSizeCap>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>ERROR</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<!-- ================== Root ================== -->
+	<root level="INFO">
+		<appender-ref ref="console"/>
+		<appender-ref ref="file_info"/>
+		<appender-ref ref="file_error"/>
+	</root>
+
+</configuration>

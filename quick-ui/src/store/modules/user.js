@@ -36,10 +36,10 @@ const useUserStore = defineStore(
 
             if (res.data.roles && res.data.roles.length > 0) {
               this.roles = res.data.roles
-              this.permissions = res.data.permissions
             } else {
               this.roles = ['ROLE_DEFAULT']
             }
+            this.permissions = res.data.permissions || []
             this.id = user.userId
             this.name = user.userName
             this.avatar = avatar
