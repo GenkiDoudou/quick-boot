@@ -49,7 +49,7 @@ public class ClientSignService {
         if (!properties.isEnabled()) {
             return;
         }
-        String servletPath = resolveServletPath(request);
+        String servletPath = ClientRequestPathSupport.resolveServletPath(request);
         if (isExcluded(servletPath) || HttpMethod.OPTIONS.matches(request.getMethod())) {
             return;
         }
@@ -180,19 +180,6 @@ public class ClientSignService {
             }
         }
         return false;
-    }
-
-    private static String resolveServletPath(HttpServletRequest request) {
-        String servletPath = request.getServletPath();
-        if (StrUtil.isNotBlank(servletPath)) {
-            return servletPath;
-        }
-        String uri = request.getRequestURI();
-        String ctx = request.getContextPath();
-        if (StrUtil.isNotBlank(ctx) && uri.startsWith(ctx)) {
-            return uri.substring(ctx.length());
-        }
-        return uri;
     }
 
     private static String header(HttpServletRequest request, String name) {

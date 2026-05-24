@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS sys_job (
     remark           VARCHAR(500) NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_sys_job_name ON sys_job (job_name);
-CREATE INDEX IF NOT EXISTS idx_sys_job_group ON sys_job (job_group);
-CREATE INDEX IF NOT EXISTS idx_sys_job_status ON sys_job (status);
+CREATE INDEX idx_sys_job_name ON sys_job (job_name);
+CREATE INDEX idx_sys_job_group ON sys_job (job_group);
+CREATE INDEX idx_sys_job_status ON sys_job (status);
 
 CREATE TABLE IF NOT EXISTS sys_job_log (
     job_log_id      BIGINT        NOT NULL PRIMARY KEY,
@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS sys_job_log (
     create_time     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_sys_job_log_create_time ON sys_job_log (create_time);
-CREATE INDEX IF NOT EXISTS idx_sys_job_log_job_name ON sys_job_log (job_name);
+CREATE INDEX idx_sys_job_log_create_time ON sys_job_log (create_time);
+CREATE INDEX idx_sys_job_log_job_name ON sys_job_log (job_name);
 
 -- Quartz JDBC（MySQL 方言，H2 MODE=MySQL 开发库兼容）
 CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS (

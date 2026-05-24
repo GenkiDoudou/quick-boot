@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS sys_notice (
     update_time DATETIME NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_sys_notice_create_time ON sys_notice (create_time);
+-- 勿使用 CREATE INDEX IF NOT EXISTS：Druid Wall（MySQL 方言）会误判 IF 为注入关键字
+CREATE INDEX idx_sys_notice_create_time ON sys_notice (create_time);
 
 INSERT INTO sys_dict_type (dict_id, dict_name, dict_type, status, remark, del_flag, create_by, create_time)
 VALUES (800001, '通知公告类型', 'sys_notice_type', '0', 'Flyway 种子：通知/公告', '0', 'system', CURRENT_TIMESTAMP);

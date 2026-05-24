@@ -31,8 +31,9 @@ class I18nUtilTest {
     class WithoutMessageSource {
 
         @Test
-        void returnsCodeWhenMessageSourceBeanAbsent() {
-            assertThat(I18nUtil.getMessage("any.code")).isEqualTo("any.code");
+        void usesBuiltinOrExplicitWhenMessageSourceBeanAbsent() {
+            assertThat(I18nUtil.getMessage("30402")).isEqualTo("Host 不允许");
+            assertThat(I18nUtil.getMessage("any.code")).isEqualTo("操作失败，请稍后再试");
             assertThat(I18nUtil.getMessage("any.code", new Object[]{}, "兜底")).isEqualTo("兜底");
         }
     }
@@ -63,8 +64,9 @@ class I18nUtilTest {
         }
 
         @Test
-        void missingKeyReturnsCode() {
-            assertThat(I18nUtil.getMessage("missing.code")).isEqualTo("missing.code");
+        void missingKeyReturnsGenericOrBuiltin() {
+            assertThat(I18nUtil.getMessage("30402")).isEqualTo("Host 不允许");
+            assertThat(I18nUtil.getMessage("missing.code")).isEqualTo("操作失败，请稍后再试");
         }
 
         @Test

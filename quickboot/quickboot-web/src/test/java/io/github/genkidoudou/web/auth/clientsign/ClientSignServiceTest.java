@@ -70,6 +70,25 @@ class ClientSignServiceTest {
     }
 
     @Test
+    void verify_acceptsSignatureWhenGatewayPrefixInUri() throws Exception {
+        byte[] body = new byte[0];
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String nonce = "gateway-prefix-nonce01";
+        String canonical = ClientSignService.buildCanonical("POST", "/login", body, timestamp, nonce, CLIENT_ID);
+        String signature = hmacSha256Base64(SECRET, canonical);
+
+        MockHttpServletRequest raw = new MockHttpServletRequest("POST", "/prod-api/login");
+        raw.setContent(body);
+        raw.addHeader("X-Client-Id", CLIENT_ID);
+        raw.addHeader("X-Client-Timestamp", timestamp);
+        raw.addHeader("X-Client-Nonce", nonce);
+        raw.addHeader("X-Client-Signature", signature);
+        CachedBodyHttpServletRequest request = new CachedBodyHttpServletRequest(raw);
+
+        assertThatCode(() -> clientSignService.verify(request)).doesNotThrowAnyException();
+    }
+
+    @Test
     void verify_rejectsReplayNonce() throws Exception {
         byte[] body = new byte[0];
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);

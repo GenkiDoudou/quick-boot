@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
+import io.github.genkidoudou.web.auth.clientsign.ClientRequestPathSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
@@ -82,16 +83,7 @@ public class OauthClientApiPathAuthService {
      * 与 {@link io.github.genkidoudou.web.auth.clientsign.ClientSignService} 一致的 path 解析。
      */
     public String resolveServletPath(HttpServletRequest request) {
-        String servletPath = request.getServletPath();
-        if (StrUtil.isNotBlank(servletPath)) {
-            return servletPath;
-        }
-        String uri = request.getRequestURI();
-        String ctx = request.getContextPath();
-        if (StrUtil.isNotBlank(ctx) && uri.startsWith(ctx)) {
-            return uri.substring(ctx.length());
-        }
-        return uri;
+        return ClientRequestPathSupport.resolveServletPath(request);
     }
 
     private static String normalizePath(String path) {

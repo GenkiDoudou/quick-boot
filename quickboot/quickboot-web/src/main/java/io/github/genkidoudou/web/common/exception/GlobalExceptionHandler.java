@@ -172,12 +172,10 @@ public class GlobalExceptionHandler {
   }
 
   private String resolveMessage(int code, Object[] args, String defaultMsg) {
-    String fallback = defaultMsg != null && !defaultMsg.isBlank() ? defaultMsg : DEFAULT_FALLBACK_MESSAGE;
-    String i18n = I18nUtil.getMessage(String.valueOf(code), args, fallback);
-    if (i18n == null || i18n.isBlank()) {
-      return fallback;
+    if (defaultMsg != null && !defaultMsg.isBlank()) {
+      return defaultMsg;
     }
-    return i18n;
+    return I18nUtil.getMessage(String.valueOf(code), args, DEFAULT_FALLBACK_MESSAGE);
   }
 
   /**

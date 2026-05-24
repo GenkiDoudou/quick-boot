@@ -55,7 +55,7 @@ public class SensitiveWordFirewallFilter extends OncePerRequestFilter {
                     request, outBody, engine, properties.getStrategy());
             filterChain.doFilter(wrapped, response);
         } catch (SensitiveWordException ex) {
-            ServletUtils.writeResponse(response, HttpCodes.SENSITIVE_WORD, ex.getHitWord());
+            ServletUtils.writeResponse(response, HttpCodes.SENSITIVE_WORD, null, ex.getHitWord());
         }
     }
 

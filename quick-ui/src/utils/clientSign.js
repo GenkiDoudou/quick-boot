@@ -1,9 +1,12 @@
 /**
  * Client HMAC 请求签名，与后端 {@code ClientSignService.buildCanonical} 一致。
+ * <p>
+ * 使用 crypto-js 而非 Web Crypto {@code subtle}，以便在 HTTP 生产环境（非安全上下文）下可用。
  */
+import CryptoJS from 'crypto-js'
 
 /**
- * 解析用于签名的 path（不含 query、不含 /dev-api 前缀）。
+ * 解析用于签名的 path（不含 query、不含 /dev-api、/prod-api 前缀）。
  *
  * @param {import('axios').InternalAxiosRequestConfig} config
  * @returns {string}
@@ -18,6 +21,21 @@ function resolveSignPath(config) {
   if (apiBase && path.startsWith(apiBase)) {
     path = path.slice(apiBase.length) || '/'
   }
+  if (apiBase.startsWith('http')) {
+    try {
+      const basePath = new URL(apiBase).pathname.replace(/\/$/, '')
+      if (basePath && path.startsWith(basePath)) {
+        path = path.slice(basePath.length) || '/'
+      }
+    } catch {
+      // ignore invalid URL
+    }
+  }
+  for (const prefix of ['/dev-api', '/prod-api']) {
+    if (path.startsWith(prefix)) {
+      path = path.slice(prefix.length) || '/'
+    }
+  }
   if (!path.startsWith('/')) {
     path = '/' + path
   }
@@ -25,7 +43,25 @@ function resolveSignPath(config) {
 }
 
 /**
+ * @param {Uint8Array} bytes
+ * @returns {CryptoJS.lib.WordArray}
+ */
+function bytesToWordArray(bytes) {
+  const words = []
+  for (let i = 0; i < bytes.length; i += 1) {
+    words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8)
+  }
+  return CryptoJS.lib.WordArray.create(words, bytes.length)
+}
+
+/**
  * 与 axios 发送一致的 body 字节（拦截器阶段）。
+ *
+ * @param {import('axios').InternalAxiosRequestConfig} config
+ * @returns {Promise<Uint8Array>}
+ */
+/**
+ * 取出与最终 HTTP 请求一致的 body 字节；JSON 对象会先 {@code JSON.stringify} 并写回 {@code config.data}。
  *
  * @param {import('axios').InternalAxiosRequestConfig} config
  * @returns {Promise<Uint8Array>}
@@ -52,39 +88,33 @@ async function serializeBodyBytes(config) {
   }
   const headers = config.headers || {}
   const ct = headers['Content-Type'] || headers['content-type'] || ''
-  if (String(ct).includes('application/json')) {
-    return new TextEncoder().encode(JSON.stringify(data))
+  const asJson =
+    !ct ||
+    String(ct).includes('application/json') ||
+    typeof data === 'object'
+  if (asJson && typeof data === 'object') {
+    const json = JSON.stringify(data)
+    config.data = json
+    return new TextEncoder().encode(json)
   }
   return new Uint8Array(0)
 }
 
 /**
  * @param {Uint8Array} bytes
- * @returns {Promise<string>} 小写 hex
+ * @returns {string} 小写 hex
  */
-async function sha256Hex(bytes) {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+function sha256Hex(bytes) {
+  return CryptoJS.SHA256(bytesToWordArray(bytes)).toString(CryptoJS.enc.Hex)
 }
 
 /**
  * @param {string} secret
  * @param {string} canonical
- * @returns {Promise<string>} Base64 HMAC-SHA256
+ * @returns {string} Base64 HMAC-SHA256
  */
-async function hmacSha256Base64(secret, canonical) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(canonical))
-  const bin = String.fromCharCode(...new Uint8Array(sig))
-  return btoa(bin)
+function hmacSha256Base64(secret, canonical) {
+  return CryptoJS.HmacSHA256(canonical, secret).toString(CryptoJS.enc.Base64)
 }
 
 /**
@@ -92,7 +122,13 @@ async function hmacSha256Base64(secret, canonical) {
  */
 function randomNonce() {
   const buf = new Uint8Array(16)
-  crypto.getRandomValues(buf)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(buf)
+  } else {
+    for (let i = 0; i < buf.length; i += 1) {
+      buf[i] = Math.floor(Math.random() * 256)
+    }
+  }
   return Array.from(buf)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
@@ -105,8 +141,8 @@ function randomNonce() {
  * @returns {Promise<import('axios').InternalAxiosRequestConfig>}
  */
 export async function applyClientSignHeaders(config) {
-  const clientId = import.meta.env.VITE_APP_CLIENT_ID
-  const signKey = import.meta.env.VITE_APP_CLIENT_SIGN_KEY
+  const clientId = String(import.meta.env.VITE_APP_CLIENT_ID || '').trim()
+  const signKey = String(import.meta.env.VITE_APP_CLIENT_SIGN_KEY || '').trim()
   if (!clientId || !signKey) {
     if (import.meta.env.DEV) {
       console.warn('[clientSign] 未配置 VITE_APP_CLIENT_ID / VITE_APP_CLIENT_SIGN_KEY，跳过加签')
@@ -117,11 +153,11 @@ export async function applyClientSignHeaders(config) {
   const method = (config.method || 'get').toUpperCase()
   const path = resolveSignPath(config)
   const bodyBytes = await serializeBodyBytes(config)
-  const bodyHash = await sha256Hex(bodyBytes)
+  const bodyHash = sha256Hex(bodyBytes)
   const timestamp = String(Math.floor(Date.now() / 1000))
   const nonce = randomNonce()
   const canonical = `${method}\n${path}\n${bodyHash}\n${timestamp}\n${nonce}\n${clientId}`
-  const signature = await hmacSha256Base64(signKey, canonical)
+  const signature = hmacSha256Base64(signKey, canonical)
 
   config.headers = config.headers || {}
   config.headers['X-Client-Id'] = clientId
@@ -129,4 +165,21 @@ export async function applyClientSignHeaders(config) {
   config.headers['X-Client-Nonce'] = nonce
   config.headers['X-Client-Signature'] = signature
   return config
+}
+
+/**
+ * 与后端对齐的 canonical 串（供单测或调试）。
+ *
+ * @param {string} method
+ * @param {string} path
+ * @param {Uint8Array} bodyBytes
+ * @param {string} timestamp
+ * @param {string} nonce
+ * @param {string} clientId
+ * @returns {string}
+ */
+export function buildCanonical(method, path, bodyBytes, timestamp, nonce, clientId) {
+  const upperMethod = (method || '').toUpperCase()
+  const bodyHash = sha256Hex(bodyBytes || new Uint8Array(0))
+  return `${upperMethod}\n${path}\n${bodyHash}\n${timestamp}\n${nonce}\n${clientId}`
 }

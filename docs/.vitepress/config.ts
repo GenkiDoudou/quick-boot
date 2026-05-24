@@ -9,7 +9,7 @@ import nav from "./config/nav";
 import {mdPlugin} from "./config/plugins";
 
 export default defineConfig({
-    // base: "/",
+    base: "/docs",
     title: "QuickBoot",
     description: "基于 ElementPlus 的组件生成器",
     head: [

@@ -6,6 +6,13 @@
 2. 修改 `nav.ts` / `sidebar.ts` 后**重启** dev 服务。
 3. 顶栏点击 **指南 / 后端手册 / 前端手册 / 部署** 进入对应侧栏。
 
+## 所有接口返回 30402
+
+- 含义：**Host 不允许**（`MethodAndHostFirewallFilter`）。
+- 原因：请求头 `Host` 不在 `qc.security.firewall.method-and-host.allowed-hosts` 中。
+- 常见情况：用 `http://127.0.0.1:9992` 访问但只配置了 `localhost:9992`；或生产未配置公网域名/IP。
+- 处理：在对应 Profile 的 yml 中增加实际 `Host:端口`，开发环境已默认放行 `localhost:*`、`127.0.0.1:*`。
+
 ## 登录返回 401 或 code 30002
 
 - **30002**：Client HMAC 失败。检查 `VITE_APP_CLIENT_ID`、`VITE_APP_CLIENT_SIGN_KEY` 与库表 `sys_oauth_client` 中明文 secret 一致。

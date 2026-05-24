@@ -23,6 +23,14 @@ qc:
         - /h2-console
         - /h2-console/**
     firewall:
+      # 开发：放宽 Host 白名单，避免 127.0.0.1 / 多端口 / Vite 代理导致 30402
+      method-and-host:
+        enabled: true
+        allowed-hosts:
+          - localhost:9992
+          - 127.0.0.1:9992
+          - localhost:*
+          - 127.0.0.1:*
       password:
         codec:
           # OAuth client_secret / IdP secret 入库 SM4 加密（Oauth2SecretSupport 使用 encrypt(..., "sm4")）
@@ -32,6 +40,9 @@ qc:
               default: "0123456789abcdef0123456789abcdef"
 
 spring:
+  flyway:
+    # 开发库：上次 V7 失败后自动 repair 再 migrate（勿在生产开启）
+    repair-on-migrate: true
   devtools:
     restart:
       enabled: true

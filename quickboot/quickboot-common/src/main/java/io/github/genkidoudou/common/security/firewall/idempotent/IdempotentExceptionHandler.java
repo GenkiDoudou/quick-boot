@@ -1,6 +1,7 @@
 package io.github.genkidoudou.common.security.firewall.idempotent;
 
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.i18n.I18nUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,6 +14,11 @@ public class IdempotentExceptionHandler {
 
     @ExceptionHandler(IdempotentException.class)
     public ResponseEntity<R<Void>> handleIdempotent(IdempotentException ex) {
-        return ResponseEntity.status(200).body(R.error(ex.getCode(), ex.getMessage()));
+        int code = ex.getCode();
+        String msg = ex.getMessage();
+        if (msg == null || msg.isBlank()) {
+            msg = I18nUtil.getMessage(String.valueOf(code), null, null);
+        }
+        return ResponseEntity.status(200).body(R.error(code, msg));
     }
 }

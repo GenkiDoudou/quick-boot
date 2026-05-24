@@ -37,17 +37,17 @@ class ServletUtilsTest {
     class WithoutMessageSource {
 
         @Test
-        void writeJson_usesKeyAsMsgWhenMessageSourceAbsent() throws Exception {
+        void writeJson_usesBuiltinMsgWhenMessageSourceAbsent() throws Exception {
             MockHttpServletResponse resp = new MockHttpServletResponse();
-            ServletUtils.writeResponse(resp, 40301);
+            ServletUtils.writeResponse(resp, HttpCodes.HOST_NOT_ALLOWED);
 
             assertThat(resp.getStatus()).isEqualTo(200);
             assertThat(resp.getContentType()).contains("application/json");
             assertThat(resp.getCharacterEncoding()).isEqualToIgnoringCase("UTF-8");
 
             JsonNode root = TEST_MAPPER.readTree(resp.getContentAsString(StandardCharsets.UTF_8));
-            assertThat(root.get("code").asInt()).isEqualTo(40301);
-            assertThat(root.get("msg").asText()).isEqualTo("40301");
+            assertThat(root.get("code").asInt()).isEqualTo(HttpCodes.HOST_NOT_ALLOWED);
+            assertThat(root.get("msg").asText()).isEqualTo("Host 不允许");
         }
 
         @Test
@@ -57,7 +57,7 @@ class ServletUtilsTest {
 
             JsonNode root = TEST_MAPPER.readTree(resp.getContentAsString(StandardCharsets.UTF_8));
             assertThat(root.get("code").asInt()).isEqualTo(HttpCodes.INTERNAL_ERROR);
-            assertThat(root.get("msg").asText()).isEqualTo("500");
+            assertThat(root.get("msg").asText()).isEqualTo("内部服务器错误");
         }
     }
 
@@ -98,12 +98,12 @@ class ServletUtilsTest {
         }
 
         @Test
-        void missingKeyFallsBackToCodeString() throws Exception {
+        void missingKeyFallsBackToGenericMessage() throws Exception {
             MockHttpServletResponse resp = new MockHttpServletResponse();
             ServletUtils.writeResponse(resp, 999999);
 
             JsonNode root = TEST_MAPPER.readTree(resp.getContentAsString(StandardCharsets.UTF_8));
-            assertThat(root.get("msg").asText()).isEqualTo("999999");
+            assertThat(root.get("msg").asText()).isEqualTo("操作失败，请稍后再试");
         }
 
         @Test
@@ -116,12 +116,12 @@ class ServletUtilsTest {
         }
 
         @Test
-        void existingKey_doesNotUseFallbackMessage() throws Exception {
+        void existingKey_prefersExplicitFallbackMessage() throws Exception {
             MockHttpServletResponse resp = new MockHttpServletResponse();
             ServletUtils.writeResponse(resp, 40301, "禁止访问");
 
             JsonNode root = TEST_MAPPER.readTree(resp.getContentAsString(StandardCharsets.UTF_8));
-            assertThat(root.get("msg").asText()).isEqualTo("拒绝访问");
+            assertThat(root.get("msg").asText()).isEqualTo("禁止访问");
         }
     }
 

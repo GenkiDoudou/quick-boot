@@ -10,6 +10,7 @@ spring:
   application:
     name: quickboot-web
   profiles:
+    # 本地开发默认 dev（H2）；生产部署请显式指定 --spring.profiles.active=prod
     active: dev
   # tianai 默认 CacheStore 自动配置与本模块 TianaiCacheStoreAutoConfiguration 二选一；
   # 不可在 AutoConfiguration 类上使用 @EnableAutoConfiguration(exclude=…) 排除同类，否则会循环 @Import。
@@ -191,10 +192,14 @@ qc:
         strategy: THROW
       method-and-host:
         enabled: true
+        forbidden-message: 请求 Host 不在允许范围内
+        # 与请求头 Host 完全一致（含端口）；127.0.0.1 与 localhost 不等价
         allowed-hosts:
           - localhost:9992
+          - 127.0.0.1:9992
       sql-injection:
         enabled: true
+        forbidden-message: 您的请求包含非法字符，请检查！
         # Ant 路径 /** 会误命中关键字 /*；OAuth 客户端「接口授权」字段默认已跳过
         ignore-json-fields:
           - apiPathPatterns
