@@ -77,6 +77,8 @@ spring:
   flyway:
     enabled: true
     encoding: utf-8
+    # 积木脚本 JSON 中含 ${jm_expression.num} 等，勿当作 Flyway 占位符
+    placeholder-replacement: false
     clean-disabled: true
     ## 迁移sql脚本文件存放路径，默认db/migration
     locations: classpath:db/migration
@@ -135,6 +137,11 @@ qc:
   # 登录页天爱行为验证码：为 false 时 /login 不校验 captchaId；前端登录页 GET /login/captcha-config 同步隐藏验证码
   login:
     captcha-enabled: false
+  jimu:
+    enabled: true
+    base-url: http://localhost:9992
+    share:
+      enabled: true
   monitor:
     operlog:
       capture-enabled: true
@@ -160,11 +167,19 @@ qc:
         - /swagger-ui.html
         - /swagger-ui/**
         - /v3/api-docs/**
+        - /jmreport/**
+        - /drag/**
+        - /jimubi/**
+        - /jimureport/**
     firewall:
       headers:
         enabled: true
-        # 两段式排除（选型 D，详见 OpenSpec firewall-security-headers）：
-        # exclude-urls: []                    # 命中则本模块不注入任何已管理安全头
+        # 积木 iframe 由前端(如 :8800)嵌入后端(:9992)，须跳过 X-Frame-Options:SAMEORIGIN，否则中间区域无法展示
+        exclude-urls:
+          - /jmreport/**
+          - /drag/**
+          - /jimubi/**
+          - /jimureport/**
         # exclude-from-strict-policy-urls:   # 命中则只保留基础四头，不注入 CSP/HSTS/Permissions-Policy
         #   - /v3/api-docs/**
         #   - /swagger-ui/**
@@ -187,6 +202,10 @@ qc:
         # 支持 Ant 风格路径匹配
         ignoreUrls:
           - /login
+          - /jmreport/**
+          - /drag/**
+          - /jimubi/**
+          - /jimureport/**
 
         # REPLACE | THROW（推荐大写；小写 throw 在部分环境下亦可绑定）
         strategy: THROW
@@ -203,9 +222,19 @@ qc:
         # Ant 路径 /** 会误命中关键字 /*；OAuth 客户端「接口授权」字段默认已跳过
         ignore-json-fields:
           - apiPathPatterns
+        ignoreUrls:
+          - /jmreport/**
+          - /drag/**
+          - /jimubi/**
+          - /jimureport/**
       xss:
         enabled: true
         forbidden-message: 您的请求包含非法字符，请检查！
+        ignoreUrls:
+          - /jmreport/**
+          - /drag/**
+          - /jimubi/**
+          - /jimureport/**
       idempotent:
         enabled: true
         # TOKEN-only：仅当请求头非空时占位；缺头不报错。cache-type: auto|redis|caffeine（auto=有 RedisConnectionFactory 则用 Redis）

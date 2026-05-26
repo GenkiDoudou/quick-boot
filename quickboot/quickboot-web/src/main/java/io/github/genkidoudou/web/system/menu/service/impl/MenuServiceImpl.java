@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.report.config.JimuProperties;
 import io.github.genkidoudou.web.system.menu.domain.SysMenu;
 import io.github.genkidoudou.web.system.menu.domain.SysRole;
 import io.github.genkidoudou.web.system.menu.domain.SysRoleMenu;
@@ -18,6 +19,7 @@ import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.menu.vo.RoleMenuTreeselectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeSelectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeVo;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,15 +54,19 @@ public class MenuServiceImpl implements MenuService {
     private final SysRoleMenuMapper sysRoleMenuMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
 
+    private final ObjectProvider<JimuProperties> jimuPropertiesProvider;
+
     public MenuServiceImpl(
             SysMenuMapper sysMenuMapper,
             SysRoleMapper sysRoleMapper,
             SysRoleMenuMapper sysRoleMenuMapper,
-            SysUserRoleMapper sysUserRoleMapper) {
+            SysUserRoleMapper sysUserRoleMapper,
+            ObjectProvider<JimuProperties> jimuPropertiesProvider) {
         this.sysMenuMapper = sysMenuMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysRoleMenuMapper = sysRoleMenuMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
+        this.jimuPropertiesProvider = jimuPropertiesProvider;
     }
 
     @Override
@@ -300,7 +306,7 @@ public class MenuServiceImpl implements MenuService {
         if (StrUtil.isNotBlank(m.getRouteName())) {
             map.put("name", m.getRouteName());
         }
-        map.put("path", StrUtil.nullToEmpty(m.getPath()));
+        map.put("path", normalizeRouterPath(m));
         map.put("hidden", "1".equals(m.getVisible()));
         if (StrUtil.isNotBlank(m.getComponent())) {
             map.put("component", m.getComponent());
@@ -309,6 +315,13 @@ public class MenuServiceImpl implements MenuService {
         meta.put("title", m.getMenuName());
         meta.put("icon", StrUtil.nullToEmpty(m.getIcon()));
         meta.put("noCache", "1".equals(m.getIsCache()));
+        if ("1".equals(m.getIsFrame())) {
+            map.put("component", "InnerLink");
+            String link = resolveFrameLink(m);
+            if (StrUtil.isNotBlank(link)) {
+                meta.put("link", link);
+            }
+        }
         map.put("meta", meta);
         List<SysMenu> ch = childrenMap.getOrDefault(m.getMenuId(), Collections.emptyList());
         if (!ch.isEmpty()) {
@@ -324,6 +337,40 @@ public class MenuServiceImpl implements MenuService {
             }
         }
         return map;
+    }
+
+    /**
+     * 与若依 / Vue Router 4 一致：顶级路由 path 以 {@code /} 开头，子路由为相对段。
+     */
+    private static String normalizeRouterPath(SysMenu m) {
+        String path = StrUtil.nullToEmpty(m.getPath());
+        if (StrUtil.isBlank(path) || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        Long parentId = m.getParentId() != null ? m.getParentId() : ROOT_PARENT_ID;
+        if (ROOT_PARENT_ID.equals(parentId)) {
+            return path.startsWith("/") ? path : "/" + path;
+        }
+        return path.startsWith("/") ? path.substring(1) : path;
+    }
+
+    private String resolveFrameLink(SysMenu m) {
+        String path = StrUtil.trim(m.getQuery());
+        if (StrUtil.isBlank(path)) {
+            path = StrUtil.trim(m.getPath());
+        }
+        if (StrUtil.isBlank(path)) {
+            return null;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        JimuProperties jimu = jimuPropertiesProvider.getIfAvailable();
+        String base = jimu != null ? StrUtil.removeSuffix(jimu.getBaseUrl(), "/") : "";
+        if (path.startsWith("/")) {
+            return base + path;
+        }
+        return base + "/" + path;
     }
 
     private List<SysMenu> loadAllMenus() {

@@ -26,6 +26,28 @@
 
 MySQL 可用 `COMMENT`、`AFTER col`；H2 MODE=MySQL 下 `AFTER` 通常可用。
 
+## 校验和不一致（checksum mismatch，连带 sqlSessionTemplate 无法创建）
+
+现象：`Migration checksum mismatch for migration version 7/11/19/22`，根因是 **Flyway 校验失败**，与 MyBatis 无关。
+
+**开发（任选其一）**：
+
+1. **推荐**：确认 `--spring.profiles.active=dev`（已配置 `validate-on-migrate: false` + `repair-on-migrate: true`），重启。
+2. **清空本地 H2**（可丢掉开发数据）：停应用后删除 `quickboot-web/data/` 下 `qcc.*`，再启动。
+3. **保留数据**：在 H2 控制台或 MySQL 执行 `DELETE FROM flyway_schema_history WHERE version IN ('7','11','19','22');` 后重启（仅当你明确要重跑这些版本时）。
+
+生产环境 **禁止** 关闭 `validate-on-migrate`；应恢复脚本或走正式 `flyway repair` 流程。
+
+## V33 积木脚本与 `${...}` 占位符
+
+现象：`No value provided for placeholder: ${jm_expression.num}`。
+
+原因：Flyway 默认把 `${}` 当占位符，而积木演示数据 JSON 里含 `${jm_expression.num}`。
+
+处理：`application.yml` 已设 `spring.flyway.placeholder-replacement: false`；`V33__jimureport_init.sql` 仅保留 **积木核心表**（`jimu_*`、`onl_drag_*`，已去掉官方演示表 `huiyuan_*` / `rep_demo_*` / `test_*` 等），并去掉 H2 不支持的 MySQL 片段：`CHARACTER SET` / `COLLATE`、索引上的 `COMMENT`、列上的 `ON UPDATE CURRENT_TIMESTAMP`、`double(m,n)` 等。
+
+若 V33 曾执行失败：删除 `quickboot-web/data/` 下 H2 文件后重启，或 `DELETE FROM flyway_schema_history WHERE version >= '33';`。
+
 ## V7 失败后无法启动（Validate failed / sqlSessionTemplate）
 
 现象：`Detected failed migration to version 7 (sys notice)`。

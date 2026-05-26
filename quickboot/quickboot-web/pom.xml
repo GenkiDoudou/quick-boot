@@ -25,6 +25,11 @@
             <artifactId>quickboot-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.genkidoudou.report</groupId>
+            <artifactId>quickboot-report</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- 分页拦截器类位于 jsqlparser 模块（MP 3.5+ 与 extension 拆分） -->
         <dependency>

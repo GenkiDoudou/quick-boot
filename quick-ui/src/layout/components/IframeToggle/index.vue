@@ -11,14 +11,22 @@
 <script setup>
 import InnerLink from '../InnerLink/index.vue'
 import useTagsViewStore from '@/store/modules/tagsView'
+import { getToken } from '@/utils/auth'
 
 const route = useRoute()
 const tagsViewStore = useTagsViewStore()
 
 function iframeUrl(url, query) {
-  if (Object.keys(query).length > 0) {
-    let params = Object.keys(query).map((key) => key + '=' + query[key]).join('&')
-    return url + '?' + params
+  const params = { ...query }
+  const token = getToken()
+  if (token && !params.token) {
+    params.token = token
+  }
+  const keys = Object.keys(params)
+  if (keys.length > 0) {
+    const qs = keys.map((key) => key + '=' + encodeURIComponent(params[key])).join('&')
+    const sep = url.includes('?') ? '&' : '?'
+    return url + sep + qs
   }
   return url
 }

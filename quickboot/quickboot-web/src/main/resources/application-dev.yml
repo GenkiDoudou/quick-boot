@@ -7,6 +7,7 @@ qc:
     enabled: true
   security:
     client-sign:
+      # 勿省略积木路径：dev 会整体覆盖 application.yml 的 exclude-paths，缺则 iframe 内 /jmreport/** 返回 30002
       exclude-paths:
         - /error
         - /oauth2/**
@@ -16,6 +17,10 @@ qc:
         - /actuator/**
         - /h2-console
         - /h2-console/**
+        - /jmreport/**
+        - /drag/**
+        - /jimubi/**
+        - /jimureport/**
     web:
       # 仅开发：Actuator / H2 控制台不要求登录（生产 profile 勿配置）
       anonymous-paths:
@@ -41,8 +46,9 @@ qc:
 
 spring:
   flyway:
-    # 开发库：上次 V7 失败后自动 repair 再 migrate（勿在生产开启）
+    # 开发库：repair 对齐 checksum；validate 关闭避免本地曾改过的 V7/V11 等脚本拦启动（勿在生产开启）
     repair-on-migrate: true
+    validate-on-migrate: false
   devtools:
     restart:
       enabled: true

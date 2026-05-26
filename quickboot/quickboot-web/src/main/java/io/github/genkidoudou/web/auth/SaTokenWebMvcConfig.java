@@ -6,8 +6,9 @@ import cn.dev33.satoken.interceptor.SaInterceptor;
 
 import cn.dev33.satoken.stp.StpUtil;
 
+import io.github.genkidoudou.report.config.JimuProperties;
 import lombok.RequiredArgsConstructor;
-
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 
 import org.springframework.util.CollectionUtils;
@@ -43,6 +44,8 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
 
 
     private final WebSecurityProperties webSecurityProperties;
+
+    private final ObjectProvider<JimuProperties> jimuPropertiesProvider;
 
 
 
@@ -93,6 +96,11 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
         paths.add("/swagger-ui/**");
 
         paths.add("/v3/api-docs/**");
+
+        JimuProperties jimu = jimuPropertiesProvider.getIfAvailable();
+        if (jimu != null && jimu.isEnabled() && !CollectionUtils.isEmpty(jimu.getSecurity().getExcludeSaTokenPaths())) {
+            paths.addAll(jimu.getSecurity().getExcludeSaTokenPaths());
+        }
 
         if (!CollectionUtils.isEmpty(webSecurityProperties.getAnonymousPaths())) {
 
