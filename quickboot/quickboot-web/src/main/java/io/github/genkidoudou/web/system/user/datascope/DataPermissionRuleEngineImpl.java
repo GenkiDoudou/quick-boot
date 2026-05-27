@@ -3,11 +3,10 @@ package io.github.genkidoudou.web.system.user.datascope;
 import cn.hutool.core.collection.CollUtil;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import org.springframework.stereotype.Component;
@@ -57,13 +56,9 @@ public class DataPermissionRuleEngineImpl implements DataPermissionRuleEngine {
         for (Long deptId : deptIds) {
             values.add(new LongValue(deptId));
         }
-        ExpressionList expressionList = new ExpressionList();
-        expressionList.setExpressions(values);
-        Parenthesis parenthesis = new Parenthesis();
-        parenthesis.setExpression(expressionList);
         InExpression in = new InExpression();
         in.setLeftExpression(new Column(table, deptField));
-        in.setRightExpression(parenthesis);
+        in.setRightExpression(new ParenthesedExpressionList<>(values));
         return in;
     }
 }

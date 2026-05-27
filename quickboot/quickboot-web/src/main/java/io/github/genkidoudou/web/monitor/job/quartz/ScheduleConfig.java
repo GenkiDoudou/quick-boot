@@ -9,7 +9,6 @@ import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
 import java.util.Properties;
 
 /**
@@ -37,7 +36,7 @@ public class ScheduleConfig {
         prop.put("org.quartz.jobStore.maxMisfiresToHandleAtATime", "10");
         prop.put("org.quartz.jobStore.misfireThreshold", "12000");
         prop.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
-        applyJobStoreDialect(dataSource, prop);
+        applyJobStoreDialect(prop);
         factory.setQuartzProperties(prop);
         factory.setSchedulerName("QuickScheduler");
         factory.setStartupDelay(1);
@@ -56,20 +55,11 @@ public class ScheduleConfig {
     private static final String JDBC_DELEGATE_STD = "org.quartz.impl.jdbcjobstore.StdJDBCDelegate";
 
     /**
-     * Quartz 2.3.x 已移除 {@code H2Delegate}；开发库 H2 使用 {@code MODE=MySQL} + 标准委托即可。
-     * H2 关闭集群；MySQL 等生产库开启集群。
+     * Quartz 2.3.x 使用标准 JDBC 委托；dev / prod 均连 MySQL，开启 JDBC 集群存储。
      */
-    private static void applyJobStoreDialect(DataSource dataSource, Properties prop) throws Exception {
+    private static void applyJobStoreDialect(Properties prop) {
         prop.put("org.quartz.jobStore.driverDelegateClass", JDBC_DELEGATE_STD);
-        try (Connection conn = dataSource.getConnection()) {
-            String product = conn.getMetaData().getDatabaseProductName();
-            boolean h2 = product != null && product.toLowerCase().contains("h2");
-            if (h2) {
-                prop.put("org.quartz.jobStore.isClustered", "false");
-            } else {
-                prop.put("org.quartz.jobStore.isClustered", "true");
-                prop.put("org.quartz.jobStore.clusterCheckinInterval", "15000");
-            }
-        }
+        prop.put("org.quartz.jobStore.isClustered", "true");
+        prop.put("org.quartz.jobStore.clusterCheckinInterval", "15000");
     }
 }

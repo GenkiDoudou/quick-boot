@@ -22,6 +22,9 @@ spring:
             # Flyway 执行 DDL；允许多语句。索引勿写 IF NOT EXISTS（Wall 解析会报 token IF）
             multi-statement-allow: true
             ddl-allow: true
+            # 积木报表 / JimuBI 动态 SQL（where 1=1）
+            select-where-alway-true-check: false
+            condition-and-alway-true-allow: true
 
 mybatis-plus:
   configuration:

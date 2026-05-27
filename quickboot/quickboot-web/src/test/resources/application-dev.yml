@@ -1,0 +1,7 @@
+# 测试 profile=dev：与 application-dev.yml 一致，连接 prod 同款 MySQL
+spring:
+  datasource:
+    url: jdbc:mysql://192.168.50.105:3406/qc2?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+    username: root
+    password: rootroot
+    driver-class-name: com.mysql.cj.jdbc.Driver

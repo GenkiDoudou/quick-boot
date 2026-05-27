@@ -1,4 +1,107 @@
--- JimuReport + JimuBI core DDL (H2/MySQL compatible, no official demo tables)
+-- JimuReport + JimuBI 官方 MySQL 5.7 表结构（MariaDB / MySQL 完整方言）
+-- 来源: https://github.com/jeecgboot/jimureport/blob/master/db/jimureport.mysql5.7.create.sql
+-- 演示数据见 V36__jimureport_demo_data.sql
+-- 若曾执行过旧版 V33：请清理 flyway_schema_history 或按 DBA 流程处理后再迁移
+
+-- Table structure for table `huiyuan_age`
+
+DROP TABLE IF EXISTS `huiyuan_age`;
+CREATE TABLE `huiyuan_age` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_age`
+
+
+-- Table structure for table `huiyuan_fengongsi`
+
+DROP TABLE IF EXISTS `huiyuan_fengongsi`;
+CREATE TABLE `huiyuan_fengongsi` (
+  `id` varchar(36) NOT NULL COMMENT '主键',
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  `type` varchar(32) DEFAULT NULL COMMENT '类型',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_fengongsi`
+
+
+-- Table structure for table `huiyuan_huoyuedu`
+
+DROP TABLE IF EXISTS `huiyuan_huoyuedu`;
+CREATE TABLE `huiyuan_huoyuedu` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_huoyuedu`
+
+
+-- Table structure for table `huiyuan_sex`
+
+DROP TABLE IF EXISTS `huiyuan_sex`;
+CREATE TABLE `huiyuan_sex` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '性别',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_sex`
+
+
+-- Table structure for table `huiyuan_work`
+
+DROP TABLE IF EXISTS `huiyuan_work`;
+CREATE TABLE `huiyuan_work` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '姓名',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_work`
+
+
+-- Table structure for table `huiyuan_wxtl`
+
+DROP TABLE IF EXISTS `huiyuan_wxtl`;
+CREATE TABLE `huiyuan_wxtl` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_wxtl`
+
+
+-- Table structure for table `huiyuan_wxtlshuliang`
+
+DROP TABLE IF EXISTS `huiyuan_wxtlshuliang`;
+CREATE TABLE `huiyuan_wxtlshuliang` (
+  `id` varchar(36) NOT NULL COMMENT '主键',
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` int(10) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_wxtlshuliang`
+
+
+-- Table structure for table `huiyuan_xueli`
+
+DROP TABLE IF EXISTS `huiyuan_xueli`;
+CREATE TABLE `huiyuan_xueli` (
+  `id` varchar(36) NOT NULL,
+  `name` varchar(50) DEFAULT NULL COMMENT '名称',
+  `value` varchar(20) DEFAULT NULL COMMENT '值',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Dumping data for table `huiyuan_xueli`
+
+
+-- Table structure for table `jimu_dict`
+
 DROP TABLE IF EXISTS `jimu_dict`;
 CREATE TABLE `jimu_dict` (
   `id` varchar(32) NOT NULL,
@@ -10,11 +113,16 @@ CREATE TABLE `jimu_dict` (
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(32) DEFAULT NULL COMMENT '更新人',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  `type` int(1) DEFAULT '0' COMMENT '字典类型0为string,1为number',
+  `type` int(1) unsigned zerofill DEFAULT '0' COMMENT '字典类型0为string,1为number',
   `tenant_id` varchar(10) DEFAULT NULL COMMENT '多租户标识',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sd_dict_code` (`dict_code`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_sd_dict_code` (`dict_code`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_dict`
+
+
+-- Table structure for table `jimu_dict_item`
+
 DROP TABLE IF EXISTS `jimu_dict_item`;
 CREATE TABLE `jimu_dict_item` (
   `id` varchar(32) NOT NULL,
@@ -28,12 +136,17 @@ CREATE TABLE `jimu_dict_item` (
   `create_time` datetime DEFAULT NULL,
   `update_by` varchar(32) DEFAULT NULL,
   `update_time` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_sdi_role_dict_id` (`dict_id`),
-  KEY `idx_sdi_role_sort_order` (`sort_order`),
-  KEY `idx_sdi_status` (`status`),
-  KEY `idx_sdi_dict_val` (`dict_id`,`item_value`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_sdi_role_dict_id` (`dict_id`) USING BTREE,
+  KEY `idx_sdi_role_sort_order` (`sort_order`) USING BTREE,
+  KEY `idx_sdi_status` (`status`) USING BTREE,
+  KEY `idx_sdi_dict_val` (`dict_id`,`item_value`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_dict_item`
+
+
+-- Table structure for table `jimu_report`
+
 DROP TABLE IF EXISTS `jimu_report`;
 CREATE TABLE `jimu_report` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -61,11 +174,16 @@ CREATE TABLE `jimu_report` (
   `update_count` int(11) DEFAULT '0' COMMENT '乐观锁版本',
   `submit_form` tinyint(1) DEFAULT NULL COMMENT '是否填报报表 0不是,1是',
   `is_multi_sheet` tinyint(4) DEFAULT NULL COMMENT '是否多sheet报表 1是 0否',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_jmreport_code` (`code`),
-  KEY `uniq_jmreport_createby` (`create_by`),
-  KEY `uniq_jmreport_delflag` (`del_flag`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uniq_jmreport_code` (`code`) USING BTREE,
+  KEY `uniq_jmreport_createby` (`create_by`) USING BTREE,
+  KEY `uniq_jmreport_delflag` (`del_flag`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='在线excel设计器';
+-- Dumping data for table `jimu_report`
+
+
+-- Table structure for table `jimu_report_category`
+
 DROP TABLE IF EXISTS `jimu_report_category`;
 CREATE TABLE `jimu_report_category` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -73,15 +191,20 @@ CREATE TABLE `jimu_report_category` (
   `parent_id` varchar(32) DEFAULT NULL COMMENT '父级id',
   `iz_leaf` int(1) DEFAULT NULL COMMENT '是否为叶子节点(0 否 1是)',
   `source_type` varchar(10) DEFAULT NULL COMMENT '来源类型( report 积木报表 screen 大屏  drag 仪表盘)',
-  `create_by` varchar(32) DEFAULT NULL COMMENT '创建人',
+  `create_by` varchar(32) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人',
   `create_time` timestamp NULL DEFAULT NULL COMMENT '创建时间',
-  `update_by` varchar(32) DEFAULT NULL COMMENT '更新人',
+  `update_by` varchar(32) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人',
   `update_time` timestamp NULL DEFAULT NULL COMMENT '更新时间',
   `tenant_id` varchar(11) DEFAULT NULL COMMENT '租户id',
   `del_flag` int(1) DEFAULT NULL COMMENT '删除状态(0未删除，1已删除，2临时删除)',
   `sort_no` int(11) DEFAULT NULL COMMENT '排序',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='分类';
+-- Dumping data for table `jimu_report_category`
+
+
+-- Table structure for table `jimu_report_data_source`
+
 DROP TABLE IF EXISTS `jimu_report_data_source`;
 CREATE TABLE `jimu_report_data_source` (
   `id` varchar(36) NOT NULL,
@@ -99,12 +222,17 @@ CREATE TABLE `jimu_report_data_source` (
   `update_by` varchar(50) DEFAULT NULL COMMENT '更新人',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
   `connect_times` int(11) DEFAULT '0' COMMENT '连接失败次数',
-  `tenant_id` varchar(10) DEFAULT NULL COMMENT '多租户标识',
+  `tenant_id` varchar(10) CHARACTER SET utf8 DEFAULT NULL COMMENT '多租户标识',
   `type` varchar(10) DEFAULT NULL COMMENT '类型(report:报表;drag:仪表盘)',
-  PRIMARY KEY (`id`),
-  KEY `idx_jmdatasource_report_id` (`report_id`),
-  KEY `idx_jmdatasource_code` (`code`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_jmdatasource_report_id` (`report_id`) USING BTREE,
+  KEY `idx_jmdatasource_code` (`code`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_report_data_source`
+
+
+-- Table structure for table `jimu_report_db`
+
 DROP TABLE IF EXISTS `jimu_report_db`;
 CREATE TABLE `jimu_report_db` (
   `id` varchar(36) NOT NULL COMMENT 'id',
@@ -133,11 +261,16 @@ CREATE TABLE `jimu_report_db` (
   `api_convert` varchar(255) DEFAULT NULL COMMENT 'api转换器',
   `iz_shared_source` int(1) DEFAULT NULL COMMENT '是否为共享数据源(0 否 1 是)',
   `jimu_shared_source_id` varchar(32) DEFAULT NULL COMMENT '指向共享数据集的id',
-  PRIMARY KEY (`id`),
-  KEY `idx_jmreportdb_db_key` (`db_key`),
-  KEY `idx_jimu_report_id` (`jimu_report_id`),
-  KEY `idx_db_source_id` (`db_source`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_jmreportdb_db_key` (`db_key`) USING BTREE,
+  KEY `idx_jimu_report_id` (`jimu_report_id`) USING BTREE,
+  KEY `idx_db_source_id` (`db_source`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_report_db`
+
+
+-- Table structure for table `jimu_report_db_field`
+
 DROP TABLE IF EXISTS `jimu_report_db_field`;
 CREATE TABLE `jimu_report_db_field` (
   `id` varchar(36) NOT NULL COMMENT 'id',
@@ -158,10 +291,15 @@ CREATE TABLE `jimu_report_db_field` (
   `search_value` varchar(100) DEFAULT NULL COMMENT '查询默认值',
   `search_format` varchar(50) DEFAULT NULL COMMENT '查询时间格式化表达式',
   `ext_json` text COMMENT '参数配置',
-  PRIMARY KEY (`id`),
-  KEY `idx_jrdf_jimu_report_db_id` (`jimu_report_db_id`),
-  KEY `idx_dbfield_order_num` (`order_num`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_jrdf_jimu_report_db_id` (`jimu_report_db_id`) USING BTREE,
+  KEY `idx_dbfield_order_num` (`order_num`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_report_db_field`
+
+
+-- Table structure for table `jimu_report_db_param`
+
 DROP TABLE IF EXISTS `jimu_report_db_param`;
 CREATE TABLE `jimu_report_db_param` (
   `id` varchar(36) NOT NULL,
@@ -180,46 +318,61 @@ CREATE TABLE `jimu_report_db_param` (
   `dict_code` varchar(255) DEFAULT NULL COMMENT '字典',
   `search_format` varchar(50) DEFAULT NULL COMMENT '查询时间格式化表达式',
   `ext_json` text COMMENT '参数配置',
-  PRIMARY KEY (`id`),
-  KEY `idx_jrdp_jimu_report_head_id` (`jimu_report_head_id`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_jrdp_jimu_report_head_id` (`jimu_report_head_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `jimu_report_db_param`
+
+
+-- Table structure for table `jimu_report_export_job`
+
 DROP TABLE IF EXISTS `jimu_report_export_job`;
 CREATE TABLE `jimu_report_export_job` (
-  `id` varchar(32) NOT NULL COMMENT '主键',
-  `name` varchar(100) DEFAULT NULL COMMENT '任务名称',
+  `id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '主键',
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '任务名称',
   `begin_time` datetime DEFAULT NULL COMMENT '开始时间',
   `end_time` datetime DEFAULT NULL COMMENT '结束时间',
-  `exec_interval` varchar(100) DEFAULT NULL COMMENT '执行频率',
-  `report_conf` text COMMENT '导出报表配置',
+  `exec_interval` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '执行频率',
+  `report_conf` text COLLATE utf8mb4_unicode_ci COMMENT '导出报表配置',
   `last_run_time` datetime DEFAULT NULL COMMENT '最后执行时间',
-  `receiver_email` text COMMENT '接收通知的邮件',
-  `file_sync_path` varchar(255) DEFAULT NULL COMMENT '文件同步路径',
+  `receiver_email` text COLLATE utf8mb4_unicode_ci COMMENT '接收通知的邮件',
+  `file_sync_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '文件同步路径',
   `status` int(11) DEFAULT NULL COMMENT '状态(0:停止;1:启动)',
-  `create_by` varchar(50) DEFAULT NULL COMMENT '创建人',
+  `create_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` varchar(50) DEFAULT NULL COMMENT '修改人',
+  `update_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '修改人',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
-  `tenant_id` varchar(10) DEFAULT NULL COMMENT '多租户标识',
+  `tenant_id` varchar(10) CHARACTER SET utf8 DEFAULT NULL COMMENT '多租户标识',
   PRIMARY KEY (`id`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积木报表导出计划表';
+-- Dumping data for table `jimu_report_export_job`
+
+
+-- Table structure for table `jimu_report_export_log`
+
 DROP TABLE IF EXISTS `jimu_report_export_log`;
 CREATE TABLE `jimu_report_export_log` (
-  `id` varchar(32) NOT NULL,
+  `id` varchar(32) CHARACTER SET utf8 NOT NULL,
   `batch_no` varchar(50) DEFAULT NULL COMMENT '批次编号',
   `export_channel` varchar(20) DEFAULT NULL COMMENT '导出渠道',
-  `export_from` varchar(20) DEFAULT NULL COMMENT '发起来源',
-  `from_id` varchar(32) DEFAULT NULL COMMENT '来源id',
+  `export_from` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '发起来源',
+  `from_id` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源id',
   `export_type` varchar(10) DEFAULT NULL COMMENT '导出类型',
   `report_id` text COMMENT '报表id',
   `download_path` varchar(255) DEFAULT NULL COMMENT '下载路径',
   `status` varchar(15) DEFAULT NULL COMMENT '状态',
-  `err_msg` text COMMENT '错误消息',
-  `create_by` varchar(32) DEFAULT NULL COMMENT '创建人',
+  `err_msg` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT '错误消息',
+  `create_by` varchar(32) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  `tenant_id` varchar(10) DEFAULT NULL COMMENT '多租户标识',
+  `tenant_id` varchar(10) CHARACTER SET utf8 DEFAULT NULL COMMENT '多租户标识',
   PRIMARY KEY (`id`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积木报表自动导出记录表';
+-- Dumping data for table `jimu_report_export_log`
+
+
+-- Table structure for table `jimu_report_ext_data`
+
 DROP TABLE IF EXISTS `jimu_report_ext_data`;
 CREATE TABLE `jimu_report_ext_data` (
   `id` varchar(32) NOT NULL COMMENT '主键ID',
@@ -233,23 +386,33 @@ CREATE TABLE `jimu_report_ext_data` (
   `create_by` varchar(50) DEFAULT NULL COMMENT '创建人',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(50) DEFAULT NULL COMMENT '修改人',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`),
   KEY `idx_biz` (`biz_type`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通用扩展数据表';
+-- Dumping data for table `jimu_report_ext_data`
+
+
+-- Table structure for table `jimu_report_icon_lib`
+
 DROP TABLE IF EXISTS `jimu_report_icon_lib`;
 CREATE TABLE `jimu_report_icon_lib` (
   `id` varchar(32) NOT NULL COMMENT '主键',
   `name` varchar(100) DEFAULT NULL COMMENT '图片名称',
   `type` varchar(32) DEFAULT NULL COMMENT '图片类型',
-  `image_url` varchar(255) DEFAULT NULL COMMENT '图片地址',
-  `create_by` varchar(32) DEFAULT NULL COMMENT '创建人',
+  `image_url` varchar(255) CHARACTER SET utf8 DEFAULT NULL COMMENT '图片地址',
+  `create_by` varchar(32) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` varchar(32) DEFAULT NULL COMMENT '更新人',
+  `update_by` varchar(32) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
   `tenant_id` int(11) DEFAULT NULL COMMENT '租户id',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='积木图库表';
+-- Dumping data for table `jimu_report_icon_lib`
+
+
+-- Table structure for table `jimu_report_link`
+
 DROP TABLE IF EXISTS `jimu_report_link`;
 CREATE TABLE `jimu_report_link` (
   `id` varchar(32) NOT NULL COMMENT '主键id',
@@ -263,9 +426,14 @@ CREATE TABLE `jimu_report_link` (
   `link_chart_id` varchar(50) DEFAULT NULL COMMENT '联动图表的ID',
   `expression` varchar(255) DEFAULT NULL COMMENT '表达式',
   `requirement` varchar(255) DEFAULT NULL COMMENT '条件',
-  PRIMARY KEY (`id`),
-  KEY `uniq_link_reportid` (`report_id`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `uniq_link_reportid` (`report_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='超链接配置表';
+-- Dumping data for table `jimu_report_link`
+
+
+-- Table structure for table `jimu_report_map`
+
 DROP TABLE IF EXISTS `jimu_report_map`;
 CREATE TABLE `jimu_report_map` (
   `id` varchar(64) NOT NULL COMMENT '主键',
@@ -278,9 +446,14 @@ CREATE TABLE `jimu_report_map` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   `del_flag` varchar(1) DEFAULT NULL COMMENT '0表示未删除,1表示删除',
   `sys_org_code` varchar(64) DEFAULT NULL COMMENT '所属部门',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_jmreport_map_name` (`name`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uniq_jmreport_map_name` (`name`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='地图配置表';
+-- Dumping data for table `jimu_report_map`
+
+
+-- Table structure for table `jimu_report_share`
+
 DROP TABLE IF EXISTS `jimu_report_share`;
 CREATE TABLE `jimu_report_share` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -292,10 +465,15 @@ CREATE TABLE `jimu_report_share` (
   `status` varchar(1) DEFAULT NULL COMMENT '是否过期(0未过期，1已过期)',
   `preview_lock_status` varchar(1) DEFAULT NULL COMMENT '密码锁状态(0不存在密码锁，1存在密码锁)',
   `share_token` varchar(50) DEFAULT NULL COMMENT '分享token',
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uniq_report_id` (`report_id`),
-  KEY `idx_jrs_share_token` (`share_token`)
-);
+  KEY `idx_jrs_share_token` (`share_token`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='积木报表预览权限表';
+-- Dumping data for table `jimu_report_share`
+
+
+-- Table structure for table `jimu_report_sheet`
+
 DROP TABLE IF EXISTS `jimu_report_sheet`;
 CREATE TABLE `jimu_report_sheet` (
   `id` varchar(64) NOT NULL COMMENT '主键（Sheet ID）',
@@ -310,7 +488,12 @@ CREATE TABLE `jimu_report_sheet` (
   PRIMARY KEY (`id`),
   KEY `idx_report_id` (`report_id`),
   KEY `idx_sheet_order` (`report_id`,`sheet_order`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表Sheet表';
+-- Dumping data for table `jimu_report_sheet`
+
+
+-- Table structure for table `onl_drag_comp`
+
 DROP TABLE IF EXISTS `onl_drag_comp`;
 CREATE TABLE `onl_drag_comp` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -321,13 +504,18 @@ CREATE TABLE `onl_drag_comp` (
   `order_num` int(11) DEFAULT NULL COMMENT '排序',
   `type_id` int(11) DEFAULT NULL COMMENT '组件类型',
   `comp_config` longtext COMMENT '组件配置',
-  `status` varchar(2) DEFAULT '0' COMMENT '状态0:无效 1:有效',
-  `create_by` varchar(50) DEFAULT NULL COMMENT '创建人登录名称',
+  `status` varchar(2) CHARACTER SET utf8 DEFAULT '0' COMMENT '状态0:无效 1:有效',
+  `create_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人登录名称',
   `create_time` datetime DEFAULT NULL COMMENT '创建日期',
-  `update_by` varchar(50) DEFAULT NULL COMMENT '更新人登录名称',
+  `update_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人登录名称',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组件库';
+-- Dumping data for table `onl_drag_comp`
+
+
+-- Table structure for table `onl_drag_dataset_head`
+
 DROP TABLE IF EXISTS `onl_drag_dataset_head`;
 CREATE TABLE `onl_drag_dataset_head` (
   `id` varchar(32) NOT NULL COMMENT 'id',
@@ -346,8 +534,13 @@ CREATE TABLE `onl_drag_dataset_head` (
   `update_by` varchar(50) DEFAULT NULL,
   `low_app_id` varchar(32) DEFAULT NULL COMMENT '应用ID',
   `tenant_id` int(10) DEFAULT NULL COMMENT '租户ID',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `onl_drag_dataset_head`
+
+
+-- Table structure for table `onl_drag_dataset_item`
+
 DROP TABLE IF EXISTS `onl_drag_dataset_item`;
 CREATE TABLE `onl_drag_dataset_item` (
   `id` varchar(32) NOT NULL COMMENT 'id',
@@ -368,9 +561,14 @@ CREATE TABLE `onl_drag_dataset_item` (
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(32) DEFAULT NULL COMMENT '修改人',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
-  PRIMARY KEY (`id`),
-  KEY `idx_oddi_head_id` (`head_id`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_oddi_head_id` (`head_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `onl_drag_dataset_item`
+
+
+-- Table structure for table `onl_drag_dataset_param`
+
 DROP TABLE IF EXISTS `onl_drag_dataset_param`;
 CREATE TABLE `onl_drag_dataset_param` (
   `id` varchar(36) NOT NULL,
@@ -387,9 +585,14 @@ CREATE TABLE `onl_drag_dataset_param` (
   `create_time` datetime DEFAULT NULL COMMENT '创建日期',
   `update_by` varchar(50) DEFAULT NULL COMMENT '更新人登录名称',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
-  PRIMARY KEY (`id`),
-  KEY `idx_oddp_head_id` (`head_id`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_oddp_head_id` (`head_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `onl_drag_dataset_param`
+
+
+-- Table structure for table `onl_drag_page`
+
 DROP TABLE IF EXISTS `onl_drag_page`;
 CREATE TABLE `onl_drag_page` (
   `id` varchar(50) NOT NULL COMMENT '主键',
@@ -406,17 +609,22 @@ CREATE TABLE `onl_drag_page` (
   `protection_code` varchar(32) DEFAULT NULL COMMENT '保护码',
   `type` varchar(64) DEFAULT NULL COMMENT '文件夹类',
   `iz_template` varchar(10) DEFAULT '0' COMMENT '是否模板(1:是；0不是)',
-  `create_by` varchar(50) DEFAULT NULL COMMENT '创建人登录名称',
+  `create_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人登录名称',
   `create_time` datetime DEFAULT NULL COMMENT '创建日期',
-  `update_by` varchar(50) DEFAULT NULL COMMENT '更新人登录名称',
+  `update_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人登录名称',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
   `low_app_id` varchar(50) DEFAULT NULL COMMENT '应用ID',
   `tenant_id` int(10) DEFAULT NULL COMMENT '租户ID',
   `update_count` int(10) DEFAULT '1',
   `visits_num` int(11) DEFAULT NULL COMMENT '访问次数',
   `del_flag` int(11) DEFAULT NULL COMMENT '删除状态( 0未删除 1已删除)',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='可视化拖拽界面';
+-- Dumping data for table `onl_drag_page`
+
+
+-- Table structure for table `onl_drag_page_comp`
+
 DROP TABLE IF EXISTS `onl_drag_page_comp`;
 CREATE TABLE `onl_drag_page_comp` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -425,12 +633,17 @@ CREATE TABLE `onl_drag_page_comp` (
   `comp_id` varchar(32) DEFAULT NULL COMMENT '组件库ID',
   `component` varchar(50) DEFAULT NULL COMMENT '组件名称',
   `config` longtext COMMENT '组件配置',
-  `create_by` varchar(50) DEFAULT NULL COMMENT '创建人登录名称',
+  `create_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人登录名称',
   `create_time` datetime DEFAULT NULL COMMENT '创建日期',
-  `update_by` varchar(50) DEFAULT NULL COMMENT '更新人登录名称',
+  `update_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人登录名称',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
-  PRIMARY KEY (`id`)
-);
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='可视化拖拽页面组件';
+-- Dumping data for table `onl_drag_page_comp`
+
+
+-- Table structure for table `onl_drag_share`
+
 DROP TABLE IF EXISTS `onl_drag_share`;
 CREATE TABLE `onl_drag_share` (
   `id` varchar(32) NOT NULL COMMENT '主键',
@@ -442,9 +655,14 @@ CREATE TABLE `onl_drag_share` (
   `status` varchar(1) DEFAULT NULL COMMENT '是否过期(0未过期，1已过期)',
   `preview_lock_status` varchar(1) DEFAULT NULL COMMENT '是否为密码锁(0 否,1是)',
   `share_token` varchar(32) DEFAULT NULL COMMENT '分享token',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_ods_drag_id` (`drag_id`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uniq_ods_drag_id` (`drag_id`) USING BTREE COMMENT '仪表盘id唯一索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='仪表盘预览分享表';
+-- Dumping data for table `onl_drag_share`
+
+
+-- Table structure for table `onl_drag_table_relation`
+
 DROP TABLE IF EXISTS `onl_drag_table_relation`;
 CREATE TABLE `onl_drag_table_relation` (
   `id` varchar(50) NOT NULL COMMENT '主键',
@@ -458,13 +676,291 @@ CREATE TABLE `onl_drag_table_relation` (
   `del_flag` tinyint(1) DEFAULT NULL COMMENT '删除状态(0-正常,1-已删除)',
   `low_app_id` varchar(50) DEFAULT NULL COMMENT '应用ID',
   `tenant_id` int(11) DEFAULT NULL COMMENT '租户ID',
-  `create_by` varchar(50) DEFAULT NULL COMMENT '创建人登录名称',
+  `create_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '创建人登录名称',
   `create_time` datetime DEFAULT NULL COMMENT '创建日期',
-  `update_by` varchar(50) DEFAULT NULL COMMENT '更新人登录名称',
+  `update_by` varchar(50) CHARACTER SET utf8 DEFAULT NULL COMMENT '更新人登录名称',
   `update_time` datetime DEFAULT NULL COMMENT '更新日期',
-  PRIMARY KEY (`id`),
-  KEY `idx_aggregation_name` (`aggregation_name`),
-  KEY `idx_del_flag` (`del_flag`),
-  KEY `idx_tenant_id` (`tenant_id`),
-  KEY `idx_create_by` (`create_by`)
-);
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_aggregation_name` (`aggregation_name`) USING BTREE,
+  KEY `idx_del_flag` (`del_flag`) USING BTREE,
+  KEY `idx_tenant_id` (`tenant_id`) USING BTREE,
+  KEY `idx_create_by` (`create_by`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='仪表盘聚合表';
+-- Dumping data for table `onl_drag_table_relation`
+
+
+-- Table structure for table `rep_demo_dxtj`
+
+DROP TABLE IF EXISTS `rep_demo_dxtj`;
+CREATE TABLE `rep_demo_dxtj` (
+  `id` varchar(36) NOT NULL COMMENT '主键',
+  `name` varchar(50) DEFAULT NULL COMMENT '姓名',
+  `gtime` datetime DEFAULT NULL COMMENT '雇佣日期',
+  `update_by` varchar(50) DEFAULT NULL COMMENT '职务',
+  `jphone` varchar(125) DEFAULT NULL COMMENT '家庭电话',
+  `birth` datetime DEFAULT NULL COMMENT '出生日期',
+  `hukou` varchar(32) DEFAULT NULL COMMENT '户口所在地',
+  `laddress` varchar(125) DEFAULT NULL COMMENT '联系地址',
+  `jperson` varchar(32) DEFAULT NULL COMMENT '紧急联系人',
+  `sex` varchar(32) DEFAULT NULL COMMENT 'xingbie',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `rep_demo_dxtj`
+
+
+-- Table structure for table `rep_demo_employee`
+
+DROP TABLE IF EXISTS `rep_demo_employee`;
+CREATE TABLE `rep_demo_employee` (
+  `id` varchar(10) NOT NULL COMMENT '主键',
+  `num` varchar(50) DEFAULT NULL COMMENT '编号',
+  `name` varchar(100) DEFAULT NULL COMMENT '姓名',
+  `sex` varchar(10) DEFAULT NULL COMMENT '性别',
+  `birthday` datetime DEFAULT NULL COMMENT '出生日期',
+  `nation` varchar(30) DEFAULT NULL COMMENT '民族',
+  `political` varchar(30) DEFAULT NULL COMMENT '政治面貌',
+  `native_place` varchar(30) DEFAULT NULL COMMENT '籍贯',
+  `height` varchar(30) DEFAULT NULL COMMENT '身高',
+  `weight` varchar(30) DEFAULT NULL COMMENT '体重',
+  `health` varchar(30) DEFAULT NULL COMMENT '健康状况',
+  `id_card` varchar(80) DEFAULT NULL COMMENT '身份证号',
+  `education` varchar(30) DEFAULT NULL COMMENT '学历',
+  `school` varchar(80) DEFAULT NULL COMMENT '毕业学校',
+  `major` varchar(80) DEFAULT NULL COMMENT '专业',
+  `address` varchar(100) DEFAULT NULL COMMENT '联系地址',
+  `zip_code` varchar(30) DEFAULT NULL COMMENT '邮编',
+  `email` varchar(30) DEFAULT NULL COMMENT 'Email',
+  `phone` varchar(30) DEFAULT NULL COMMENT '手机号',
+  `foreign_language` varchar(30) DEFAULT NULL COMMENT '外语语种',
+  `foreign_language_level` varchar(30) DEFAULT NULL COMMENT '外语水平',
+  `computer_level` varchar(30) DEFAULT NULL COMMENT '计算机水平',
+  `graduation_time` datetime DEFAULT NULL COMMENT '毕业时间',
+  `arrival_time` datetime DEFAULT NULL COMMENT '到职时间',
+  `positional_titles` varchar(30) DEFAULT NULL COMMENT '职称',
+  `education_experience` text COMMENT '教育经历',
+  `work_experience` text COMMENT '工作经历',
+  `create_by` varchar(32) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(32) DEFAULT NULL COMMENT '修改人',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  `del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识0-正常,1-已删除',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `rep_demo_employee`
+
+
+-- Table structure for table `rep_demo_gongsi`
+
+DROP TABLE IF EXISTS `rep_demo_gongsi`;
+CREATE TABLE `rep_demo_gongsi` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `gname` varchar(125) NOT NULL COMMENT '货品名称',
+  `gdata` varchar(255) NOT NULL COMMENT '返利',
+  `tdata` varchar(125) NOT NULL COMMENT '备注',
+  `didian` varchar(255) NOT NULL,
+  `zhaiyao` varchar(255) NOT NULL,
+  `num` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `rep_demo_gongsi`
+
+
+-- Table structure for table `rep_demo_jianpiao`
+
+DROP TABLE IF EXISTS `rep_demo_jianpiao`;
+CREATE TABLE `rep_demo_jianpiao` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bnum` varchar(125) NOT NULL,
+  `ftime` varchar(125) NOT NULL,
+  `sfkong` varchar(125) NOT NULL,
+  `kaishi` varchar(125) NOT NULL,
+  `jieshu` varchar(125) NOT NULL,
+  `hezairen` varchar(125) NOT NULL,
+  `jpnum` varchar(125) NOT NULL,
+  `shihelv` varchar(125) NOT NULL,
+  `s_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `rep_demo_jianpiao`
+
+
+-- Table structure for table `rep_demo_xiaoshou`
+
+DROP TABLE IF EXISTS `rep_demo_xiaoshou`;
+CREATE TABLE `rep_demo_xiaoshou` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `hnum` varchar(125) NOT NULL COMMENT '货品编码',
+  `hname` varchar(125) NOT NULL COMMENT '货品名称',
+  `xinghao` varchar(125) NOT NULL COMMENT '单位',
+  `fahuocangku` varchar(125) NOT NULL COMMENT '数量',
+  `danwei` varchar(125) NOT NULL COMMENT '单价',
+  `num` int(11) NOT NULL COMMENT '返利',
+  `danjia` varchar(125) NOT NULL COMMENT '备注',
+  `zhekoulv` int(11) NOT NULL,
+  `xiaoshoujine` varchar(125) NOT NULL,
+  `beizhu` varchar(125) DEFAULT NULL,
+  `s_id` varchar(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `rep_demo_xiaoshou`
+
+
+-- Table structure for table `test_customer`
+
+DROP TABLE IF EXISTS `test_customer`;
+CREATE TABLE `test_customer` (
+  `id` int(32) NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) DEFAULT NULL COMMENT '客户编号',
+  `name` varchar(50) DEFAULT NULL COMMENT '客户名称',
+  `address` varchar(100) DEFAULT NULL COMMENT '客户地址',
+  `yylx` varchar(2) DEFAULT NULL COMMENT '营业类型',
+  `zyyw` varchar(255) DEFAULT NULL COMMENT '主营业务',
+  `clsj` date DEFAULT NULL COMMENT '成立时间',
+  `fzr` varchar(50) DEFAULT NULL COMMENT '负责人',
+  `phone` varchar(11) DEFAULT NULL COMMENT '手机号',
+  `khyj` varchar(255) DEFAULT NULL COMMENT '客户意见',
+  `xypd` varchar(255) DEFAULT NULL COMMENT '信用评定',
+  `tbr` varchar(50) DEFAULT NULL COMMENT '填表人',
+  `depts` varchar(50) DEFAULT NULL COMMENT '部门',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `test_customer`
+
+
+-- Table structure for table `test_monthly_report`
+
+DROP TABLE IF EXISTS `test_monthly_report`;
+CREATE TABLE `test_monthly_report` (
+  `id` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '主键',
+  `by_sjfdl_yg` double(11,2) DEFAULT NULL COMMENT '本月-实际发电量-有功',
+  `lj_sjfdl_yg` double(11,2) DEFAULT NULL COMMENT '累计-实际发电量-有功',
+  `by_sjfdl_wg` double(11,2) DEFAULT NULL COMMENT '本月-实际发电量-无功',
+  `lj_sjfdl_wg` double(11,2) DEFAULT NULL COMMENT '累计-实际发电量-无功',
+  `by_khfdl` double(11,2) DEFAULT NULL COMMENT '本月-考核发电量',
+  `lj_khfdl` double(11,2) DEFAULT NULL COMMENT '累计-考核发电量',
+  `by_zdrfd` double(11,2) DEFAULT NULL COMMENT '本月-最大日发电',
+  `lj_zdrfd` double(11,2) DEFAULT NULL COMMENT '累计-最大日发电',
+  `by_ypjzdcl` double(11,2) DEFAULT NULL COMMENT '本月-月平均最大出力',
+  `lj_ypjzdcl` double(11,2) DEFAULT NULL COMMENT '累计-月平均最大出力',
+  `by_ypjzxcl` double(11,2) DEFAULT NULL COMMENT '本月-月平均最小出力',
+  `lj_ypjzxcl` double(11,2) DEFAULT NULL COMMENT '累计-月平均最小出力',
+  `by_qmzjrl` double(11,2) DEFAULT NULL COMMENT '本月-期末装机容量',
+  `lj_qmzjrl` double(11,2) DEFAULT NULL COMMENT '累计-期末装机容量',
+  `by_fdddjh` double(11,2) DEFAULT NULL COMMENT '本月-发电调度计划',
+  `lj_fdddjh` double(11,2) DEFAULT NULL COMMENT '累计-发电调度计划',
+  `by_jkzsl` double(11,2) DEFAULT NULL COMMENT '本月-进库总水量',
+  `lj_jkzsl` double(11,2) DEFAULT NULL COMMENT '累计-进库总水量',
+  `by_jyl` double(11,2) DEFAULT NULL COMMENT '本月-降雨量',
+  `lj_jyl` double(11,2) DEFAULT NULL COMMENT '累计-降雨量',
+  `by_zdjyl_zhi` double(11,2) DEFAULT NULL COMMENT '本月-最大降雨量-值',
+  `lj_zdjyl_zhi` double(11,2) DEFAULT NULL COMMENT '累计-最大降雨量-值',
+  `by_zdjyl_sj` double(11,2) DEFAULT NULL COMMENT '本月-最大降雨量-时间',
+  `lj_zdjyl_sj` double(11,2) DEFAULT NULL COMMENT '累计-最大降雨量-时间',
+  `by_zdrkll_zhi` double(11,2) DEFAULT NULL COMMENT '本月-最大入库流量-值',
+  `lj_zdrkll_zhi` double(11,2) DEFAULT NULL COMMENT '累计-最大入库流量-值',
+  `by_zdrkll_sj` double(11,2) DEFAULT NULL COMMENT '本月-最大入库流量-时间',
+  `lj_zdrkll_sj` double(11,2) DEFAULT NULL COMMENT '累计-最大入库流量-时间',
+  `by_zxrkll_zhi` double(11,2) DEFAULT NULL COMMENT '本月-最小入库流量-值',
+  `lj_zxrkll_zhi` double(11,2) DEFAULT NULL COMMENT '累计-最小入库流量-值',
+  `by_zxrkll_sj` double(11,2) DEFAULT NULL COMMENT '本月-最小入库流量-时间',
+  `lj_zxrkll_sj` double(11,2) DEFAULT NULL COMMENT '累计-最小入库流量-时间',
+  `by_jyts` double(11,2) DEFAULT NULL COMMENT '本月-降雨天数',
+  `lj_jyts` double(11,2) DEFAULT NULL COMMENT '累计-降雨天数',
+  `by_qsts` double(11,2) DEFAULT NULL COMMENT '本月-弃水天数',
+  `lj_qsts` double(11,2) DEFAULT NULL COMMENT '累计-弃水天数',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='北京市水电厂调度运行月报表';
+-- Dumping data for table `test_monthly_report`
+
+
+-- Table structure for table `test_order`
+
+DROP TABLE IF EXISTS `test_order`;
+CREATE TABLE `test_order` (
+  `id` varchar(32) NOT NULL,
+  `order_name` varchar(50) DEFAULT NULL COMMENT '订单名称',
+  `order_no` varchar(50) DEFAULT NULL COMMENT '订单编号',
+  `order_sign_date` datetime DEFAULT NULL COMMENT '订单签订日期',
+  `order_delivery_date` datetime DEFAULT NULL COMMENT '订单交付日期',
+  `order_coms` varchar(50) DEFAULT NULL COMMENT '客户名称',
+  `order_pers` varchar(50) DEFAULT NULL COMMENT '客户联系人',
+  `order_phone` varchar(15) DEFAULT NULL COMMENT '客户联系方式',
+  `fzr` varchar(50) DEFAULT NULL COMMENT '负责人',
+  `depts` varchar(50) DEFAULT NULL COMMENT '负责人部门',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `test_order`
+
+
+-- Table structure for table `test_order_pros`
+
+DROP TABLE IF EXISTS `test_order_pros`;
+CREATE TABLE `test_order_pros` (
+  `id` varchar(32) NOT NULL,
+  `pro_name` varchar(50) DEFAULT NULL COMMENT '产品名称',
+  `pro_no` varchar(50) DEFAULT NULL COMMENT '产品编号',
+  `pro_count` varchar(11) DEFAULT NULL COMMENT '产品数量',
+  `pro_price` decimal(10,2) DEFAULT NULL COMMENT '产品单价',
+  `pro_unit` varchar(10) DEFAULT NULL COMMENT '单位',
+  `pro_model` varchar(10) DEFAULT NULL COMMENT '型号',
+  `main_id` varchar(32) DEFAULT NULL COMMENT '外键',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `test_order_pros`
+
+
+-- Table structure for table `test_resume`
+
+DROP TABLE IF EXISTS `test_resume`;
+CREATE TABLE `test_resume` (
+  `id` int(32) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL COMMENT '姓名',
+  `sex` varchar(2) DEFAULT NULL COMMENT '性别',
+  `birthday` date DEFAULT NULL COMMENT '出生日期',
+  `phone` varchar(11) DEFAULT NULL COMMENT '手机号',
+  `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
+  `address` varchar(255) DEFAULT NULL COMMENT '现住址',
+  `native_place` varchar(200) DEFAULT NULL COMMENT '籍贯',
+  `nation` varchar(100) DEFAULT NULL COMMENT '民族',
+  `political_outlook` varchar(50) DEFAULT NULL COMMENT '政治面貌',
+  `education` varchar(10) DEFAULT NULL COMMENT '学历',
+  `graduation_school` varchar(50) DEFAULT NULL COMMENT '毕业院校',
+  `self_evaluation` varchar(255) DEFAULT NULL COMMENT '自我评价',
+  `salary_expectation` decimal(10,2) DEFAULT NULL COMMENT '期望薪资',
+  `edu_experience` varchar(255) DEFAULT NULL COMMENT '教育经历',
+  `work_experience` varchar(255) DEFAULT NULL COMMENT '工作经历',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `test_resume`
+
+
+-- Table structure for table `tmp_report_data_1`
+
+DROP TABLE IF EXISTS `tmp_report_data_1`;
+CREATE TABLE `tmp_report_data_1` (
+  `monty` varchar(255) DEFAULT NULL COMMENT '月份',
+  `main_income` decimal(10,2) DEFAULT NULL,
+  `total` decimal(10,2) DEFAULT NULL,
+  `his_lowest` decimal(10,2) DEFAULT NULL,
+  `his_average` decimal(10,2) DEFAULT NULL,
+  `his_highest` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `tmp_report_data_1`
+
+
+-- Table structure for table `tmp_report_data_income`
+
+DROP TABLE IF EXISTS `tmp_report_data_income`;
+CREATE TABLE `tmp_report_data_income` (
+  `biz_income` varchar(100) DEFAULT NULL,
+  `bx_jj_yongjin` decimal(10,2) DEFAULT NULL,
+  `bx_zx_money` decimal(10,2) DEFAULT NULL,
+  `chengbao_gz_money` decimal(10,2) DEFAULT NULL,
+  `bx_gg_moeny` decimal(10,2) DEFAULT NULL,
+  `tb_zx_money` decimal(10,2) DEFAULT NULL,
+  `neikong_zx_money` decimal(10,2) DEFAULT NULL,
+  `total` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+-- Dumping data for table `tmp_report_data_income`
+
+-- Dump completed on 2026-04-10 18:25:14

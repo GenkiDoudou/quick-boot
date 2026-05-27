@@ -10,7 +10,7 @@ spring:
   application:
     name: quickboot-web
   profiles:
-    # 本地开发默认 dev（H2）；生产部署请显式指定 --spring.profiles.active=prod
+    # 本地开发默认 dev（与 prod 同款远程 MySQL）；生产部署请显式指定 --spring.profiles.active=prod
     active: dev
   # tianai 默认 CacheStore 自动配置与本模块 TianaiCacheStoreAutoConfiguration 二选一；
   # 不可在 AutoConfiguration 类上使用 @EnableAutoConfiguration(exclude=…) 排除同类，否则会循环 @Import。
@@ -50,6 +50,9 @@ spring:
         wall:
           config:
             multi-statement-allow: true
+            # 积木报表 / JimuBI（MiniDao）动态 SQL 常用 where 1=1，Druid 1.2.22+ 默认会拦截
+            select-where-alway-true-check: false
+            condition-and-alway-true-allow: true
           enabled: true
       initial-size: 5
       max-active: 20
@@ -140,6 +143,13 @@ qc:
   jimu:
     enabled: true
     base-url: http://localhost:9992
+    # 生产多实例 / JimuBI WebSocket 协同可开 Redis；本地 dev 无 Redis 也可解析数据集 SQL
+    redis:
+      enabled: false
+    primary-datasource:
+      sync-on-startup: true
+      name: QuickBoot主库
+      code: qc2
     share:
       enabled: true
   monitor:

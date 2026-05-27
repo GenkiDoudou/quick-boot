@@ -1,6 +1,4 @@
-# 本地 / 开发：内存 H2，无需 MySQL 与 jasypt 口令即可启动。
-# MODE=MySQL 便于与 MySQL 方言的脚本尽量对齐；Flyway 仍会对 H2 校验方言。
-#
+# 本地 / 开发：与 prod 共用远程 MySQL（qc2），需能访问 192.168.50.105:3406
 # 天爱验证码：默认 qc.captcha.store=local（见 application.yml），无需本机 Redis。
 qc:
   captcha:
@@ -15,20 +13,14 @@ qc:
         - /swagger-ui/**
         - /v3/api-docs/**
         - /actuator/**
-        - /h2-console
-        - /h2-console/**
         - /jmreport/**
         - /drag/**
         - /jimubi/**
         - /jimureport/**
     web:
-      # 仅开发：Actuator / H2 控制台不要求登录（生产 profile 勿配置）
       anonymous-paths:
         - /actuator/**
-        - /h2-console
-        - /h2-console/**
     firewall:
-      # 开发：放宽 Host 白名单，避免 127.0.0.1 / 多端口 / Vite 代理导致 30402
       method-and-host:
         enabled: true
         allowed-hosts:
@@ -38,7 +30,6 @@ qc:
           - 127.0.0.1:*
       password:
         codec:
-          # OAuth client_secret / IdP secret 入库 SM4 加密（Oauth2SecretSupport 使用 encrypt(..., "sm4")）
           sm4:
             default-key-id: default
             keys:
@@ -46,7 +37,6 @@ qc:
 
 spring:
   flyway:
-    # 开发库：repair 对齐 checksum；validate 关闭避免本地曾改过的 V7/V11 等脚本拦启动（勿在生产开启）
     repair-on-migrate: true
     validate-on-migrate: false
   devtools:
@@ -55,20 +45,19 @@ spring:
     livereload:
       enabled: true
   datasource:
-    url: jdbc:h2:file:./data/qcc;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-    # Druid Wall 按 MySQL 语法解析时易误判 Flyway 内置 DDL（flyway_schema_history），开发库关闭 Wall。
-    # StatFilter.mergeSql 在 JDBC 为 H2 时仍按 h2 解析，无法识别 Flyway 脚本中的 MySQL 方言（如 ADD COLUMN … AFTER、CREATE INDEX IF NOT EXISTS），会刷 ERROR 但不影响执行；开发环境关闭合并。
+    url: jdbc:mysql://192.168.50.105:3406/qc2?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+    username: root
+    password: rootroot
+    driver-class-name: com.mysql.cj.jdbc.Driver
     druid:
       validation-query: SELECT 1
       filter:
         wall:
-          enabled: false
+          enabled: true
+          config:
+            multi-statement-allow: true
+            ddl-allow: true
+            select-where-alway-true-check: false
+            condition-and-alway-true-allow: true
         stat:
-          merge-sql: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+          merge-sql: true

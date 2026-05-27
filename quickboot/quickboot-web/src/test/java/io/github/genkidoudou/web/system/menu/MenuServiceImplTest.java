@@ -2,6 +2,7 @@ package io.github.genkidoudou.web.system.menu;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.report.config.JimuProperties;
 import io.github.genkidoudou.web.system.menu.domain.SysMenu;
 import io.github.genkidoudou.web.system.menu.dto.SysMenuSaveRequest;
 import io.github.genkidoudou.web.system.menu.mapper.SysMenuMapper;
@@ -11,6 +12,7 @@ import io.github.genkidoudou.web.system.menu.mapper.SysUserRoleMapper;
 import io.github.genkidoudou.web.system.menu.service.impl.MenuServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 
@@ -27,12 +29,9 @@ class MenuServiceImplTest {
     @Test
     void shouldBuildFullTreeAndPruneByMenuName() {
         SysMenuMapper menuMapper = mock(SysMenuMapper.class);
-        SysRoleMapper roleMapper = mock(SysRoleMapper.class);
-        SysRoleMenuMapper roleMenuMapper = mock(SysRoleMenuMapper.class);
-        SysUserRoleMapper userRoleMapper = mock(SysUserRoleMapper.class);
         when(menuMapper.selectList(ArgumentMatchers.<Wrapper<SysMenu>>any())).thenReturn(sampleMenus());
 
-        MenuServiceImpl service = new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper);
+        MenuServiceImpl service = newService(menuMapper);
 
         var all = service.listTree(null, null);
         var pruned = service.listTree("菜单", null);
@@ -51,8 +50,7 @@ class MenuServiceImplTest {
         when(menuMapper.selectById(2000L)).thenReturn(menu(2000L, -1L, "M", "系统管理"));
         when(menuMapper.selectList(ArgumentMatchers.<Wrapper<SysMenu>>any())).thenReturn(sampleMenus());
 
-        MenuServiceImpl service = new MenuServiceImpl(
-                menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class), mock(SysUserRoleMapper.class));
+        MenuServiceImpl service = newService(menuMapper);
 
         SysMenuSaveRequest req = new SysMenuSaveRequest();
         req.setMenuId(2001L);
@@ -75,8 +73,7 @@ class MenuServiceImplTest {
         when(menuMapper.selectById(2002L)).thenReturn(menu(2002L, 2001L, "F", "按钮"));
         when(menuMapper.selectList(ArgumentMatchers.<Wrapper<SysMenu>>any())).thenReturn(sampleMenus());
 
-        MenuServiceImpl service = new MenuServiceImpl(
-                menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class), mock(SysUserRoleMapper.class));
+        MenuServiceImpl service = newService(menuMapper);
 
         SysMenuSaveRequest req = new SysMenuSaveRequest();
         req.setMenuId(2001L);
@@ -100,12 +97,30 @@ class MenuServiceImplTest {
         when(menuMapper.selectById(2000L)).thenReturn(menu(2000L, -1L, "M", "系统管理"));
         when(menuMapper.selectCount(ArgumentMatchers.<Wrapper<SysMenu>>any())).thenReturn(1L);
 
-        MenuServiceImpl service = new MenuServiceImpl(
-                menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class), mock(SysUserRoleMapper.class));
+        MenuServiceImpl service = newService(menuMapper);
 
         assertThatThrownBy(() -> service.remove(2000L))
                 .isInstanceOf(WarningException.class)
                 .hasMessageContaining("子菜单");
+    }
+
+    private static MenuServiceImpl newService(SysMenuMapper menuMapper) {
+        return newService(
+                menuMapper,
+                mock(SysRoleMapper.class),
+                mock(SysRoleMenuMapper.class),
+                mock(SysUserRoleMapper.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static MenuServiceImpl newService(
+            SysMenuMapper menuMapper,
+            SysRoleMapper roleMapper,
+            SysRoleMenuMapper roleMenuMapper,
+            SysUserRoleMapper userRoleMapper) {
+        ObjectProvider<JimuProperties> jimuProvider = mock(ObjectProvider.class);
+        when(jimuProvider.getIfAvailable()).thenReturn(null);
+        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper, jimuProvider);
     }
 
     private static List<SysMenu> sampleMenus() {

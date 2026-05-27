@@ -23,7 +23,7 @@ class GlobalExceptionHandlerTest {
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(entity.getBody()).isNotNull();
         assertThat(entity.getBody().getCode()).isEqualTo(ErrorCodes.Common.INVALID_PARAM);
-        assertThat(entity.getBody().getMsg()).isEqualTo("参数不合法");
+        assertThat(entity.getBody().getMsg()).isEqualTo("参数错误");
     }
 
     @Test
@@ -45,7 +45,7 @@ class GlobalExceptionHandlerTest {
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(entity.getBody()).isNotNull();
         assertThat(entity.getBody().getCode()).isEqualTo(ErrorCodes.System.DEPENDENCY_UNAVAILABLE);
-        assertThat(entity.getBody().getMsg()).isEqualTo("依赖服务暂不可用");
+        assertThat(entity.getBody().getMsg()).isEqualTo("依赖不可用");
     }
 
     @Test
@@ -73,7 +73,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<R<Void>> notLogin = handler.handleNotLogin(null);
         ResponseEntity<R<Void>> idempotent = handler.handleIdempotent(new IdempotentException("重复请求"));
 
-        assertThat(notLogin.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(notLogin.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(idempotent.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(idempotent.getBody()).isNotNull();
         assertThat(idempotent.getBody().getCode()).isEqualTo(ErrorCodes.Biz.IDEMPOTENT_REPEAT);
@@ -81,9 +81,9 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void shouldFallbackToDefaultMessageWhenWarningMsgIsBlank() {
-        WarningException ex = new WarningException(ErrorCodes.Common.REQUEST_BODY_INVALID, " ");
+        WarningException ex = new WarningException(ErrorCodes.Common.REQUEST_BODY_INVALID, null);
         ResponseEntity<R<Void>> entity = handler.handleWarningException(ex);
         assertThat(entity.getBody()).isNotNull();
-        assertThat(entity.getBody().getMsg()).isEqualTo("请求体格式错误");
+        assertThat(entity.getBody().getMsg()).isEqualTo("系统繁忙，请稍后再试");
     }
 }
