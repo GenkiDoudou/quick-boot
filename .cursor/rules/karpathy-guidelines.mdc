@@ -1,5 +1,5 @@
 ---
-description: Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.
+description: Behavioral guidelines to reduce common LLM coding mistakes. Before editing code on non-trivial tasks, output assumptions, success criteria, and a minimal plan. Use when writing, reviewing, or refactoring code.
 alwaysApply: true
 ---
 
@@ -7,7 +7,19 @@ alwaysApply: true
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment (see §0).
+
+## 0. Priority and scope
+
+**This rule always applies.** When it conflicts with optional process (e.g. brainstorming, writing-plans, TDD) on a **non-trivial** coding task:
+
+1. **Karpathy pre-output (§5) comes first** — assumptions, success criteria, minimal plan.
+2. Then follow project Skills / OpenSpec only if the user asked or the task clearly needs them.
+3. **Do not** expand scope (extra refactors, abstractions, docs) to satisfy a Skill if the user did not request it.
+
+**Trivial task** (skip §5 block; proceed directly): typo/format fix, single-line change, pure Q&A/review with no file edits, or user explicitly says「直接改 / 不用计划」.
+
+**Non-trivial task** (§5 required before any `Write` / `StrReplace` / multi-file edit): new feature, bugfix, refactor, config/build change, or anything touching >1 file or >~20 lines.
 
 ## 1. Think Before Coding
 
@@ -64,6 +76,29 @@ For multi-step tasks, state a brief plan:
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+## 5. Mandatory pre-output (non-trivial tasks only)
+
+Before editing any project file, output the following block **in the same reply** (use Chinese for this block unless the user writes in English):
+
+```text
+### 假设
+- …
+
+### 成功标准
+- …
+
+### 最小改动计划
+1. [步骤] → 验证: [如何确认]
+2. …
+```
+
+Rules:
+
+- **MUST** complete this block before the first file edit tool call.
+- If requirements are ambiguous, **MUST** ask in「假设」or stop after the block — do not guess and implement.
+- Keep the plan **minimal** (§2–§3): only steps needed for the user's request.
+- After implementation, briefly state which success criteria were verified (command run, manual check, or "not run — reason").
 
 ---
 

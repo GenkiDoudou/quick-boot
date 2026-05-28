@@ -18,7 +18,7 @@ import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.menu.vo.RoleMenuTreeselectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeSelectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeVo;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,19 +53,24 @@ public class MenuServiceImpl implements MenuService {
     private final SysRoleMenuMapper sysRoleMenuMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
 
-
+    /** 积木 iframe 基址，须指向后端（如 :9992），与 {@code qc.jimu.base-url} 一致 */
+    private final boolean jimuEnabled;
+    private final String jimuBaseUrl;
 
     public MenuServiceImpl(
             SysMenuMapper sysMenuMapper,
             SysRoleMapper sysRoleMapper,
             SysRoleMenuMapper sysRoleMenuMapper,
-            SysUserRoleMapper sysUserRoleMapper
+            SysUserRoleMapper sysUserRoleMapper,
+            @Value("${qc.jimu.enabled:true}") boolean jimuEnabled,
+            @Value("${qc.jimu.base-url:http://localhost:9992}") String jimuBaseUrl
         ) {
         this.sysMenuMapper = sysMenuMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysRoleMenuMapper = sysRoleMenuMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
-
+        this.jimuEnabled = jimuEnabled;
+        this.jimuBaseUrl = jimuBaseUrl;
     }
 
     @Override
@@ -364,7 +369,10 @@ public class MenuServiceImpl implements MenuService {
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return path;
         }
-        String base =  "";
+        String base = "";
+        if (jimuEnabled && StrUtil.isNotBlank(jimuBaseUrl)) {
+            base = StrUtil.removeSuffix(jimuBaseUrl.trim(), "/");
+        }
         if (path.startsWith("/")) {
             return base + path;
         }
