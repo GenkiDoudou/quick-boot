@@ -1,6 +1,7 @@
 package io.github.genkidoudou.web.monitor.operlog.support;
 
 import io.github.genkidoudou.common.monitor.operlog.OperLogBusinessType;
+import io.github.genkidoudou.web.system.operlog.support.OperLogMetaResolver;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;

@@ -1,6 +1,9 @@
 package io.github.genkidoudou.web.auth.clientsign;
 
-import io.github.genkidoudou.web.auth.oauth2.support.OauthClientApiPathAuthService;
+import io.github.genkidoudou.web.system.oauthclient.clientsign.CachedBodyHttpServletRequest;
+import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignProperties;
+import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignService;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
 import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
 import org.junit.jupiter.api.BeforeEach;

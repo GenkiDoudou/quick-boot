@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.auth.oauth2.support;
 
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
 import org.junit.jupiter.api.Test;

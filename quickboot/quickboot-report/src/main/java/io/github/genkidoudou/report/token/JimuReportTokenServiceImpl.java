@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import cn.hutool.core.util.StrUtil;
 import org.jeecg.modules.jmreport.api.JmReportTokenServiceI;
 import org.jeecg.modules.jmreport.common.util.JimuSpringContextUtils;
+import org.jeecg.modules.jmreport.common.vo.JmDictModel;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -33,6 +35,8 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String HEADER_TOKEN = "token";
     private static final String HEADER_X_ACCESS_TOKEN = "X-Access-Token";
+
+
 
     private static final String[] SHARE_READONLY_PERMISSIONS = new String[]{
             "drag:design:getTotalData"
@@ -136,6 +140,25 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
             return mergePermissions(JIMU_BI_ADMIN_PERMISSIONS, perms);
         }
         return perms.toArray(String[]::new);
+    }
+
+    @Override
+    public List<JmDictModel> getDictItems(String dictCode) {
+        if (StrUtil.isBlank(dictCode)) {
+            return List.of();
+        }
+        List<JimuAuthBridge.JimuDictEntry> rows = jimuAuthBridge.listDictByType(dictCode);
+        List<JmDictModel> out = new ArrayList<>(rows.size());
+        for (JimuAuthBridge.JimuDictEntry e : rows) {
+            if (e == null) {
+                continue;
+            }
+            out.add(new JmDictModel()
+                    .setDictCode(dictCode)
+                    .setValue(e.value())
+                    .setText(e.text()));
+        }
+        return out;
     }
 
     @Override

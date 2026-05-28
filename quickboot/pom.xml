@@ -13,6 +13,8 @@
         <module>quickboot-common</module>
         <module>quickboot-core</module>
         <module>quickboot-report</module>
+        <module>quickboot-system</module>
+        <module>quickboot-tools</module>
         <module>quickboot-web</module>
     </modules>
 

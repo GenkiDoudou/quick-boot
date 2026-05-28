@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.genkidoudou</groupId>
+    <artifactId>quickboot</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <groupId>io.github.genkidoudou.web</groupId>
+  <artifactId>quickboot-system</artifactId>
+  <description>Web System 子模块</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.genkidoudou.common</groupId>
+      <artifactId>quickboot-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.genkidoudou.core</groupId>
+      <artifactId>quickboot-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- 分页拦截器类位于 jsqlparser 模块（MP 3.5+ 与 extension 拆分） -->
+    <dependency>
+      <groupId>com.baomidou</groupId>
+      <artifactId>mybatis-plus-jsqlparser</artifactId>
+    </dependency>
+    <!-- 通知公告富文本 HTML 白名单消毒 -->
+    <dependency>
+      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+      <artifactId>owasp-java-html-sanitizer</artifactId>
+      <version>20240325.1</version>
+    </dependency>
+  </dependencies>
+
+</project>
+

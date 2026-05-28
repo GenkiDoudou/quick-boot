@@ -118,9 +118,7 @@ class MenuServiceImplTest {
             SysRoleMapper roleMapper,
             SysRoleMenuMapper roleMenuMapper,
             SysUserRoleMapper userRoleMapper) {
-        ObjectProvider<JimuProperties> jimuProvider = mock(ObjectProvider.class);
-        when(jimuProvider.getIfAvailable()).thenReturn(null);
-        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper, jimuProvider);
+        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper);
     }
 
     private static List<SysMenu> sampleMenus() {

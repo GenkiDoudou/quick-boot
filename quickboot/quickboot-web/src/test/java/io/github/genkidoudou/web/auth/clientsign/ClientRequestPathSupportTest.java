@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.auth.clientsign;
 
+import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientRequestPathSupport;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

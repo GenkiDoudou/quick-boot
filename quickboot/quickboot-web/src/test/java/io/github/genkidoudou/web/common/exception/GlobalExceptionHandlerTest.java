@@ -5,6 +5,7 @@ import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.security.firewall.idempotent.IdempotentException;
+import io.github.genkidoudou.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

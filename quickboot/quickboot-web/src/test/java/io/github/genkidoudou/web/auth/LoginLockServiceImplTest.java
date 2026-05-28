@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.auth;
 
+import io.github.genkidoudou.auth.LoginLockServiceImpl;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.config.service.SysConfigService;
 import org.junit.jupiter.api.Test;

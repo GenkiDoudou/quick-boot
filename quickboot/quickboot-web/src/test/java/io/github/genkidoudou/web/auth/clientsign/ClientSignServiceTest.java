@@ -1,8 +1,11 @@
 package io.github.genkidoudou.web.auth.clientsign;
 
+import io.github.genkidoudou.web.system.oauthclient.clientsign.CachedBodyHttpServletRequest;
+import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignProperties;
+import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignService;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.security.firewall.password.PasswordCodec;
-import io.github.genkidoudou.web.auth.oauth2.support.OauthClientApiPathAuthService;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
 import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.Cache;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.mock.web.MockHttpServletRequest;
 

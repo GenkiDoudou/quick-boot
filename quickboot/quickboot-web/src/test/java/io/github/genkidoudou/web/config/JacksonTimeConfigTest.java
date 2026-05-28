@@ -1,7 +1,8 @@
 package io.github.genkidoudou.web.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.genkidoudou.web.monitor.operlog.domain.SysOperLog;
+import io.github.genkidoudou.config.JacksonTimeConfig;
+import io.github.genkidoudou.web.system.operlog.domain.SysOperLog;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.boot.autoconfigure.jackson.JacksonProperties;

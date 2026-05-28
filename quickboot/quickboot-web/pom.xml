@@ -16,6 +16,17 @@
         <!-- Lombok -->
 
         <dependency>
+            <groupId>io.github.genkidoudou.web</groupId>
+            <artifactId>quickboot-system</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.genkidoudou.web</groupId>
+            <artifactId>quickboot-tools</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>io.github.genkidoudou.common</groupId>
             <artifactId>quickboot-common</artifactId>
             <version>${project.version}</version>
@@ -31,17 +42,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- 分页拦截器类位于 jsqlparser 模块（MP 3.5+ 与 extension 拆分） -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-jsqlparser</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-generator</artifactId>
-            <version>${mybatis-plus.version}</version>
-        </dependency>
+
+
 
         <dependency>
             <groupId>org.freemarker</groupId>
@@ -53,10 +56,6 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-quartz</artifactId>
-        </dependency>
 
         <!-- 开发期：类路径变更触发热重启、LiveReload 等；optional 避免作为传递依赖；可执行包由 repackage 排除 -->
         <dependency>
@@ -88,12 +87,7 @@
             <artifactId>easyexcel</artifactId>
         </dependency>
 
-        <!-- 通知公告富文本 HTML 白名单消毒 -->
-        <dependency>
-            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-            <artifactId>owasp-java-html-sanitizer</artifactId>
-            <version>20240325.1</version>
-        </dependency>
+
 
         <dependency>
             <groupId>com.github.ulisesbocchio</groupId>
@@ -109,7 +103,7 @@
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-redis-jackson</artifactId>
         </dependency>
-    
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -176,7 +170,7 @@
                     <prefix>git</prefix>
                 </configuration>
             </plugin>
-        
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

@@ -1,6 +1,7 @@
 package io.github.genkidoudou.report.config;
 
 import io.github.genkidoudou.report.security.JimuShareAccessFilter;
+import io.github.genkidoudou.report.security.JimuTokenHeaderBridgeFilter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -21,6 +22,15 @@ public class JimuReportAutoConfiguration {
         bean.setFilter(filter);
         bean.addUrlPatterns("/*");
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 20);
+        return bean;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JimuTokenHeaderBridgeFilter> jimuTokenHeaderBridgeFilterRegistration() {
+        FilterRegistrationBean<JimuTokenHeaderBridgeFilter> bean = new FilterRegistrationBean<>();
+        bean.setFilter(new JimuTokenHeaderBridgeFilter());
+        bean.addUrlPatterns("/*");
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
         return bean;
     }
 }

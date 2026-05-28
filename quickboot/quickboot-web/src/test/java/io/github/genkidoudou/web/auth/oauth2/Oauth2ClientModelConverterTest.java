@@ -3,7 +3,7 @@ package io.github.genkidoudou.web.auth.oauth2;
 import cn.dev33.satoken.oauth2.consts.GrantType;
 import cn.dev33.satoken.oauth2.data.model.loader.SaClientModel;
 import io.github.genkidoudou.common.oauth2.Oauth2Properties;
-import io.github.genkidoudou.web.auth.oauth2.server.Oauth2ClientModelConverter;
+import io.github.genkidoudou.auth.oauth2.server.Oauth2ClientModelConverter;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
 import org.junit.jupiter.api.Test;
 
