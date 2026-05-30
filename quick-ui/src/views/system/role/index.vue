@@ -99,7 +99,7 @@
       </el-form>
     </c7-dialog>
 
-    <!-- 菜单权限：父子联动；提交时只收集叶子节点 id（与后端 expandGrantedMenuIds 向上扩展一致） -->
+    <!-- 菜单权限：雪花 id 用 string；回显用 setChecked(deep=false) 避免父节点牵连子菜单 -->
     <c7-dialog v-model="menuVisible" title="菜单权限" width="520px" :on-confirm="submitMenu">
       <el-scrollbar max-height="420px">
         <el-tree
@@ -112,7 +112,6 @@
           :props="{ label: 'label', children: 'children' }"
           :check-strictly="false"
           default-expand-all
-          :default-checked-keys="menuDefaultCheckedKeys"
         />
       </el-scrollbar>
     </c7-dialog>
@@ -192,6 +191,13 @@ import { computed, nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import { listTreeDept } from '@/api/system/dept'
+import {
+  collectTreeNodeIds,
+  echoTreeCheckedKeysWithoutCascade,
+  normalizeMenuTreeNodes,
+  stringifyTreeIds,
+  toApiLongIds,
+} from '@/utils/ruoyi'
 import {
   addRole,
   cancelRoleUser,
@@ -287,7 +293,7 @@ function dataScopeText(v) {
   return m ? m.label : v || '-'
 }
 
-/** 将接口返回的 id 统一为数字，避免与 el-tree 的 node-key 比较不一致 */
+/** 部门树 id 统一为数字（部门 id 通常为安全整数） */
 function normalizeLongIds(keys) {
   if (!Array.isArray(keys)) return []
   return keys
@@ -298,16 +304,6 @@ function normalizeLongIds(keys) {
       return Number.isNaN(n) ? null : n
     })
     .filter((k) => k != null && k >= 1)
-}
-
-/** 将菜单树节点 id 规范为数字，与 el-tree node-key、勾选状态比较一致 */
-function normalizeMenuTreeNodes(nodes) {
-  if (!Array.isArray(nodes)) return []
-  return nodes.map((n) => ({
-    ...n,
-    id: n?.id == null || n.id === '' ? n?.id : Number(n.id),
-    children: normalizeMenuTreeNodes(n.children || []),
-  }))
 }
 
 /** 深拷贝菜单树，避免与 axios 响应式对象共享引用导致 el-tree 深度 watch 重置勾选 */
@@ -445,16 +441,22 @@ const menuTreeRef = ref(null)
 const menuTreeData = ref([])
 const menuTreeRenderKey = ref(0)
 const menuRoleId = ref(null)
-const menuDefaultCheckedKeys = ref([])
 
 function openMenuDialog(row) {
   menuRoleId.value = row.roleId
   roleMenuTreeselect(row.roleId).then((res) => {
     const d = res.data || {}
-    menuDefaultCheckedKeys.value = normalizeLongIds(d.checkedKeys || [])
     menuTreeData.value = normalizeMenuTreeNodes(cloneMenuTreeForRole(d.menus))
+    const validIds = collectTreeNodeIds(menuTreeData.value)
+    const checkedKeys = stringifyTreeIds(d.checkedKeys || []).filter((id) => validIds.has(id))
     menuTreeRenderKey.value += 1
     menuVisible.value = true
+    // 等 dialog + el-tree 挂载后再回显，避免 default-checked-keys 父级联子
+    nextTick(() => {
+      nextTick(() => {
+        echoTreeCheckedKeysWithoutCascade(menuTreeRef.value, checkedKeys)
+      })
+    })
   })
 }
 
@@ -463,11 +465,11 @@ function submitMenu() {
     const tree = menuTreeRef.value
     if (!tree || !menuRoleId.value) return Promise.reject(new Error('no tree'))
     /**
-     * 仅提交「勾选叶子」节点 id：后端 expandGrantedMenuIds 会从每条记录向上补祖先，
-     * 与 RuoYi 习惯一致；getCheckedKeys(false)+半选父级易与子级取消勾选不同步。
+     * 提交所有勾选节点（含半选父级），避免仅勾父目录时子菜单未入库、重登侧栏不显示。
      */
-    const leafKeys = typeof tree.getCheckedKeys === 'function' ? tree.getCheckedKeys(true) || [] : []
-    const menuIds = [...new Set(normalizeLongIds(leafKeys))]
+    const checked = typeof tree.getCheckedKeys === 'function' ? tree.getCheckedKeys(false) || [] : []
+    const half = typeof tree.getHalfCheckedKeys === 'function' ? tree.getHalfCheckedKeys() || [] : []
+    const menuIds = toApiLongIds([...checked, ...half])
     return updateRoleMenu({ roleId: menuRoleId.value, menuIds }).then(() => {
       ElMessage.success('菜单权限已保存')
       menuVisible.value = false

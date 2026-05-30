@@ -2,6 +2,7 @@ package io.github.genkidoudou.web.system.menu.service;
 
 import io.github.genkidoudou.web.system.menu.domain.SysMenu;
 import io.github.genkidoudou.web.system.menu.dto.SysMenuSaveRequest;
+import io.github.genkidoudou.web.system.menu.dto.SysMenuSortUpdateRequest;
 import io.github.genkidoudou.web.system.menu.vo.RoleMenuTreeselectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeSelectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeVo;
@@ -42,6 +43,11 @@ public interface MenuService {
     void add(SysMenuSaveRequest req);
 
     void update(SysMenuSaveRequest req);
+
+    /**
+     * 批量更新菜单显示排序（列表行内改序号后保存）。
+     */
+    void updateSort(SysMenuSortUpdateRequest req);
 
     void remove(Long menuId);
 

@@ -1,85 +1,98 @@
 <template>
   <div class="app-container">
-    <el-form :inline="true" :model="query" class="mb-2">
+    <el-form v-show="showSearch" :inline="true" :model="query" class="mb-2" @submit.prevent>
       <el-form-item label="菜单名称">
-        <el-input v-model="query.menuName" placeholder="请输入菜单名称" clearable style="width: 200px" />
+        <el-input
+          v-model="query.menuName"
+          placeholder="请输入菜单名称"
+          clearable
+          style="width: 200px"
+          @keyup.enter="loadData"
+        />
       </el-form-item>
       <el-form-item label="状态">
-        <el-select v-model="query.status" placeholder="状态" clearable style="width: 120px">
+        <el-select v-model="query.status" placeholder="菜单状态" clearable style="width: 200px">
           <el-option v-for="d in sys_normal_disable" :key="d.value" :label="d.label" :value="d.value" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="loadData" v-hasPermi="['system:menu:list']">查询</el-button>
-        <el-button @click="resetQuery" v-hasPermi="['system:menu:list']">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadData" v-hasPermi="['system:menu:list']">搜索</el-button>
+        <el-button :icon="Refresh" @click="resetQuery" v-hasPermi="['system:menu:list']">重置</el-button>
       </el-form-item>
     </el-form>
 
-    <el-row class="menu-toolbar" :gutter="8" align="middle">
-      <el-col :span="12">
-        <el-button type="primary" plain @click="openAdd()" v-hasPermi="['system:menu:add']">新增</el-button>
-        <el-button
-          type="success"
-          plain
-          :disabled="selection.length !== 1"
-          @click="toolbarEdit"
-          v-hasPermi="['system:menu:edit']"
-        >修改</el-button>
-        <el-button
-          type="danger"
-          plain
-          :disabled="!selection.length"
-          @click="toolbarBatchRemove"
-          v-hasPermi="['system:menu:remove']"
-        >删除</el-button>
-        <el-tooltip content="菜单树暂不支持导出" placement="top">
-          <span class="menu-toolbar__export-wrap">
-            <el-button type="warning" plain disabled>导出</el-button>
-          </span>
+    <el-row :gutter="10" class="menu-toolbar mb8" align="middle">
+      <el-col :span="1.5">
+        <el-button type="primary" plain :icon="Plus" @click="openAdd()" v-hasPermi="['system:menu:add']">新增</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain :icon="Check" @click="handleSaveSort" v-hasPermi="['system:menu:edit']">
+          保存排序
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button type="info" plain :icon="Sort" @click="toggleExpandAll">展开/折叠</el-button>
+      </el-col>
+      <el-col :span="1.5" class="menu-toolbar__search-toggle">
+        <el-tooltip :content="showSearch ? '隐藏搜索' : '显示搜索'" placement="top">
+          <el-button circle :icon="Search" @click="showSearch = !showSearch" />
         </el-tooltip>
-        <el-button type="info" plain @click="toggleExpand">{{ expandAll ? '折叠' : '展开' }}</el-button>
       </el-col>
     </el-row>
 
     <el-table
-      :key="String(expandAll)"
-      ref="tableRef"
+      v-if="refreshTable"
       v-loading="loading"
       :data="menuList"
       row-key="menuId"
       border
-      :tree-props="{ children: 'children' }"
       :default-expand-all="expandAll"
-      @selection-change="onSelectionChange"
+      :tree-props="{ children: 'children' }"
     >
-      <el-table-column type="selection" width="48" align="center" reserve-selection />
-      <el-table-column prop="menuName" label="菜单名称" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="icon" label="图标" width="80" align="center">
+      <el-table-column prop="menuName" label="菜单名称" :show-overflow-tooltip="true" min-width="220">
         <template #default="{ row }">
-          <svg-icon v-if="row.icon" :icon-class="row.icon" />
+          <svg-icon v-if="row.icon" :icon-class="row.icon" class="menu-name__icon" />
+          <span>{{ row.menuName }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="orderNum" label="排序" width="80" align="center" />
-      <el-table-column prop="perms" label="权限标识" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="component" label="组件路径" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="100" align="center">
+      <el-table-column label="类型" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.isFrame === '1' || isExternalLinkMenu(row)" type="danger" size="small">外链</el-tag>
+          <el-tag v-else-if="row.menuType === 'M'" type="primary" size="small">目录</el-tag>
+          <el-tag v-else-if="row.menuType === 'C'" type="success" size="small">菜单</el-tag>
+          <el-tag v-else-if="row.menuType === 'F'" type="warning" size="small">按钮</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="orderNum" label="排序" width="120" align="center">
+        <template #default="{ row }">
+          <el-input-number
+            v-model="row.orderNum"
+            controls-position="right"
+            :min="0"
+            :max="9999"
+            size="small"
+            style="width: 88px"
+          />
+        </template>
+      </el-table-column>
+      <el-table-column prop="perms" label="权限标识" min-width="140" :show-overflow-tooltip="true" />
+      <el-table-column prop="component" label="组件路径" min-width="160" :show-overflow-tooltip="true" />
+      <el-table-column prop="status" label="状态" width="80" align="center">
         <template #default="{ row }">
           <c7-dict-tag :model-value="row.status" :options="sys_normal_disable" dict-type="success" />
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="170" />
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" align="center" width="210" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openAdd(row)" v-hasPermi="['system:menu:add']">新增</el-button>
-          <el-button link type="primary" @click="openEdit(row)" v-hasPermi="['system:menu:edit']">修改</el-button>
-          <c7-button
-            btn-type="delete"
-            link
-            confirm
-            :confirm-message="`确认删除「${row.menuName}」吗？`"
-            :click-function="() => removeRow(row)"
-            v-hasPermi="['system:menu:remove']"
-          />
+          <el-button link type="primary" :icon="Edit" @click="openEdit(row)" v-hasPermi="['system:menu:edit']">
+            修改
+          </el-button>
+          <el-button link type="primary" :icon="Plus" @click="openAdd(row)" v-hasPermi="['system:menu:add']">
+            新增
+          </el-button>
+          <el-button link type="primary" :icon="Delete" @click="handleDelete(row)" v-hasPermi="['system:menu:remove']">
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -89,10 +102,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check, Delete, Edit, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue'
 import { useDict } from '@/utils/dict'
-import { listMenu, delMenu } from '@/api/system/menu'
+import { delMenu, listMenu, updateMenuSort } from '@/api/system/menu'
+import { isExternal } from '@/utils/validate'
 import AddOrUpdate from './add-or-update.vue'
 
 defineOptions({ name: 'SysMenu' })
@@ -100,39 +115,29 @@ defineOptions({ name: 'SysMenu' })
 const { sys_normal_disable } = useDict('sys_normal_disable')
 const loading = ref(false)
 const menuList = ref([])
-const expandAll = ref(true)
-const tableRef = ref(null)
+const expandAll = ref(false)
+const refreshTable = ref(true)
+const showSearch = ref(true)
 const formRef = ref(null)
 const query = ref({ menuName: '', status: '' })
-const selection = ref([])
+const originalOrders = ref({})
 
-function onSelectionChange(rows) {
-  selection.value = rows || []
+/** 新标签页外链：path 为 http(s) 且非 iframe */
+function isExternalLinkMenu(row) {
+  return row?.menuType === 'C' && isExternal(String(row?.path || ''))
 }
 
-function toolbarEdit() {
-  const row = selection.value[0]
-  if (row) openEdit(row)
-}
-
-function toolbarBatchRemove() {
-  const rows = selection.value
-  if (!rows.length) return
-  ElMessageBox.confirm(`确认删除选中的 ${rows.length} 条菜单吗？`, '提示', {
-    type: 'warning',
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-  })
-    .then(async () => {
-      for (const row of rows) {
-        await delMenu(row.menuId)
-      }
-      ElMessage.success('删除成功')
-      tableRef.value?.clearSelection?.()
-      selection.value = []
-      loadData()
-    })
-    .catch(() => {})
+/** 记录树节点原始排序，供「保存排序」对比 */
+function recordOriginalOrders(list) {
+  if (!Array.isArray(list)) return
+  for (const item of list) {
+    if (item?.menuId != null) {
+      originalOrders.value[item.menuId] = item.orderNum
+    }
+    if (item.children?.length) {
+      recordOriginalOrders(item.children)
+    }
+  }
 }
 
 function loadData() {
@@ -140,6 +145,8 @@ function loadData() {
   listMenu(query.value)
     .then((res) => {
       menuList.value = res.data || []
+      originalOrders.value = {}
+      recordOriginalOrders(menuList.value)
     })
     .finally(() => {
       loading.value = false
@@ -151,9 +158,41 @@ function resetQuery() {
   loadData()
 }
 
-function toggleExpand() {
+function toggleExpandAll() {
+  refreshTable.value = false
   expandAll.value = !expandAll.value
-  loadData()
+  nextTick(() => {
+    refreshTable.value = true
+  })
+}
+
+function collectSortChanges(list, menuIds, orderNums) {
+  if (!Array.isArray(list)) return
+  for (const item of list) {
+    const id = item.menuId
+    if (id != null && String(originalOrders.value[id]) !== String(item.orderNum)) {
+      menuIds.push(id)
+      orderNums.push(item.orderNum)
+    }
+    if (item.children?.length) {
+      collectSortChanges(item.children, menuIds, orderNums)
+    }
+  }
+}
+
+function handleSaveSort() {
+  const menuIds = []
+  const orderNums = []
+  collectSortChanges(menuList.value, menuIds, orderNums)
+  if (!menuIds.length) {
+    ElMessage.warning('未检测到排序修改')
+    return
+  }
+  updateMenuSort({ menuIds, orderNums })
+    .then(() => {
+      ElMessage.success('排序保存成功')
+      recordOriginalOrders(menuList.value)
+    })
 }
 
 function openAdd(row) {
@@ -164,8 +203,18 @@ function openEdit(row) {
   formRef.value?.open({ menuId: row.menuId })
 }
 
-function removeRow(row) {
-  return delMenu(row.menuId).then(() => loadData())
+function handleDelete(row) {
+  ElMessageBox.confirm(`是否确认删除名称为「${row.menuName}」的数据项？`, '提示', {
+    type: 'warning',
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+  })
+    .then(() => delMenu(row.menuId))
+    .then(() => {
+      ElMessage.success('删除成功')
+      loadData()
+    })
+    .catch(() => {})
 }
 
 onMounted(() => {
@@ -176,14 +225,16 @@ onMounted(() => {
 <style scoped>
 .menu-toolbar {
   margin-bottom: 12px;
+  flex-wrap: nowrap;
 }
-.menu-toolbar :deep(.el-button + .el-button),
-.menu-toolbar .menu-toolbar__export-wrap + .el-button {
-  margin-left: 8px;
+.menu-toolbar__search-toggle {
+  margin-left: auto;
 }
-.menu-toolbar__export-wrap {
-  display: inline-block;
-  margin-left: 8px;
-  vertical-align: middle;
+.menu-name__icon {
+  margin-right: 6px;
+  vertical-align: -0.15em;
+}
+.mb8 {
+  margin-bottom: 8px;
 }
 </style>

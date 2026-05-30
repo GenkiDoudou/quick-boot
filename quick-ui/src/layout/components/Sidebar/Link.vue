@@ -11,10 +11,18 @@ const props = defineProps({
   to: {
     type: [String, Object],
     required: true
+  },
+  /** 侧栏菜单 meta；含 link 时强制 router 内嵌，不走新标签页 */
+  meta: {
+    type: Object,
+    default: null
   }
 })
 
 const isExt = computed(() => {
+  if (props.meta?.link) {
+    return false
+  }
   return isExternal(props.to)
 })
 

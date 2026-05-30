@@ -1,4 +1,5 @@
 io.github.genkidoudou.common.cache.QuickbootCacheAutoConfiguration
+io.github.genkidoudou.common.mybatis.QuickbootMybatisAutoConfiguration
 io.github.genkidoudou.common.desensitization.SensitiveJacksonAutoConfiguration
 io.github.genkidoudou.common.file.FileStorageAutoConfiguration
 io.github.genkidoudou.common.security.firewall.cors.FirewallCorsAutoConfiguration

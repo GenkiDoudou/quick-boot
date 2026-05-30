@@ -10,6 +10,7 @@ import io.github.genkidoudou.web.system.menu.domain.SysRole;
 import io.github.genkidoudou.web.system.menu.domain.SysRoleMenu;
 import io.github.genkidoudou.web.system.menu.domain.SysUserRole;
 import io.github.genkidoudou.web.system.menu.dto.SysMenuSaveRequest;
+import io.github.genkidoudou.web.system.menu.dto.SysMenuSortUpdateRequest;
 import io.github.genkidoudou.web.system.menu.mapper.SysMenuMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMenuMapper;
@@ -143,6 +144,34 @@ public class MenuServiceImpl implements MenuService {
         assertNoCycle(m.getMenuId(), parentId);
         m.setParentId(parentId);
         sysMenuMapper.updateById(m);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSort(SysMenuSortUpdateRequest req) {
+        Objects.requireNonNull(req, "req");
+        List<Long> menuIds = req.getMenuIds();
+        List<Integer> orderNums = req.getOrderNums();
+        if (menuIds.size() != orderNums.size()) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "menuIds 与 orderNums 数量须一致");
+        }
+        for (int i = 0; i < menuIds.size(); i++) {
+            Long menuId = menuIds.get(i);
+            if (menuId == null) {
+                throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "menuId 不能为空");
+            }
+            Integer orderNum = orderNums.get(i);
+            if (orderNum == null) {
+                throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "orderNum 不能为空");
+            }
+            SysMenu patch = new SysMenu();
+            patch.setMenuId(menuId);
+            patch.setOrderNum(orderNum);
+            int rows = sysMenuMapper.updateById(patch);
+            if (rows == 0) {
+                throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "菜单不存在或已删除: " + menuId);
+            }
+        }
     }
 
     @Override
@@ -300,9 +329,44 @@ public class MenuServiceImpl implements MenuService {
         List<SysMenu> roots = childrenMap.getOrDefault(ROOT_PARENT_ID, Collections.emptyList());
         List<Map<String, Object>> out = new ArrayList<>();
         for (SysMenu r : roots) {
-            out.add(toRouterMap(r, childrenMap));
+            out.add(wrapLayoutForRootInnerLink(toRouterMap(r, childrenMap)));
         }
         return out;
+    }
+
+    /**
+     * 顶级 InnerLink（iframe 外链）须包在 Layout 下，否则前端主区域无 {@code IframeToggle}，只能空白路由页。
+     */
+    private Map<String, Object> wrapLayoutForRootInnerLink(Map<String, Object> map) {
+        Object childrenObj = map.get("children");
+        if (childrenObj instanceof List<?> list && !list.isEmpty()) {
+            return map;
+        }
+        if (!"InnerLink".equals(map.get("component"))) {
+            return map;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> meta = (Map<String, Object>) map.get("meta");
+        if (meta == null || meta.get("link") == null) {
+            return map;
+        }
+        Map<String, Object> child = new LinkedHashMap<>();
+        if (map.containsKey("name")) {
+            child.put("name", map.get("name"));
+        }
+        child.put("path", "");
+        child.put("component", "InnerLink");
+        child.put("meta", new LinkedHashMap<>(meta));
+
+        Map<String, Object> wrapper = new LinkedHashMap<>();
+        wrapper.put("path", map.get("path"));
+        wrapper.put("component", "Layout");
+        Map<String, Object> wrapperMeta = new LinkedHashMap<>();
+        wrapperMeta.put("title", meta.get("title"));
+        wrapperMeta.put("icon", meta.get("icon"));
+        wrapper.put("meta", wrapperMeta);
+        wrapper.put("children", List.of(child));
+        return wrapper;
     }
 
     private Map<String, Object> toRouterMap(SysMenu m, Map<Long, List<SysMenu>> childrenMap) {

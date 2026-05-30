@@ -15,7 +15,19 @@
 import IframeToggle from './IframeToggle/index.vue'
 import useTagsViewStore from '@/store/modules/tagsView'
 
+const route = useRoute()
 const tagsViewStore = useTagsViewStore()
+
+/** 外链/积木 iframe 不依赖 TagsView 是否开启，进入路由即登记 */
+watch(
+  () => route.path,
+  () => {
+    if (route.meta?.link) {
+      tagsViewStore.addIframeView(route)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="scss" scoped>

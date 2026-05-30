@@ -38,6 +38,11 @@ export function updateMenu(data) {
   return request({ url: '/system/menu/update', method: 'post', data })
 }
 
+/** 批量保存菜单排序 */
+export function updateMenuSort(data) {
+  return request({ url: '/system/menu/updateSort', method: 'post', data })
+}
+
 /** 删除菜单 */
 export function delMenu(menuId) {
   return request({ url: '/system/menu/remove/' + menuId, method: 'post' })

@@ -183,11 +183,15 @@ function initTags() {
 
 function addTags() {
   const { name } = route
+  // 积木/外链菜单（meta.link）可无路由名称，须登记 iframe 否则主区域空白
+  if (route.meta?.link) {
+    useTagsViewStore().addIframeView(route)
+    if (!name) {
+      useTagsViewStore().addVisitedView(route)
+    }
+  }
   if (name) {
     useTagsViewStore().addView(route)
-    if (route.meta.link) {
-      useTagsViewStore().addIframeView(route)
-    }
   }
   return false
 }

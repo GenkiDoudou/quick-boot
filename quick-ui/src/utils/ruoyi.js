@@ -164,3 +164,86 @@ export function addDateRange(params, dateRange, propName) {
   }
   return search;
 }
+
+/**
+ * 树 node-key 用 ID：雪花 ID 保持 string，避免 JS Number 精度丢失导致误勾选。
+ * @param {string|number|null|undefined} id
+ * @returns {string|number|null|undefined}
+ */
+export function stringifyTreeId(id) {
+  if (id == null || id === '') return id
+  return String(id).trim()
+}
+
+/**
+ * @param {Array<string|number|null|undefined>} ids
+ * @returns {string[]}
+ */
+export function stringifyTreeIds(ids) {
+  if (!Array.isArray(ids)) return []
+  return ids
+    .map((id) => stringifyTreeId(id))
+    .filter((id) => id != null && id !== '' && id !== '0' && id !== '-1')
+}
+
+/**
+ * 规范菜单权限树节点 id（与 el-tree node-key 一致，一律 string）。
+ * @param {Array<Record<string, unknown>>} nodes
+ */
+export function normalizeMenuTreeNodes(nodes) {
+  if (!Array.isArray(nodes)) return []
+  return nodes.map((n) => ({
+    ...n,
+    id: stringifyTreeId(n?.id),
+    children: normalizeMenuTreeNodes(n.children || []),
+  }))
+}
+
+/**
+ * 收集树节点 id（string），用于过滤无效 checkedKeys。
+ * @param {Array<Record<string, unknown>>} nodes
+ * @param {Set<string>} [out]
+ */
+export function collectTreeNodeIds(nodes, out = new Set()) {
+  if (!Array.isArray(nodes)) return out
+  for (const n of nodes) {
+    const id = stringifyTreeId(n?.id)
+    if (id != null && id !== '') out.add(String(id))
+    collectTreeNodeIds(n.children, out)
+  }
+  return out
+}
+
+/**
+ * 角色菜单树回显：禁止 default-checked-keys（父节点会连带勾选未授权子菜单）。
+ * 与若依一致，逐节点 setChecked，deep=false 不向下级联。
+ * @param {import('element-plus').TreeInstance | null | undefined} tree
+ * @param {string[]} checkedKeys
+ */
+export function echoTreeCheckedKeysWithoutCascade(tree, checkedKeys) {
+  if (!tree || !Array.isArray(checkedKeys)) return
+  checkedKeys.forEach((id) => {
+    tree.setChecked(id, true, false)
+  })
+}
+
+/**
+ * 提交给后端的 Long：安全整数用 number，雪花 ID 用 string。
+ * @param {string|number|null|undefined} value
+ * @returns {number|string|null}
+ */
+export function toApiLongId(value) {
+  if (value == null || value === '') return null
+  const s = String(value).trim()
+  const n = Number(s)
+  return Number.isSafeInteger(n) ? n : s
+}
+
+/**
+ * @param {Array<string|number|null|undefined>} ids
+ * @returns {Array<number|string>}
+ */
+export function toApiLongIds(ids) {
+  if (!Array.isArray(ids)) return []
+  return [...new Set(ids.map(toApiLongId).filter((id) => id != null))]
+}

@@ -17,6 +17,7 @@ public final class JimuShareUriMatcher {
                 || uri.contains("/drag/share/view/")
                 || uri.contains("/drag/share/")
                 || uri.contains("/drag/preview/")
+                || uri.contains("/drag/view")
                 || uri.contains("/drag/page/view");
     }
 

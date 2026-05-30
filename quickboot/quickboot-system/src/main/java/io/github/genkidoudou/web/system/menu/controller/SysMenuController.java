@@ -7,6 +7,7 @@ import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.system.menu.domain.SysMenu;
 import io.github.genkidoudou.web.system.menu.dto.SysMenuSaveRequest;
+import io.github.genkidoudou.web.system.menu.dto.SysMenuSortUpdateRequest;
 import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.menu.vo.RoleMenuTreeselectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeSelectVo;
@@ -96,6 +97,14 @@ public class SysMenuController {
     @PostMapping("/update")
     public R<Void> update(@Valid @RequestBody SysMenuSaveRequest body) {
         menuService.update(body);
+        return R.ok();
+    }
+
+    @Operation(summary = "保存菜单排序")
+    @SaCheckPermission("system:menu:edit")
+    @PostMapping("/updateSort")
+    public R<Void> updateSort(@Valid @RequestBody SysMenuSortUpdateRequest body) {
+        menuService.updateSort(body);
         return R.ok();
     }
 

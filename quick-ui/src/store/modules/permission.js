@@ -37,9 +37,10 @@ const usePermissionStore = defineStore(
         return new Promise(resolve => {
           // 向后端请求路由数据
           getRouters().then(res => {
-            const sdata = JSON.parse(JSON.stringify(res.data))
-            const rdata = JSON.parse(JSON.stringify(res.data))
-            const defaultData = JSON.parse(JSON.stringify(res.data))
+            const normalized = (res.data || []).map(wrapRootInnerLinkRaw)
+            const sdata = JSON.parse(JSON.stringify(normalized))
+            const rdata = JSON.parse(JSON.stringify(normalized))
+            const defaultData = JSON.parse(JSON.stringify(normalized))
             const sidebarRoutes = filterAsyncRouter(sdata)
             const rewriteRoutes = filterAsyncRouter(rdata, false, true)
             const defaultRoutes = filterAsyncRouter(defaultData)
@@ -87,7 +88,7 @@ function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
 
 function filterChildren(childrenMap, lastRouter = false) {
   var children = []
-  childrenMap.forEach((el, index) => {
+  childrenMap.forEach((el) => {
     if (el.children && el.children.length) {
       if (el.component === 'ParentView' && !lastRouter) {
         el.children.forEach(c => {
@@ -108,9 +109,30 @@ function filterChildren(childrenMap, lastRouter = false) {
         return
       }
     }
-    children = children.concat(el)
+    children.push(el)
   })
   return children
+}
+
+/** 顶级 InnerLink 包 Layout（JSON 字符串组件阶段，侧栏与路由注册共用） */
+function wrapRootInnerLinkRaw(route) {
+  if (route.children?.length) {
+    return route
+  }
+  if (route.component !== 'InnerLink' || !route.meta?.link) {
+    return route
+  }
+  return {
+    path: route.path,
+    component: 'Layout',
+    meta: { title: route.meta.title, icon: route.meta.icon },
+    children: [{
+      path: '',
+      component: 'InnerLink',
+      name: route.name,
+      meta: { ...route.meta }
+    }]
+  }
 }
 
 // 动态路由遍历，验证是否具备权限
