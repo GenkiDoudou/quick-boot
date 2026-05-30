@@ -16,10 +16,15 @@
         <el-tag
             v-else-if="cell.kind === 'dict'"
             :type="cell.tagType"
+            :class="cell.tagClass"
             :size="size"
             :effect="effect"
             :round="round"
         >{{ cell.label }}</el-tag>
+        <span
+            v-else-if="cell.kind === 'plain'"
+            :class="cell.tagClass"
+        >{{ cell.label }}</span>
         <!-- +N：collapse 时 ElTooltip；否则 ElPopover 可点 -->
         <el-tooltip
             v-else-if="cell.kind === 'more' && collapse"
@@ -80,7 +85,7 @@ defineOptions({name: 'C7DictTag', inheritAttrs: false})
  *
  * **未匹配**：**`showValue=true`** → **`type=info`** 展示 **`String(val)`**；**`showValue=false`** → 该位 **`-`**。
  *
- * **`dictType`**：映射到 **`ElTag.type`**；未收录时 **fallback `primary`**。**未匹配 info tag** 固定 **`info`**，不受 **`dictType`** 影响。
+ * **`dictType`**：当字典项未配置 **`listClass`/`elTagType`** 时的 **`ElTag.type`** 兜底；已配置时以字典项为准。
  *
  * **`+N`**：**`collapse=true`** 时 **`ElTooltip`** 展示溢出 **`label`** 列表；**`collapse=false`** 时 **`ElPopover` + `click`** 展示同序列表。
  *
@@ -143,6 +148,41 @@ function resolveDictTagType(dictType) {
 }
 
 const dictTagType = computed(() => resolveDictTagType(props.dictType))
+
+/**
+ * 字典项是否纯文本展示（RuoYi：listClass=default 且 cssClass 为空）。
+ * @param {Record<string, *>|null} opt
+ */
+function isPlainDictOption(opt) {
+  if (!opt) {
+    return true
+  }
+  const t = opt.elTagType ?? opt.listClass ?? ''
+  const c = opt.elTagClass ?? opt.cssClass ?? ''
+  return (t === '' || t === 'default' || t == null) && (c === '' || c == null)
+}
+
+/**
+ * 优先取字典项 listClass/elTagType，否则用 dictType 兜底。
+ * @param {Record<string, *>|null} opt
+ * @returns {'primary'|'success'|'info'|'warning'|'danger'|undefined}
+ */
+function resolveOptionTagType(opt) {
+  const raw = String(opt?.elTagType ?? opt?.listClass ?? '').trim().toLowerCase()
+  if (raw && raw !== 'default' && EP_TYPES.has(raw)) {
+    return /** @type {'primary'|'success'|'info'|'warning'|'danger'} */ (raw)
+  }
+  return dictTagType.value === 'primary' ? undefined : dictTagType.value
+}
+
+/**
+ * @param {Record<string, *>|null} opt
+ * @returns {string}
+ */
+function resolveOptionTagClass(opt) {
+  const c = opt?.elTagClass ?? opt?.cssClass
+  return c ? String(c) : ''
+}
 
 /**
  * @param {*} raw
@@ -253,12 +293,27 @@ const cells = computed(() => {
     }
     const mk = /** @type {number} */ (r.mk)
     const label = String(r.opt.label)
+    const tagClass = resolveOptionTagClass(r.opt)
+    if (isPlainDictOption(r.opt)) {
+      if (!maxLimitActive.value) {
+        out.push({ kind: 'plain', label, tagClass })
+        continue
+      }
+      if (mk <= maxN) {
+        out.push({ kind: 'plain', label, tagClass })
+      } else if (mk === maxN + 1) {
+        const n = totalMatched.value - maxN
+        out.push({ kind: 'more', n, overflowLabels: overflowLabels.value.slice() })
+      }
+      continue
+    }
+    const tagType = resolveOptionTagType(r.opt)
     if (!maxLimitActive.value) {
-      out.push({kind: 'dict', label, tagType: dictTagType.value})
+      out.push({ kind: 'dict', label, tagType, tagClass })
       continue
     }
     if (mk <= maxN) {
-      out.push({kind: 'dict', label, tagType: dictTagType.value})
+      out.push({ kind: 'dict', label, tagType, tagClass })
     } else if (mk === maxN + 1) {
       const n = totalMatched.value - maxN
       out.push({
