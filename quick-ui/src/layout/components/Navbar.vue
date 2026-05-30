@@ -1,19 +1,25 @@
 <template>
-  <div class="navbar">
+  <div class="navbar" :class="'nav' + navType">
     <hamburger
+      v-if="navType !== 3"
       id="hamburger-container"
       :is-active="appStore.sidebar.opened"
       class="hamburger-container"
       @toggleClick="toggleSideBar"
     />
-    <breadcrumb id="breadcrumb-container" class="breadcrumb-container" v-if="!settingsStore.topNav" />
+    <breadcrumb v-if="navType === 1" id="breadcrumb-container" class="breadcrumb-container" />
+    <top-nav v-if="navType === 2" id="topmenu-container" class="topmenu-container" />
+    <template v-if="navType === 3">
+      <logo v-show="settingsStore.sidebarLogo" :collapse="false" class="navbar-logo" />
+      <top-bar id="topbar-container" class="topbar-container" />
+    </template>
 
     <div class="right-menu">
       <template v-if="appStore.device !== 'mobile'">
         <screenfull id="screenfull" class="right-menu-item hover-effect" />
       </template>
       <div class="avatar-container">
-        <el-dropdown @command="handleCommand" class="right-menu-item hover-effect" trigger="click">
+        <el-dropdown trigger="click" class="right-menu-item hover-effect" @command="handleCommand">
           <div class="avatar-wrapper">
             <img :src="userStore.avatar" class="user-avatar" />
             <el-icon><caret-bottom /></el-icon>
@@ -23,7 +29,7 @@
               <router-link to="/user/profile">
                 <el-dropdown-item>个人中心</el-dropdown-item>
               </router-link>
-              <el-dropdown-item command="setLayout" v-if="settingsStore.showSettings">
+              <el-dropdown-item v-if="settingsStore.showSettings" command="setLayout">
                 <span>布局设置</span>
               </el-dropdown-item>
               <el-dropdown-item divided command="logout">
@@ -42,13 +48,18 @@ import { ElMessageBox } from 'element-plus'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Hamburger from '@/components/Hamburger/index.vue'
 import Screenfull from '@/components/Screenfull/index.vue'
+import TopNav from './TopNav/index.vue'
+import TopBar from './TopBar/index.vue'
+import Logo from './Sidebar/Logo.vue'
 import useAppStore from '@/store/modules/app'
 import useUserStore from '@/store/modules/user'
 import useSettingsStore from '@/store/modules/settings'
+import { normalizeNavType } from '@/utils/navLayout'
 
 const appStore = useAppStore()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
+const navType = computed(() => normalizeNavType(settingsStore.navType))
 
 function toggleSideBar() {
   appStore.toggleSideBar()
@@ -92,13 +103,20 @@ function setLayout() {
   position: relative;
   background: #fff;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  display: flex;
+  align-items: center;
+
+  &.nav3 .hamburger-container {
+    display: none;
+  }
 
   .hamburger-container {
     line-height: 46px;
     height: 100%;
-    float: left;
     cursor: pointer;
     transition: background 0.3s;
+    flex-shrink: 0;
+    margin-right: 8px;
     -webkit-tap-highlight-color: transparent;
 
     &:hover {
@@ -107,14 +125,34 @@ function setLayout() {
   }
 
   .breadcrumb-container {
-    float: left;
+    flex-shrink: 0;
+  }
+
+  .navbar-logo {
+    flex-shrink: 0;
+    width: 210px;
+  }
+
+  .topmenu-container {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .topbar-container {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    margin-left: 8px;
   }
 
   .right-menu {
-    float: right;
     height: 100%;
     line-height: 50px;
     display: flex;
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;
 
     &:focus {
       outline: none;

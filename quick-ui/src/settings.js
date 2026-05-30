@@ -15,7 +15,12 @@ export default {
     showSettings: true,
 
     /**
-     * 是否显示顶部导航
+     * 导航模式：1 左侧菜单 | 2 混合菜单（顶栏一级 + 侧栏子菜单）| 3 顶部菜单
+     */
+    navType: 1,
+
+    /**
+     * @deprecated 请使用 navType；保留兼容旧配置
      */
     topNav: false,
 

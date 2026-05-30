@@ -2,9 +2,19 @@ import defaultSettings from '@/settings'
 import { useDynamicTitle } from '@/utils/dynamicTitle'
 import { defineStore } from 'pinia'
 
-const { sideTheme, showSettings, topNav, tagsView, fixedHeader, sidebarLogo, dynamicTitle } = defaultSettings
+const { sideTheme, showSettings, navType, topNav, tagsView, fixedHeader, sidebarLogo, dynamicTitle } = defaultSettings
 
 const storageSetting = JSON.parse(localStorage.getItem('layout-setting')) || ''
+
+function resolveNavType(storage) {
+  if (storage?.navType !== undefined && storage.navType !== null && storage.navType !== '') {
+    return Number(storage.navType)
+  }
+  if (storage?.topNav === true) {
+    return 2
+  }
+  return navType
+}
 
 const useSettingsStore = defineStore(
   'settings',
@@ -14,6 +24,7 @@ const useSettingsStore = defineStore(
       theme: storageSetting.theme || '#409EFF',
       sideTheme: storageSetting.sideTheme || sideTheme,
       showSettings: showSettings,
+      navType: resolveNavType(storageSetting),
       topNav: storageSetting.topNav === undefined ? topNav : storageSetting.topNav,
       tagsView: storageSetting.tagsView === undefined ? tagsView : storageSetting.tagsView,
       fixedHeader: storageSetting.fixedHeader === undefined ? fixedHeader : storageSetting.fixedHeader,
@@ -21,17 +32,15 @@ const useSettingsStore = defineStore(
       dynamicTitle: storageSetting.dynamicTitle === undefined ? dynamicTitle : storageSetting.dynamicTitle
     }),
     actions: {
-      // 修改布局设置
       changeSetting(data) {
         const { key, value } = data
-        if (this.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(this, key)) {
           this[key] = value
         }
       },
-      // 设置网页标题
       setTitle(title) {
         this.title = title
-        useDynamicTitle();
+        useDynamicTitle()
       }
     }
   })

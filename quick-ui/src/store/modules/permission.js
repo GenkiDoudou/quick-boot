@@ -4,6 +4,9 @@ import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index.vue'
 import ParentView from '@/components/ParentView/index.vue'
 import InnerLink from '@/layout/components/InnerLink/index.vue'
+import useSettingsStore from '@/store/modules/settings'
+import useAppStore from '@/store/modules/app'
+import { applyNavLayout, normalizeNavType } from '@/utils/navLayout'
 import { defineStore } from 'pinia'
 
 // 匹配views里面所有的.vue文件
@@ -52,6 +55,18 @@ const usePermissionStore = defineStore(
             this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
             this.setDefaultRoutes(sidebarRoutes)
             this.setTopbarRoutes(defaultRoutes)
+
+            const settingsStore = useSettingsStore()
+            const appStore = useAppStore()
+            if (normalizeNavType(settingsStore.navType) === 2) {
+              applyNavLayout({
+                navType: 2,
+                permissionStore: this,
+                appStore,
+                route: router.currentRoute.value
+              })
+            }
+
             resolve(rewriteRoutes)
           })
         })

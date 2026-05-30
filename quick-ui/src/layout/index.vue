@@ -1,7 +1,7 @@
 <template>
   <div :class="classObj" class="app-wrapper" :style="{ '--current-color': theme }">
     <div v-if="device === 'mobile' && sidebar.opened" class="drawer-bg" @click="handleClickOutside" />
-    <sidebar v-if="!sidebar.hide" class="sidebar-container" />
+    <sidebar v-if="!sidebar.hide && navType !== 3" class="sidebar-container" />
     <div :class="{ hasTagsView: needTagsView, sidebarHide: sidebar.hide }" class="main-container">
       <div :class="{ 'fixed-header': fixedHeader }">
         <navbar @setLayout="setLayout" />
@@ -19,12 +19,17 @@ import Sidebar from './components/Sidebar/index.vue'
 import { AppMain, Navbar, Settings, TagsView } from './components'
 import useAppStore from '@/store/modules/app'
 import useSettingsStore from '@/store/modules/settings'
+import usePermissionStore from '@/store/modules/permission'
+import { applyNavLayout, normalizeNavType } from '@/utils/navLayout'
 
 const settingsStore = useSettingsStore()
+const permissionStore = usePermissionStore()
+const appStore = useAppStore()
+const route = useRoute()
+const navType = computed(() => normalizeNavType(settingsStore.navType))
 const theme = computed(() => settingsStore.theme)
-const sideTheme = computed(() => settingsStore.sideTheme)
-const sidebar = computed(() => useAppStore().sidebar)
-const device = computed(() => useAppStore().device)
+const sidebar = computed(() => appStore.sidebar)
+const device = computed(() => appStore.device)
 const needTagsView = computed(() => settingsStore.tagsView)
 const fixedHeader = computed(() => settingsStore.fixedHeader)
 
@@ -40,21 +45,34 @@ const WIDTH = 992
 
 watch(() => device.value, () => {
   if (device.value === 'mobile' && sidebar.value.opened) {
-    useAppStore().closeSideBar({ withoutAnimation: false })
+    appStore.closeSideBar({ withoutAnimation: false })
   }
 })
 
 watchEffect(() => {
   if (width.value - 1 < WIDTH) {
-    useAppStore().toggleDevice('mobile')
-    useAppStore().closeSideBar({ withoutAnimation: true })
+    appStore.toggleDevice('mobile')
+    appStore.closeSideBar({ withoutAnimation: true })
   } else {
-    useAppStore().toggleDevice('desktop')
+    appStore.toggleDevice('desktop')
   }
 })
 
+watch(
+  () => [navType.value, permissionStore.topbarRouters.length, route.path],
+  () => {
+    applyNavLayout({
+      navType: navType.value,
+      permissionStore,
+      appStore,
+      route: route
+    })
+  },
+  { immediate: true }
+)
+
 function handleClickOutside() {
-  useAppStore().closeSideBar({ withoutAnimation: false })
+  appStore.closeSideBar({ withoutAnimation: false })
 }
 
 const settingRef = ref(null)

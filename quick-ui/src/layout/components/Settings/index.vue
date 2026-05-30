@@ -1,13 +1,32 @@
 <template>
-  <el-drawer v-model="showSettings" :withHeader="false" direction="rtl" size="300px">
+  <el-drawer v-model="showSettings" :with-header="false" direction="rtl" size="300px">
+    <div class="setting-drawer-title">
+      <h3 class="drawer-title">菜单导航设置</h3>
+    </div>
+    <div class="nav-wrap">
+      <el-tooltip content="左侧菜单" placement="bottom">
+        <div class="item left" :class="{ activeItem: navType === 1 }" @click="handleNavType(1)">
+          <b /><b />
+        </div>
+      </el-tooltip>
+      <el-tooltip content="混合菜单（顶部一级 + 侧栏子菜单）" placement="bottom">
+        <div class="item mix" :class="{ activeItem: navType === 2 }" @click="handleNavType(2)">
+          <b /><b />
+        </div>
+      </el-tooltip>
+      <el-tooltip content="顶部菜单" placement="bottom">
+        <div class="item top" :class="{ activeItem: navType === 3 }" @click="handleNavType(3)">
+          <b /><b />
+        </div>
+      </el-tooltip>
+    </div>
+
     <div class="setting-drawer-title">
       <h3 class="drawer-title">主题风格设置</h3>
     </div>
     <div class="setting-drawer-block-checbox">
       <div class="setting-drawer-block-checbox-item" @click="handleTheme('theme-dark')">
-        <div
-          style="width:48px;height:48px;background:#191b24;border-radius:4px;"
-        />
+        <div style="width:48px;height:48px;background:#191b24;border-radius:4px;" />
         <div v-if="sideTheme === 'theme-dark'" class="setting-drawer-block-checbox-selectIcon" style="display: block;">
           <i aria-label="图标: check" class="anticon anticon-check">
             <svg viewBox="64 64 896 896" width="1em" height="1em" :fill="theme" aria-hidden="true" focusable="false">
@@ -17,9 +36,7 @@
         </div>
       </div>
       <div class="setting-drawer-block-checbox-item" @click="handleTheme('theme-light')">
-        <div
-          style="width:48px;height:48px;background:#f0f2f5;border-radius:4px;border:1px solid #ddd;"
-        />
+        <div style="width:48px;height:48px;background:#f0f2f5;border-radius:4px;border:1px solid #ddd;" />
         <div v-if="sideTheme === 'theme-light'" class="setting-drawer-block-checbox-selectIcon" style="display: block;">
           <i aria-label="图标: check" class="anticon anticon-check">
             <svg viewBox="64 64 896 896" width="1em" height="1em" :fill="theme" aria-hidden="true" focusable="false">
@@ -76,11 +93,19 @@
 
 <script setup>
 import { ElLoading, ElMessage } from 'element-plus'
+import useAppStore from '@/store/modules/app'
 import useSettingsStore from '@/store/modules/settings'
+import usePermissionStore from '@/store/modules/permission'
 import { handleThemeStyle } from '@/utils/theme'
+import { applyNavLayout, normalizeNavType } from '@/utils/navLayout'
+import { useRoute } from 'vue-router'
 
+const appStore = useAppStore()
 const settingsStore = useSettingsStore()
+const permissionStore = usePermissionStore()
+const route = useRoute()
 const showSettings = ref(false)
+const navType = ref(normalizeNavType(settingsStore.navType))
 const theme = ref(settingsStore.theme)
 const sideTheme = ref(settingsStore.sideTheme)
 const storeSettings = computed(() => settingsStore)
@@ -96,10 +121,22 @@ function handleTheme(val) {
   sideTheme.value = val
 }
 
+function handleNavType(val) {
+  const type = normalizeNavType(val)
+  settingsStore.navType = type
+  navType.value = type
+  applyNavLayout({
+    navType: type,
+    permissionStore,
+    appStore,
+    route: route
+  })
+}
+
 function saveSetting() {
-  let loadingInstance = ElLoading.service({ lock: true, text: '正在保存到本地，请稍候...', background: 'rgba(0,0,0,0.7)' })
-  let layoutSetting = {
-    topNav: storeSettings.value.topNav,
+  const loadingInstance = ElLoading.service({ lock: true, text: '正在保存到本地，请稍候...', background: 'rgba(0,0,0,0.7)' })
+  const layoutSetting = {
+    navType: storeSettings.value.navType,
     tagsView: storeSettings.value.tagsView,
     fixedHeader: storeSettings.value.fixedHeader,
     sidebarLogo: storeSettings.value.sidebarLogo,
@@ -108,16 +145,21 @@ function saveSetting() {
     theme: storeSettings.value.theme
   }
   localStorage.setItem('layout-setting', JSON.stringify(layoutSetting))
-  setTimeout(() => loadingInstance.close(), 1000)
+  setTimeout(() => loadingInstance.close(), 800)
+  ElMessage.success('布局配置已保存')
 }
 
 function resetSetting() {
-  let loadingInstance = ElLoading.service({ lock: true, text: '正在清除设置缓存并刷新，请稍候...', background: 'rgba(0,0,0,0.7)' })
+  const loadingInstance = ElLoading.service({ lock: true, text: '正在清除设置缓存并刷新，请稍候...', background: 'rgba(0,0,0,0.7)' })
   localStorage.removeItem('layout-setting')
-  setTimeout(() => window.location.reload(), 1000)
+  setTimeout(() => {
+    loadingInstance.close()
+    window.location.reload()
+  }, 800)
 }
 
 function openSetting() {
+  navType.value = normalizeNavType(settingsStore.navType)
   showSettings.value = true
 }
 
@@ -170,6 +212,68 @@ defineExpose({ openSetting })
   .comp-style {
     float: right;
     margin: -3px 8px 0px 0px;
+  }
+}
+
+.nav-wrap {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 10px;
+  margin-bottom: 20px;
+
+  .activeItem {
+    border: 2px solid var(--el-color-primary) !important;
+  }
+
+  .item {
+    position: relative;
+    margin-right: 16px;
+    cursor: pointer;
+    width: 56px;
+    height: 48px;
+    border-radius: 4px;
+    background: #f0f2f5;
+    border: 2px solid transparent;
+  }
+
+  .left {
+    b:first-child {
+      display: block;
+      height: 30%;
+      background: #fff;
+    }
+    b:last-child {
+      width: 30%;
+      background: #1b2a47;
+      position: absolute;
+      height: 100%;
+      top: 0;
+      border-radius: 4px 0 0 4px;
+    }
+  }
+  .mix {
+    b:first-child {
+      border-radius: 4px 4px 0 0;
+      display: block;
+      height: 30%;
+      background: #1b2a47;
+    }
+    b:last-child {
+      width: 30%;
+      background: #1b2a47;
+      position: absolute;
+      height: 70%;
+      border-radius: 0 0 0 4px;
+    }
+  }
+  .top {
+    b:first-child {
+      display: block;
+      height: 30%;
+      background: #1b2a47;
+      border-radius: 4px 4px 0 0;
+    }
   }
 }
 </style>
