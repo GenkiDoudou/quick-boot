@@ -35,6 +35,8 @@ public class FirewallCorsProperties {
 
     /**
      * 允许的请求头（默认 {@code *}）。
+     * <p>
+     * 若改为显式列表，须包含链路相关头：{@code X-Client-Operation-Id}、{@code traceparent}、{@code x-trace-id}。
      */
     private List<String> allowedHeaders = new ArrayList<>(List.of("*"));
 

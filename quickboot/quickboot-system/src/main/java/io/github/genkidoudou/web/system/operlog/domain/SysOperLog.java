@@ -60,4 +60,7 @@ public class SysOperLog implements Serializable {
 
     /** 与 {@link io.github.genkidoudou.common.api.TraceIds} / MDC 同源，可空。 */
     private String traceId;
+
+    /** 前端一次用户操作 ID，来自 {@code X-Client-Operation-Id}，可空。 */
+    private String clientOperationId;
 }

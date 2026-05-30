@@ -79,6 +79,7 @@ public class OperLogAssembler {
         row.setOperTime(LocalDateTime.now());
         row.setCostTime(Math.max(0, payload.getEndTimeMs() - payload.getStartTimeMs()));
         row.setTraceId(payload.getTraceId());
+        row.setClientOperationId(payload.getClientOperationId());
 
         Long loginUserId = payload.getLoginUserId();
         if (loginUserId != null && loginUserId > 0) {

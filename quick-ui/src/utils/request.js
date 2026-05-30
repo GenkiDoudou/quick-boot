@@ -6,6 +6,11 @@ import {tansParams, blobValidate} from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import {saveAs} from 'file-saver'
 import {applyClientSignHeaders} from '@/utils/clientSign'
+import {
+  beginRequestObservation,
+  finalizeRequestObservationSuccess,
+  finalizeRequestObservationError
+} from '@/monitor/requestObservation'
 
 let downloadLoadingInstance;
 let isShowReloginDialog = false;
@@ -18,6 +23,7 @@ const service = axios.create({
 })
 
 service.interceptors.request.use(async (config) => {
+    beginRequestObservation(config)
     const isToken = (config.headers || {}).isToken === false
     if (getToken() && !isToken) {
         config.headers['Authorization'] = 'Bearer ' + getToken()
@@ -127,6 +133,7 @@ function tryHandleAxiosErrorResponseBody(error) {
 }
 
 service.interceptors.response.use(async (res) => {
+        finalizeRequestObservationSuccess(res)
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
             // 导出等二进制场景：若后端返回的是 JSON 错误体，需要提前识别 401 并跳转登录。
             if (res.data && res.data.type && String(res.data.type).includes('application/json')) {
@@ -170,6 +177,7 @@ service.interceptors.response.use(async (res) => {
     },
     error => {
         console.error('响应拦截器错误:', error)
+        finalizeRequestObservationError(error)
         const fromBody = tryHandleAxiosErrorResponseBody(error)
         if (fromBody != null) {
             return fromBody

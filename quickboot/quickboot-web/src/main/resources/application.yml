@@ -233,6 +233,8 @@ qc:
         ignore-json-fields:
           - apiPathPatterns
         ignoreUrls:
+          # 监控批次 events 含业务 API 路径（如 /system/user/update），会误触 update 等关键字
+          - /monitor/clientTrack/report
           - /jmreport/**
           - /drag/**
           - /jimubi/**
@@ -241,6 +243,7 @@ qc:
         enabled: true
         forbidden-message: 您的请求包含非法字符，请检查！
         ignoreUrls:
+          - /monitor/clientTrack/report
           - /jmreport/**
           - /drag/**
           - /jimubi/**

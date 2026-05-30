@@ -52,6 +52,7 @@
       <el-descriptions v-if="detailRow" :column="2" border size="small" class="operlog-detail">
         <el-descriptions-item label="日志编号">{{ detailRow.operId }}</el-descriptions-item>
         <el-descriptions-item label="链路ID">{{ detailRow.traceId || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="操作ID" :span="2">{{ detailRow.clientOperationId || '—' }}</el-descriptions-item>
         <el-descriptions-item label="系统模块" :span="2">{{ detailRow.title || '—' }}</el-descriptions-item>
         <el-descriptions-item label="业务类型">
           <c7-dict-tag :model-value="String(detailRow.businessType ?? '')" :options="sys_oper_business_type" />
@@ -113,6 +114,7 @@ const defaultSearchParam = {
   businessType: '',
   status: '',
   traceId: '',
+  clientOperationId: '',
   operTimeRange: [],
 }
 
@@ -137,6 +139,7 @@ const searchColumns = computed(() => [
     props: { placeholder: '状态', clearable: true, style: 'width: 240px' },
   },
   { prop: 'traceId', label: '链路ID', type: 'input', span: 8, props: { placeholder: 'traceId 精确匹配', clearable: true } },
+  { prop: 'clientOperationId', label: '操作ID', type: 'input', span: 8, props: { placeholder: 'operationId 精确匹配', clearable: true } },
   {
     prop: 'operTimeRange',
     label: '操作时间',
@@ -157,6 +160,7 @@ const tableColumns = computed(() => [
   { prop: 'operTime', label: '操作日期', columnType: 'slot', slotName: 'operTime', width: 180, sortable: 'custom' },
   { prop: 'costTime', label: '耗时(ms)', width: 110, sortable: 'custom' },
   { prop: 'traceId', label: '链路ID', minWidth: 140, showOverflowTooltip: true },
+  { prop: 'clientOperationId', label: '操作ID', minWidth: 140, showOverflowTooltip: true },
   { prop: 'actions', label: '操作', columnType: 'slot', slotName: 'actions', width: 100, fixed: 'right' },
 ])
 
@@ -187,6 +191,7 @@ function normalizeListParams(raw) {
   if (p.title === '') delete p.title
   if (p.operName === '') delete p.operName
   if (p.traceId === '') delete p.traceId
+  if (p.clientOperationId === '') delete p.clientOperationId
   return p
 }
 

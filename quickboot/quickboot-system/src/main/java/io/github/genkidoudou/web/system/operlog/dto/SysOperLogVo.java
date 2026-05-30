@@ -38,4 +38,6 @@ public class SysOperLogVo implements Serializable {
     private LocalDateTime operTime;
     private Long costTime;
     private String traceId;
+    @Schema(description = "前端操作 ID")
+    private String clientOperationId;
 }

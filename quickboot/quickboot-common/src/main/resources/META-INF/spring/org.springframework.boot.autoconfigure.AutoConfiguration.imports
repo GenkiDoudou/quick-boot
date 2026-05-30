@@ -12,3 +12,4 @@ io.github.genkidoudou.common.security.firewall.sqlinjection.SqlInjectionFirewall
 io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordFirewallAutoConfiguration
 io.github.genkidoudou.common.captcha.TianaiCacheStoreAutoConfiguration
 io.github.genkidoudou.common.monitor.operlog.OperLogCaptureAutoConfiguration
+io.github.genkidoudou.common.tracing.ClientOperationTracingAutoConfiguration

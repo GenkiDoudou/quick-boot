@@ -47,4 +47,7 @@ public class SysOperLogExcelRow {
 
     @ExcelProperty("链路ID")
     private String traceId;
+
+    @ExcelProperty("操作ID")
+    private String clientOperationId;
 }

@@ -43,6 +43,9 @@ public class SysOperLogQueryBo {
     @Schema(description = "链路 traceId，精确匹配")
     private String traceId;
 
+    @Schema(description = "前端操作 ID clientOperationId，精确匹配")
+    private String clientOperationId;
+
     @Schema(description = "排序列：operName / operTime / costTime")
     private String orderByColumn;
 

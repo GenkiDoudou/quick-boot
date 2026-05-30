@@ -1,5 +1,10 @@
 <template>
-  <el-dialog v-model="visibleRef" :footer="true" :title="(!dataForm.userId) ? '新增' : '修改'" @close="visibleRef = false">
+  <el-dialog
+    v-model="visibleRef"
+    :footer="true"
+    :title="(!dataForm.userId) ? '新增' : '修改'"
+    @close="handleClose"
+  >
     <el-form :model="dataForm" :rules="rules" ref="dataFormRef" label-width="100px">
       <el-row>
         <el-col :span="12">
@@ -86,7 +91,7 @@
       </el-row>
     </el-form>
     <template #footer>
-      <el-button @click="visibleRef = false">取消</el-button>
+      <el-button @click="handleClose">取消</el-button>
       <el-button type="primary" @click="submit">确定</el-button>
     </template>
   </el-dialog>
@@ -101,7 +106,7 @@ import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
 
 const visibleRef = ref(false)
-const emit = defineEmits(['refreshDataList'])
+const emit = defineEmits(['refreshDataList', 'closed'])
 
 const { sys_user_sex, sys_normal_disable } = useDict('sys_user_sex', 'sys_normal_disable')
 
@@ -145,6 +150,11 @@ onMounted(() => {
     deptTree.value = res.data || res || []
   })
 })
+
+function handleClose() {
+  visibleRef.value = false
+  emit('closed')
+}
 
 const init = (uid) => {
   visibleRef.value = true
@@ -208,13 +218,13 @@ function submit() {
       }
       updateUser(payload).then(() => {
         ElMessage.success('修改成功')
-        visibleRef.value = false
+        handleClose()
         emit('refreshDataList')
       })
     } else {
       addUser(payload).then(() => {
         ElMessage.success('新增成功')
-        visibleRef.value = false
+        handleClose()
         emit('refreshDataList')
       })
     }

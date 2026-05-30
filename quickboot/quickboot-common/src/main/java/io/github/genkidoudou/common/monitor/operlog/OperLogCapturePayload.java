@@ -20,6 +20,9 @@ public class OperLogCapturePayload implements Serializable {
     /** 与 {@link io.github.genkidoudou.common.api.TraceIds} / MDC 同源，可空。 */
     String traceId;
 
+    /** 与 {@link io.github.genkidoudou.common.api.ClientOperationIds} / MDC 同源，可空。 */
+    String clientOperationId;
+
     Signature signature;
 
     Object[] args;

@@ -153,18 +153,51 @@ export async function applyClientSignHeaders(config) {
   const method = (config.method || 'get').toUpperCase()
   const path = resolveSignPath(config)
   const bodyBytes = await serializeBodyBytes(config)
+  const signed = buildSignedHeaders(method, path, bodyBytes, clientId, signKey)
+
+  config.headers = config.headers || {}
+  Object.assign(config.headers, signed)
+  return config
+}
+
+/**
+ * 为原生 fetch 构造 Client HMAC 签名头（监控上报等不走 axios 的场景）。
+ *
+ * @param {string} method HTTP 方法
+ * @param {string} path 不含 query 的 API 路径（如 `/monitor/clientTrack/report`）
+ * @param {string} [bodyString=''] 请求体字符串
+ * @returns {Promise<Record<string, string>>}
+ */
+export async function buildSignedFetchHeaders(method, path, bodyString = '') {
+  const clientId = String(import.meta.env.VITE_APP_CLIENT_ID || '').trim()
+  const signKey = String(import.meta.env.VITE_APP_CLIENT_SIGN_KEY || '').trim()
+  if (!clientId || !signKey) {
+    return {}
+  }
+  const bodyBytes = new TextEncoder().encode(bodyString || '')
+  return buildSignedHeaders(method, path, bodyBytes, clientId, signKey)
+}
+
+/**
+ * @param {string} method
+ * @param {string} path
+ * @param {Uint8Array} bodyBytes
+ * @param {string} clientId
+ * @param {string} signKey
+ * @returns {Record<string, string>}
+ */
+function buildSignedHeaders(method, path, bodyBytes, clientId, signKey) {
   const bodyHash = sha256Hex(bodyBytes)
   const timestamp = String(Math.floor(Date.now() / 1000))
   const nonce = randomNonce()
-  const canonical = `${method}\n${path}\n${bodyHash}\n${timestamp}\n${nonce}\n${clientId}`
+  const canonical = `${(method || 'get').toUpperCase()}\n${path}\n${bodyHash}\n${timestamp}\n${nonce}\n${clientId}`
   const signature = hmacSha256Base64(signKey, canonical)
-
-  config.headers = config.headers || {}
-  config.headers['X-Client-Id'] = clientId
-  config.headers['X-Client-Timestamp'] = timestamp
-  config.headers['X-Client-Nonce'] = nonce
-  config.headers['X-Client-Signature'] = signature
-  return config
+  return {
+    'X-Client-Id': clientId,
+    'X-Client-Timestamp': timestamp,
+    'X-Client-Nonce': nonce,
+    'X-Client-Signature': signature
+  }
 }
 
 /**

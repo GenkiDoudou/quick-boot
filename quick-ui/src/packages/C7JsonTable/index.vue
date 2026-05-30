@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="c7-json-table" v-bind="$attrs">
     <!-- 搜索区 -->
     <el-form
@@ -89,6 +89,7 @@
             type="primary"
             plain
             v-bind="addButtonProps"
+            data-track="c7-json-table-add"
             @click="handleBuiltInAddClick"
         >{{ addButtonText }}</el-button>
         <el-button
@@ -97,6 +98,7 @@
             plain
             :disabled="selectedRows.length !== 1"
             v-bind="editButtonProps"
+            data-track="c7-json-table-edit"
             @click="handleBuiltInEditClick"
         >{{ editButtonText }}</el-button>
         <el-button
@@ -105,10 +107,14 @@
             plain
             :disabled="!selectedRows.length"
             v-bind="deleteButtonProps"
+            data-track="c7-json-table-delete"
             @click="handleBatchDelete"
         >{{ deleteButtonText }}</el-button>
         <C7ExcelDownload
             v-if="showExportButtonResolved"
+            type="primary"
+            plain
+            data-track="c7-json-table-export"
             :download-fn="exportDownloadFn"
             :default-file-name="exportDefaultFileName"
             @success="onExportBlobSuccess"
@@ -120,6 +126,7 @@
             type="warning"
             plain
             v-bind="importButtonProps"
+            data-track="c7-json-table-import"
             @click="openImportDialog"
         >{{ importButtonText }}</el-button>
       </el-col>

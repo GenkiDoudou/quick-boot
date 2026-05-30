@@ -2,7 +2,6 @@ package io.github.genkidoudou.web.system.menu;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.report.config.JimuProperties;
 import io.github.genkidoudou.web.system.menu.domain.SysMenu;
 import io.github.genkidoudou.web.system.menu.dto.SysMenuSaveRequest;
 import io.github.genkidoudou.web.system.menu.mapper.SysMenuMapper;
@@ -12,7 +11,6 @@ import io.github.genkidoudou.web.system.menu.mapper.SysUserRoleMapper;
 import io.github.genkidoudou.web.system.menu.service.impl.MenuServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
-import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 
@@ -118,7 +116,7 @@ class MenuServiceImplTest {
             SysRoleMapper roleMapper,
             SysRoleMenuMapper roleMenuMapper,
             SysUserRoleMapper userRoleMapper) {
-        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper);
+        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper, true, "http://localhost:9992");
     }
 
     private static List<SysMenu> sampleMenus() {

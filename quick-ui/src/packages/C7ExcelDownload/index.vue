@@ -71,7 +71,9 @@ function filterAttrsForElButton(raw) {
   ])
   const out = {}
   for (const k of Object.keys(raw)) {
-    if (allow.has(k)) out[k] = raw[k]
+    if (allow.has(k) || k.startsWith('data-')) {
+      out[k] = raw[k]
+    }
   }
   return out
 }
