@@ -39,7 +39,9 @@ export function loadMonitorConfig() {
       '/user',
       '/report',
       '/oauth'
-    ]
+    ],
+    /** 不采集行为事件的路由前缀（前端监控页自身，避免查看日志时产生噪声） */
+    excludePages: ['/system/clientTrack', '/monitor/clientTrack']
   }
 }
 

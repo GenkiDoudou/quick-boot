@@ -16,6 +16,8 @@ import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackReportBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackVo;
 import io.github.genkidoudou.web.monitor.clienttrack.mapper.SysClientTrackMapper;
+import io.github.genkidoudou.web.monitor.clienttrack.support.ClientTrackMenuPathResolver;
+import io.github.genkidoudou.web.monitor.clienttrack.support.ClientTrackMenuPathResolver.MenuMatch;
 import io.github.genkidoudou.web.monitor.clienttrack.service.SysClientTrackService;
 import io.github.genkidoudou.web.system.user.domain.SysUser;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
@@ -42,6 +44,7 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
     private final SysClientTrackMapper mapper;
     private final SysUserMapper userMapper;
     private final ObjectMapper objectMapper;
+    private final ClientTrackMenuPathResolver menuPathResolver;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -56,6 +59,7 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         String traceId = resolveServerTraceId(events);
         String pagePath = resolveLastPage(events);
         String ua = resolveUa(events);
+        String triggerAction = resolveTriggerAction(body.getTriggerAction(), events);
 
         String eventsJson;
         try {
@@ -69,6 +73,7 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
 
         SysClientTrack row = new SysClientTrack();
         row.setOperationId(operationId);
+        row.setTriggerAction(triggerAction);
         row.setTraceId(traceId);
         row.setUserId(userId);
         row.setUserName(userName);
@@ -88,9 +93,13 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         LambdaQueryWrapper<SysClientTrack> w = buildWrapper(query);
         w.orderByDesc(SysClientTrack::getCreateTime);
         Page<SysClientTrack> mp = mapper.selectPage(new Page<>(pageNum, pageSize), w);
+        List<String> paths = mp.getRecords().stream().map(SysClientTrack::getPagePath).toList();
+        Map<String, MenuMatch> menuByPath = menuPathResolver.resolveBatch(paths);
         List<SysClientTrackVo> rows = new ArrayList<>(mp.getRecords().size());
         for (SysClientTrack row : mp.getRecords()) {
-            rows.add(BeanUtil.copyProperties(row, SysClientTrackVo.class));
+            SysClientTrackVo vo = BeanUtil.copyProperties(row, SysClientTrackVo.class);
+            enrichMenuFields(vo, menuByPath);
+            rows.add(vo);
         }
         Page<SysClientTrackVo> voPage = new Page<>(mp.getCurrent(), mp.getSize(), mp.getTotal());
         voPage.setRecords(rows);
@@ -104,6 +113,12 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "请选择要删除的记录");
         }
         mapper.deleteByIds(batchIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cleanAll() {
+        mapper.delete(Wrappers.lambdaQuery());
     }
 
     private LambdaQueryWrapper<SysClientTrack> buildWrapper(SysClientTrackQueryBo query) {
@@ -127,6 +142,35 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
             w.le(SysClientTrack::getCreateTime, query.getEndDate().atTime(LocalTime.MAX));
         }
         return w;
+    }
+
+    private void enrichMenuFields(SysClientTrackVo vo, Map<String, MenuMatch> menuByPath) {
+        if (vo == null || StrUtil.isBlank(vo.getPagePath())) {
+            return;
+        }
+        String key = normalizePagePathKey(vo.getPagePath());
+        MenuMatch match = menuByPath != null ? menuByPath.get(key) : null;
+        if (match == null) {
+            match = menuPathResolver.resolve(vo.getPagePath());
+        }
+        if (match != null) {
+            vo.setMenuName(match.menuName());
+            vo.setMenuBreadcrumb(match.breadcrumb());
+        }
+    }
+
+    private static String normalizePagePathKey(String raw) {
+        if (StrUtil.isBlank(raw)) {
+            return "";
+        }
+        String p = raw.trim();
+        if (!p.startsWith("/")) {
+            p = "/" + p;
+        }
+        while (p.length() > 1 && p.endsWith("/")) {
+            p = p.substring(0, p.length() - 1);
+        }
+        return p;
     }
 
     private static String resolveOperationId(String batchOperationId, List<Map<String, Object>> events) {
@@ -155,6 +199,39 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
             if (v != null && StrUtil.isNotBlank(String.valueOf(v))) {
                 return String.valueOf(v).trim();
             }
+        }
+        return "";
+    }
+
+    /**
+     * 触发操作：优先上报体 triggerAction，否则从 events 的 trigger / click.target 推断。
+     */
+    private static String resolveTriggerAction(String batchTrigger, List<Map<String, Object>> events) {
+        if (StrUtil.isNotBlank(batchTrigger)) {
+            return StrUtil.sub(batchTrigger.trim(), 0, 128);
+        }
+        if (events == null || events.isEmpty()) {
+            return "";
+        }
+        for (Map<String, Object> ev : events) {
+            Object trigger = ev.get("trigger");
+            if (trigger != null && StrUtil.isNotBlank(String.valueOf(trigger))) {
+                return StrUtil.sub(String.valueOf(trigger).trim(), 0, 128);
+            }
+        }
+        for (Map<String, Object> ev : events) {
+            if (!"click".equals(String.valueOf(ev.get("type")))) {
+                continue;
+            }
+            Object target = ev.get("target");
+            if (target == null || StrUtil.isBlank(String.valueOf(target))) {
+                continue;
+            }
+            String t = String.valueOf(target).trim();
+            if ("BUTTON".equalsIgnoreCase(t) || "A".equalsIgnoreCase(t) || "SPAN".equalsIgnoreCase(t)) {
+                continue;
+            }
+            return StrUtil.sub(t, 0, 128);
         }
         return "";
     }

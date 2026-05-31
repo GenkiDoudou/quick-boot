@@ -226,6 +226,7 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 import {checkPermission} from '@/directive/permission/permissionUtils'
 import useUserStore from '@/store/modules/user'
+import { endOperation } from '@/monitor/operationContext'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
@@ -619,41 +620,46 @@ function onSortChange(evt) {
 }
 
 async function handleBatchDelete() {
-  const rows = selectedRows.value
-  if (!rows.length) return
-  const key = props.rowKey
-  const ids = rows.map((r) => r[key]).filter((v) => v != null)
-  if (typeof props.beforeDelete === 'function') {
-    const ok = await props.beforeDelete(ids, rows)
-    if (ok === false) return
-  }
   try {
-    await ElMessageBox.confirm(props.deleteConfirmMessage, '提示', {
-      type: 'warning',
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-    })
-  } catch {
-    return
-  }
-  if (!props.deleteFunction) return
-  try {
-    const res = await props.deleteFunction(ids)
-    let success
-    if (typeof props.checkDeleteSuccess === 'function') {
-      success = props.checkDeleteSuccess(res)
-    } else {
-      success = !!res
+    const rows = selectedRows.value
+    if (!rows.length) return
+    const key = props.rowKey
+    const ids = rows.map((r) => r[key]).filter((v) => v != null)
+    if (typeof props.beforeDelete === 'function') {
+      const ok = await props.beforeDelete(ids, rows)
+      if (ok === false) return
     }
-    if (!success) {
-      ElMessage.error('删除失败')
+    try {
+      await ElMessageBox.confirm(props.deleteConfirmMessage, '提示', {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+      })
+    } catch {
       return
     }
-    ElMessage.success('删除成功')
-    emit('delete-success', ids)
-    await refreshData()
-  } catch (e) {
-    emit('fetch-error', e)
+    if (!props.deleteFunction) return
+    try {
+      const res = await props.deleteFunction(ids)
+      let success
+      if (typeof props.checkDeleteSuccess === 'function') {
+        success = props.checkDeleteSuccess(res)
+      } else {
+        success = !!res
+      }
+      if (!success) {
+        ElMessage.error('删除失败')
+        return
+      }
+      ElMessage.success('删除成功')
+      emit('delete-success', ids)
+      await refreshData()
+    } catch (e) {
+      emit('fetch-error', e)
+    }
+  } finally {
+    // 与工具栏删除按钮 click 触发的 beginOperation 成对
+    endOperation()
   }
 }
 

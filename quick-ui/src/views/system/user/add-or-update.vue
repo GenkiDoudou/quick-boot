@@ -98,10 +98,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getUser, addUser, updateUser } from '@/api/system/user'
 import { listRole } from '@/api/system/role'
+import { ensureOperation, endOperation } from '@/monitor/operationContext'
 import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
 
@@ -151,15 +152,28 @@ onMounted(() => {
   })
 })
 
+/**
+ * 弹窗显隐与 operation 边界对齐（与 C7Dialog 一致；el-dialog 须自行绑定）。
+ */
+watch(visibleRef, (open, wasOpen) => {
+  if (open && !wasOpen) {
+    ensureOperation(dataForm.value.userId ? '修改' : '新增')
+  } else if (!open && wasOpen) {
+    queueMicrotask(() => endOperation())
+  }
+})
+
 function handleClose() {
+  if (!visibleRef.value) {
+    return
+  }
   visibleRef.value = false
   emit('closed')
 }
 
 const init = (uid) => {
-  visibleRef.value = true
   dataForm.value = {
-    userId: undefined,
+    userId: uid,
     userName: '',
     nickName: '',
     deptId: undefined,
@@ -175,6 +189,7 @@ const init = (uid) => {
     ? []
     : [{ required: true, message: '请输入密码', trigger: 'blur' }]
   loadRoles()
+  visibleRef.value = true
   if (uid) {
     getUser(uid).then((res) => {
       const d = res.data || res
@@ -216,15 +231,17 @@ function submit() {
       if (!payload.password) {
         delete payload.password
       }
-      updateUser(payload).then(() => {
+      updateUser(payload).then(async () => {
         ElMessage.success('修改成功')
-        handleClose()
+        visibleRef.value = false
+        await new Promise((resolve) => queueMicrotask(resolve))
         emit('refreshDataList')
       })
     } else {
-      addUser(payload).then(() => {
+      addUser(payload).then(async () => {
         ElMessage.success('新增成功')
-        handleClose()
+        visibleRef.value = false
+        await new Promise((resolve) => queueMicrotask(resolve))
         emit('refreshDataList')
       })
     }

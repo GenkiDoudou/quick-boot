@@ -30,6 +30,9 @@ public class SysClientTrack implements Serializable {
     /** 前端一次用户操作 ID，主关联键。 */
     private String operationId;
 
+    /** 触发操作标识（data-track / beginOperation），如 user-edit:1。 */
+    private String triggerAction;
+
     private Long userId;
 
     private String userName;

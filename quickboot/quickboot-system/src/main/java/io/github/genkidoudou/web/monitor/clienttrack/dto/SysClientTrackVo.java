@@ -21,6 +21,9 @@ public class SysClientTrackVo {
     @Schema(description = "前端操作 ID")
     private String operationId;
 
+    @Schema(description = "触发操作标识")
+    private String triggerAction;
+
     @Schema(description = "用户 ID")
     private Long userId;
 
@@ -32,6 +35,12 @@ public class SysClientTrackVo {
 
     @Schema(description = "页面路径摘要")
     private String pagePath;
+
+    @Schema(description = "所属菜单名称（由 pagePath 关联 sys_menu）")
+    private String menuName;
+
+    @Schema(description = "所属菜单面包屑，如 系统管理 / 部门管理")
+    private String menuBreadcrumb;
 
     @Schema(description = "客户端 IP")
     private String clientIp;

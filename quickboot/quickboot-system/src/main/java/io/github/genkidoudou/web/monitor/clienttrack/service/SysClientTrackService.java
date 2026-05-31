@@ -35,4 +35,9 @@ public interface SysClientTrackService {
      * @param batchIds 批次 ID 列表
      */
     void removeBatch(List<Long> batchIds);
+
+    /**
+     * 清空全部监控批次（不可恢复，仅管理端维护使用）。
+     */
+    void cleanAll();
 }

@@ -25,6 +25,14 @@ public class ClientTrackReportBo {
     @Schema(description = "前端一次用户操作 ID，与 oper_log.client_operation_id 联查")
     private String operationId;
 
+    @Size(max = 128, message = "triggerAction 过长")
+    @Schema(description = "触发操作标识，如 user-edit:1、c7-json-table-delete")
+    private String triggerAction;
+
+    @Size(max = 64, message = "triggerLabel 过长")
+    @Schema(description = "触发操作可读名称，如 修改用户、删除")
+    private String triggerLabel;
+
     @NotEmpty(message = "events 不能为空")
     @Size(max = 50, message = "单次上报事件数不能超过 50")
     @Schema(description = "事件数组，元素为 type/ts/page 等键值")

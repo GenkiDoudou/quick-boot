@@ -80,7 +80,7 @@
       </template>
     </C7JsonTable>
 
-    <add-or-update :key="addKey" ref="addOrUpdateRef" @refreshDataList="onFormSuccess" @closed="onFormDialogClose" />
+    <add-or-update :key="addKey" ref="addOrUpdateRef" @refreshDataList="onFormSuccess" />
   </div>
 </template>
 
@@ -102,7 +102,6 @@ import {
 } from '@/api/system/user'
 import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
-import { beginOperation, endOperation } from '@/monitor/operationContext'
 
 defineOptions({ name: 'User' })
 
@@ -113,8 +112,6 @@ const tableRef = ref(null)
 const addKey = ref(0)
 const addOrUpdateRef = ref(null)
 const deptTree = ref([])
-/** 弹窗因 :key 重挂载时跳过 endOperation，避免刚 begin 的 operationId 被清掉 */
-const formRemounting = ref(false)
 
 const defaultSearchParam = {
   userName: '',
@@ -191,12 +188,9 @@ function listFunction(params) {
 }
 
 function openAdd() {
-  formRemounting.value = true
   addKey.value += 1
   nextTick(() => {
-    beginOperation('user-add')
     addOrUpdateRef.value?.init()
-    formRemounting.value = false
   })
 }
 
@@ -206,20 +200,10 @@ function openAdd() {
  */
 function openEdit(row) {
   if (!row?.userId) return
-  formRemounting.value = true
   addKey.value += 1
   nextTick(() => {
-    beginOperation(`user-edit:${row.userId}`)
     addOrUpdateRef.value?.init(row.userId)
-    formRemounting.value = false
   })
-}
-
-function onFormDialogClose() {
-  if (formRemounting.value) {
-    return
-  }
-  endOperation()
 }
 
 function onFormSuccess() {

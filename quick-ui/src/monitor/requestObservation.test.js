@@ -36,7 +36,7 @@ describe('requestObservation', () => {
       serverTraceId: 'server-trace-from-r',
       operationId: expect.any(String),
       url: '/system/user/1',
-      trigger: 'user-edit:1'
+      trigger: '修改'
     })
     expect(track.mock.calls[0][0].clientTraceId).not.toBe('server-trace-from-r')
   })
@@ -64,16 +64,22 @@ describe('requestObservation', () => {
     expect(track.mock.calls[0][0].responseTraceId).toBeUndefined()
   })
 
-  it('跳过监控上报自身 URL', () => {
+  it('跳过前端监控相关 API（report/list/remove）', () => {
     const track = vi.fn()
     registerObservationEmitter(track)
 
-    beginRequestObservation({
-      url: '/monitor/clientTrack/report',
-      method: 'post',
-      headers: {},
-      metadata: {}
-    })
+    for (const url of [
+      '/monitor/clientTrack/report',
+      '/monitor/clientTrack/list',
+      '/monitor/clientTrack/remove'
+    ]) {
+      beginRequestObservation({
+        url,
+        method: 'post',
+        headers: {},
+        metadata: {}
+      })
+    }
 
     expect(track).not.toHaveBeenCalled()
   })

@@ -37,15 +37,21 @@ export {
 } from './requestObservation'
 export {
   beginOperation,
+  ensureOperation,
   getOperationId,
   endOperation,
+  cancelOperation,
   runInOperation,
   registerOperationEndHook,
   registerOperationBeginHook,
   setActivePage,
   getActivePage,
   setPendingTrigger,
-  getLastTrigger
+  getLastTrigger,
+  suppressEndOperation,
+  resumeEndOperation
 } from './operationContext'
 export { nextRequestTraceHeaders, shouldAttachRequestTrace } from './requestTrace'
+export { formatTrackLabel, resolveBatchTriggerAction, resolveDisplayTrigger, isHumanReadableLabel, extractVisibleActionLabel } from './trackLabel'
+export { readClickTarget } from './clickTarget'
 export default setupUserMonitor

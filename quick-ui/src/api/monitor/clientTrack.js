@@ -41,3 +41,15 @@ export function removeClientTrack(batchIds) {
     data: batchIds
   })
 }
+
+/**
+ * 管理端：清空全部监控批次（不可恢复）。
+ *
+ * @returns {Promise<void>}
+ */
+export function cleanClientTrack() {
+  return request({
+    url: '/monitor/clientTrack/clean',
+    method: 'post'
+  })
+}

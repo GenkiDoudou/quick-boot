@@ -67,7 +67,7 @@ function shouldSkipUrl(url) {
   if (skipUrlPattern && skipUrlPattern.test(url)) {
     return true
   }
-  return url.includes('/monitor/clientTrack/report')
+  return url.includes('/monitor/clientTrack')
 }
 
 /**

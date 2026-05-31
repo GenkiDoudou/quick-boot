@@ -67,4 +67,12 @@ public class SysClientTrackController {
         clientTrackService.removeBatch(batchIds);
         return R.ok();
     }
+
+    @Operation(summary = "清空全部前端监控批次")
+    @SaCheckPermission("monitor:clientTrack:remove")
+    @PostMapping("/clean")
+    public R<Void> clean() {
+        clientTrackService.cleanAll();
+        return R.ok();
+    }
 }

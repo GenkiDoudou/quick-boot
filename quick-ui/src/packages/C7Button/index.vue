@@ -64,6 +64,8 @@ import debounce from 'lodash/debounce'
 
 import {ElMessage, ElMessageBox, ElNotification} from 'element-plus'
 
+import { endOperation } from '@/monitor/operationContext'
+
 import {
 
   Plus,
@@ -659,6 +661,9 @@ async function runPipeline() {
   } finally {
 
     busy.value = false
+
+    // 与全局 click 监听的 beginOperation 成对，避免删除等操作完成后批次永不 flush
+    endOperation()
 
   }
 
