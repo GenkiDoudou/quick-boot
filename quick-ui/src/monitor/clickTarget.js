@@ -1,7 +1,7 @@
 /**
  * 从点击 DOM 解析操作按钮与可见文案（供全局 click 监控使用）。
  */
-import { extractVisibleActionLabel } from './trackLabel'
+import { extractVisibleActionLabel } from './display/domLabel'
 
 /**
  * @param {HTMLElement} node

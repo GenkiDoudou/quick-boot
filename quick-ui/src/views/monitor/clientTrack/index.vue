@@ -79,7 +79,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { parseTime } from '@/utils/ruoyi'
 import { cleanClientTrack, listClientTrack, removeClientTrack } from '@/api/monitor/clientTrack'
-import { formatTrackLabel, resolveBatchTriggerAction } from '@/monitor/trackLabel'
+import { formatTrackLabel, resolveBatchTriggerAction } from '@/monitor/display'
 import BatchDetailDialog from './BatchDetailDialog.vue'
 import { defaultSearchParam, normalizeListParams, reasonLabel, reasonTagType, searchColumns } from './clientTrackEvent'
 

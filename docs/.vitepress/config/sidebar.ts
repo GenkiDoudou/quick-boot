@@ -229,6 +229,7 @@ export default {
                 {text: '🎯 项目结构', link: '/docs/frontend/structure'},
                 {text: '📄 业务页面总览', link: '/docs/frontend/modules/index'},
                 {text: '📋 列表页模板', link: '/docs/frontend/list-page-template'},
+                {text: '📡 用户行为监控', link: '/docs/frontend/modules/user-behavior-monitor'},
             ]
         },
         {

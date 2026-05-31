@@ -1,7 +1,7 @@
 /**
  * 隐式操作批次：页面访问批 + 按钮操作批，配合 sessionId/pageVisitId 串联链路。
  */
-import { formatTrackLabel } from './trackLabel'
+import { formatTrackLabel } from './display/labelFormat'
 
 /** @type {'page_visit' | 'action' | null} */
 let batchKind = null

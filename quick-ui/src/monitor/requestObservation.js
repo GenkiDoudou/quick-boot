@@ -7,7 +7,7 @@ import {
   getActivePage,
   getLastTrigger,
   getBatchKind
-} from './operationContext'
+} from './batchSession'
 import { nextRequestTraceHeaders, shouldAttachRequestTrace } from './requestTrace'
 import { scheduleIdleTask } from './scheduleIdle'
 

@@ -9,7 +9,7 @@ import {
   sessionTabLabel,
   shortenTreeText,
   PAGE_DETAIL_TREE_THRESHOLD
-} from './buildTimelineModel'
+} from '@/views/monitor/clientTrack/buildTimelineModel'
 
 const mockPage = {
   pageVisitId: 'pv-1',

@@ -3,7 +3,7 @@ import {
   buildFlowEdgeTableRows,
   buildPageNavTableRows,
   buildDetailEventTableRows
-} from './timelineTableData'
+} from '@/views/monitor/clientTrack/timelineTableData'
 
 describe('timelineTableData', () => {
   const sessionModel = {

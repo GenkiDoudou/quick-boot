@@ -1,4 +1,4 @@
-import { formatTrackLabel } from '@/monitor/trackLabel'
+import { formatTrackLabel } from '@/monitor/display'
 
 /**
  * 上报原因静态选项（与后端 reason 字段一致）。

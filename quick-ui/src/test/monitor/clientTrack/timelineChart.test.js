@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { graphShortLabel } from './buildTimelineModel'
-import { computeGraphChartSize, computeTreeChartSize, createTreeOption } from './timelineChart'
+import { graphShortLabel } from '@/views/monitor/clientTrack/buildTimelineModel'
+import { computeGraphChartSize, computeTreeChartSize, createTreeOption } from '@/views/monitor/clientTrack/timelineChart'
 
 describe('graphShortLabel', () => {
   it('优先 menuName', () => {

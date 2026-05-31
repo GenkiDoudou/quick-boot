@@ -5,9 +5,9 @@ import {
   resolveDisplayTrigger,
   isHumanReadableLabel,
   extractVisibleActionLabel
-} from '@/monitor/trackLabel'
+} from '@/monitor/display'
 
-describe('trackLabel', () => {
+describe('monitor/display', () => {
   it('中文按钮文案原样展示', () => {
     expect(formatTrackLabel('查看')).toBe('查看')
     expect(formatTrackLabel('修改')).toBe('修改')
@@ -19,7 +19,7 @@ describe('trackLabel', () => {
     expect(formatTrackLabel('c7-json-table-delete')).toBe('删除')
   })
 
-  it('beginOperation 优先采用 pending（含 data-track slug）', () => {
+  it('resolveDisplayTrigger 优先采用 pending（含 data-track slug）', () => {
     expect(resolveDisplayTrigger('user-edit', 'user-edit:9')).toBe('修改')
     expect(resolveDisplayTrigger('查看', undefined)).toBe('查看')
   })

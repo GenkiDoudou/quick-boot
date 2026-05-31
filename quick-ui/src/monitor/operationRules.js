@@ -1,7 +1,7 @@
 /**
  * 操作类 click 分类规则（供 createUserMonitor 全局 click 使用）。
  */
-import { isHumanReadableLabel, formatTrackLabel } from './trackLabel'
+import { isHumanReadableLabel, formatTrackLabel } from './display/labelFormat'
 
 /**
  * @param {string} label

@@ -122,7 +122,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listClientTrack } from '@/api/monitor/clientTrack'
-import { formatTrackLabel } from '@/monitor/trackLabel'
+import { formatTrackLabel } from '@/monitor/display'
 import {
   defaultSearchParam,
   eventSearchColumns,

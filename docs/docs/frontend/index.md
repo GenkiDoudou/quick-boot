@@ -46,6 +46,8 @@ pnpm build:prod # 生产构建
 | `src/layout/` | 主框架（侧栏、TagsView） |
 | `src/utils/` | request、auth、dict、clientSign |
 | `src/plugins/` | `$tab`、`$auth`、`$modal`、`$download` |
+| `src/monitor/` | 用户行为采集 SDK（见 [文档](./modules/user-behavior-monitor)） |
+| `src/test/` | 单元测试（如 `test/monitor/`） |
 | `permission.js` | 路由守卫 |
 
 ## 与后端协作

@@ -4,7 +4,7 @@ import {
   beginRequestObservation,
   finalizeRequestObservationSuccess
 } from '@/monitor/requestObservation'
-import { openBatch, openPageVisit, resetBatchSessionForTest } from '@/monitor/operationContext'
+import { openBatch, openPageVisit, resetBatchSessionForTest } from '@/monitor/batchSession'
 
 async function flushIdleTasks() {
   await new Promise((resolve) => setTimeout(resolve, 0))

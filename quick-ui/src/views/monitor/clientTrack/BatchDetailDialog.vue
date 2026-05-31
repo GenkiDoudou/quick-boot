@@ -87,7 +87,7 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { parseTime } from '@/utils/ruoyi'
-import { formatTrackLabel, resolveBatchTriggerAction } from '@/monitor/trackLabel'
+import { formatTrackLabel, resolveBatchTriggerAction } from '@/monitor/display'
 import {
   eventDetailItems,
   eventHeadline,

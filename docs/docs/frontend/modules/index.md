@@ -37,6 +37,11 @@
 | `logininfor/index.vue` | `api/monitor/logininfor.js` | `SysLogininforController` |
 | `job/index.vue` | `api/monitor/job.js` | `SysJobController` |
 | `job-log/index.vue` | `api/monitor/jobLog.js` | `SysJobLogController` |
+| **`clientTrack/index.vue`** | `api/monitor/clientTrack.js` | `SysClientTrackController` |
+| **`clientTrack/events.vue`** | 同上 | 事件链 |
+| **`clientTrack/timeline.vue`** | 同上 | 行为轨迹 |
+
+前端采集 SDK 见 **[用户行为监控](./user-behavior-monitor)**（`src/monitor`）。
 
 ## 系统工具（`tool/gen/`）
 
