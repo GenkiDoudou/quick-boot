@@ -117,6 +117,7 @@ public class MenuServiceImpl implements MenuService {
         SysMenu m = toEntity(req);
         normalizeNew(m);
         m.setParentId(normalizeParentId(m.getParentId()));
+        normalizeDirComponent(m);
         validateTypeFields(m, true);
         validateParentExists(m.getParentId(), null);
         sysMenuMapper.insert(m);
@@ -143,6 +144,7 @@ public class MenuServiceImpl implements MenuService {
         }
         assertNoCycle(m.getMenuId(), parentId);
         m.setParentId(parentId);
+        normalizeDirComponent(m);
         sysMenuMapper.updateById(m);
     }
 
@@ -376,7 +378,9 @@ public class MenuServiceImpl implements MenuService {
         }
         map.put("path", normalizeRouterPath(m));
         map.put("hidden", "1".equals(m.getVisible()));
-        if (StrUtil.isNotBlank(m.getComponent())) {
+        if (TYPE_DIR.equals(m.getMenuType())) {
+            map.put("component", resolveDirComponent(m.getParentId()));
+        } else if (StrUtil.isNotBlank(m.getComponent())) {
             map.put("component", m.getComponent());
         }
         Map<String, Object> meta = new LinkedHashMap<>();
@@ -661,8 +665,25 @@ public class MenuServiceImpl implements MenuService {
             m.setOrderNum(0);
         }
         if (TYPE_DIR.equals(m.getMenuType()) && StrUtil.isBlank(m.getComponent())) {
-            m.setComponent("Layout");
+            m.setComponent(resolveDirComponent(m.getParentId()));
         }
+    }
+
+    /**
+     * 目录组件：顶级用 Layout（含侧栏壳层），非顶级用 ParentView（仅 router-view，避免嵌套 Layout 出现双左侧菜单）。
+     */
+    private static String resolveDirComponent(Long parentId) {
+        return ROOT_PARENT_ID.equals(normalizeParentId(parentId)) ? "Layout" : "ParentView";
+    }
+
+    /**
+     * 保存/修改目录时，按上级层级校正 component（防止从二级挪到三级后仍留 Layout）。
+     */
+    private static void normalizeDirComponent(SysMenu m) {
+        if (!TYPE_DIR.equals(m.getMenuType())) {
+            return;
+        }
+        m.setComponent(resolveDirComponent(m.getParentId()));
     }
 
     private void validateParentExists(Long parentId, Long excludeMenuIdWhenSelf) {

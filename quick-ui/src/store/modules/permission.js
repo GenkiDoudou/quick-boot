@@ -80,6 +80,10 @@ function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
     if (type && route.children) {
       route.children = filterChildren(route.children)
     }
+    // 非顶级目录若误配 Layout，降级为 ParentView，避免嵌套 Layout 双侧栏
+    if (route.component === 'Layout' && lastRouter && isLayoutRoute(lastRouter)) {
+      route.component = 'ParentView'
+    }
     if (route.component) {
       if (route.component === 'Layout') {
         route.component = Layout
@@ -99,6 +103,17 @@ function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
     }
     return true
   })
+}
+
+/** 是否 Layout 路由（字符串阶段或已解析为布局组件） */
+function isLayoutRoute(route) {
+  if (!route) {
+    return false
+  }
+  if (route.component === 'Layout') {
+    return true
+  }
+  return route.component === Layout
 }
 
 function filterChildren(childrenMap, lastRouter = false) {

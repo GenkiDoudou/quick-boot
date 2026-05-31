@@ -222,7 +222,12 @@
                 </el-collapse-item>
               </el-collapse>
             </div>
-            <div v-else ref="treeRef" class="client-track-timeline-chart client-track-timeline-chart--tree" />
+            <div
+              v-else
+              ref="treeRef"
+              class="client-track-timeline-chart client-track-timeline-chart--tree"
+              :style="treeChartStyle"
+            />
           </template>
           <el-table
             v-else
@@ -314,7 +319,7 @@ import {
   parseEventForDrawer,
   SESSION_TAB_SELECT_THRESHOLD
 } from './buildTimelineModel'
-import { createGraphOption, createTreeOption, echarts, patchGraphSelection } from './timelineChart'
+import { createGraphOption, createTreeOption, computeGraphChartSize, computeTreeChartSize, echarts, patchGraphSelection } from './timelineChart'
 import {
   buildDetailEventTableRows,
   buildFlowEdgeTableRows,
@@ -400,10 +405,15 @@ const pageNavTableRows = computed(() => buildPageNavTableRows(pageIndex.value))
 const detailEventTableRows = computed(() => buildDetailEventTableRows(pageDetailModel.value))
 
 const graphChartStyle = computed(() => {
-  const count = activeSessionModel.value?.graph?.nodes?.length || 0
-  if (count <= 1) return {}
-  const minWidth = Math.max(720, 60 + count * 120)
-  return { minWidth: `${minWidth}px` }
+  const nodes = activeSessionModel.value?.graph?.nodes || []
+  return computeGraphChartSize(nodes)
+})
+
+const treeChartStyle = computed(() => {
+  if (!pageDetailModel.value || pageDetailModel.value.useListFallback) {
+    return {}
+  }
+  return computeTreeChartSize(pageDetailModel.value)
 })
 
 const summaryText = computed(() => {
@@ -532,6 +542,7 @@ function renderGraph() {
   graphChart = echarts.init(graphRef.value)
   graphChart.setOption(createGraphOption(model, { selectedPageId: selectedPageId.value }))
   graphChart.on('click', onGraphClick)
+  graphChart.resize()
 }
 
 function renderPageDetail() {
@@ -543,6 +554,7 @@ function renderPageDetail() {
     treeChart = echarts.init(treeRef.value)
     treeChart.setOption(createTreeOption(pageDetailModel.value, { expandDepth: 4 }))
     treeChart.on('click', onTreeClick)
+    treeChart.resize()
   })
 }
 
@@ -798,7 +810,8 @@ watch(
 
 .client-track-graph-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
+  max-height: 520px;
 }
 
 .client-track-flow-steps {
@@ -882,11 +895,12 @@ watch(
 }
 
 .client-track-timeline-chart--graph {
-  height: 380px;
+  min-height: 300px;
 }
 
 .client-track-timeline-chart--tree {
-  height: 520px;
+  min-height: 360px;
+  width: 100%;
 }
 
 .client-track-event-drawer .client-track-event-card__head {

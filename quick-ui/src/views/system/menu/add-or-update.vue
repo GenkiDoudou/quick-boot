@@ -27,9 +27,15 @@
 
               :check-strictly="true"
 
-              :default-expand-all="true"
+              :default-expand-all="false"
+
+              filterable
+
+              placeholder="请选择上级菜单"
 
               value-type="string"
+
+              @change="onParentChange"
 
             />
 
@@ -577,7 +583,7 @@ const MENU_TIPS = {
   orderNum: '显示顺序，数字越小越靠前。',
   icon: '侧栏菜单图标，从图标库选择 SVG 名称。',
   path: '侧栏路由 path（英文短路径，勿填 http 地址）。内嵌外链时实际 URL 填在「外链地址」；新标签页时 URL 填在「外链地址」且可不填此项。',
-  component: 'views 下组件路径，如 system/user/index；目录一般为 Layout。',
+  component: 'views 下组件路径，如 system/user/index；顶级目录为 Layout，子级目录为 ParentView。',
   routeName: 'Vue Router 的 name，建议英文驼峰；用于标签页与 keep-alive；积木/外链菜单建议填写。',
   isExternalLink: '选「是」表示访问外部地址；下方可选择内嵌 iframe 或浏览器新标签页打开。',
   visible: '选隐藏则不出现在侧栏，路由仍可能被直接访问。',
@@ -1114,6 +1120,24 @@ function showSelectIcon() {
 
 }
 
+/** 是否顶级上级菜单（与后端 ROOT -1 对齐） */
+function isRootParentId(parentId) {
+  const s = String(parentId ?? ROOT).trim()
+  return s === ROOT || s === '-1' || s === '0'
+}
+
+/** 目录类型：按层级自动选择 Layout / ParentView，避免三级菜单嵌套 Layout。 */
+function syncDirComponentForForm() {
+  if (form.value.menuType !== 'M') {
+    return
+  }
+  form.value.component = isRootParentId(form.value.parentId) ? 'Layout' : 'ParentView'
+}
+
+function onParentChange() {
+  syncDirComponentForForm()
+}
+
 
 
 function onTypeChange() {
@@ -1128,7 +1152,7 @@ function onTypeChange() {
 
   if (form.value.menuType === 'M') {
 
-    form.value.component = form.value.component || 'Layout'
+    syncDirComponentForForm()
 
   }
 
@@ -1586,6 +1610,8 @@ function open(payload = {}) {
 
   form.value.parentId = normalizeParentId(payload.parentId ?? ROOT)
 
+  syncDirComponentForForm()
+
 
 
   treeselectMenu().then((res) => {
@@ -1617,6 +1643,8 @@ function open(payload = {}) {
       }
 
       normalizeIframeFormPaths()
+
+      syncDirComponentForForm()
 
       permsList.value = permsStrToList(form.value.perms)
 

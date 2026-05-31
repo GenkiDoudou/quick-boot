@@ -43,6 +43,36 @@ export function pageDisplayLabel(breadcrumb, menuName, pagePath) {
 }
 
 /**
+ * 跳转路径图节点短标签：优先菜单名，否则取面包屑最后一段（避免长路径挤在一起）。
+ * @param {string|undefined|null} breadcrumb
+ * @param {string|undefined|null} menuName
+ * @param {string|undefined|null} pagePath
+ * @returns {string}
+ */
+export function graphShortLabel(breadcrumb, menuName, pagePath) {
+  if (menuName && String(menuName).trim()) {
+    return String(menuName).trim()
+  }
+  if (breadcrumb) {
+    const parts = String(breadcrumb)
+      .split('/')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (parts.length) {
+      return parts[parts.length - 1]
+    }
+  }
+  if (pagePath) {
+    const seg = String(pagePath).split('/').filter(Boolean)
+    if (seg.length) {
+      return seg[seg.length - 1]
+    }
+    return String(pagePath)
+  }
+  return '页面'
+}
+
+/**
  * @param {string|undefined|null} iso
  * @returns {string}
  */
@@ -124,10 +154,32 @@ export function countPageStats(page) {
 function batchLabel(batch, isVisit) {
   if (!batch) return isVisit ? '[访问] 页面' : '[操作] 未知'
   const raw = batch.triggerAction ? String(batch.triggerAction) : isVisit ? '页面' : '操作'
+  const text = shortenTreeText(raw.replace(/^访问:/, ''), 20)
   if (isVisit) {
-    return `[访问] ${raw.replace(/^访问:/, '')}`
+    return `[访问] ${text}`
   }
-  return `[操作] ${raw}`
+  return `[操作] ${shortenTreeText(raw, 20)}`
+}
+
+/**
+ * 行为树节点文案截断，避免 ECharts 横向/纵向标签重叠。
+ * @param {string} text
+ * @param {number} [maxLen=32]
+ * @returns {string}
+ */
+export function shortenTreeText(text, maxLen = 32) {
+  const s = String(text || '').trim()
+  if (!s) return ''
+  if (s.length <= maxLen) return s
+  if (s.includes('/')) {
+    const last = s
+      .split('/')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .pop()
+    if (last && last.length <= maxLen) return last
+  }
+  return `${s.slice(0, Math.max(1, maxLen - 1))}…`
 }
 
 /**
@@ -137,12 +189,15 @@ function batchLabel(batch, isVisit) {
 export function eventTreeLabel(ev) {
   if (!ev) return '[事件] 未知'
   const type = ev.type ? String(ev.type) : ''
-  const label = ev.label ? String(ev.label) : type || '事件'
-  if (type === 'click') return `[点击] ${label.replace(/^点击\s*/, '')}`
-  if (type === 'api_call' || type === 'api_slow' || type === 'api_error') return `[API] ${label}`
-  if (type === 'route_enter') return `[进入] ${label.replace(/^进入\s*/, '')}`
+  const rawLabel = ev.label ? String(ev.label) : type || '事件'
+  const label = shortenTreeText(rawLabel.replace(/^(点击|进入)\s*/, ''), 28)
+  if (type === 'click') return `[点击] ${label}`
+  if (type === 'api_call' || type === 'api_slow' || type === 'api_error') {
+    return `[API] ${shortenTreeText(rawLabel.replace(/^API\s*/, ''), 32)}`
+  }
+  if (type === 'route_enter') return `[进入] ${label}`
   if (type === 'route_leave') return '[离开] 页面'
-  if (type === 'js_error' || type === 'promise_error') return `[错误] ${label}`
+  if (type === 'js_error' || type === 'promise_error') return `[错误] ${shortenTreeText(rawLabel, 24)}`
   return `[${type || '事件'}] ${label}`
 }
 
@@ -201,9 +256,11 @@ function buildOverviewBlock(pages, edges, sessionId) {
 
   const graphNodes = pageMeta.map(({ page, id }, index) => {
     const name = pageDisplayLabel(page.menuBreadcrumb, page.menuName, page.pagePath)
+    const shortName = graphShortLabel(page.menuBreadcrumb, page.menuName, page.pagePath)
     return {
       id,
       name,
+      shortName,
       step: index + 1,
       pageVisitId: page.pageVisitId || '',
       pagePath: page.pagePath || '',
@@ -358,6 +415,7 @@ function buildBatchTreeNode(batch, isVisit, eventMap) {
 export function buildPageDetailModel(pageVo, sessionId, pageIndex) {
   const pageId = pageNodeId(pageVo, pageIndex, sessionId)
   const pageLabel = pageDisplayLabel(pageVo.menuBreadcrumb, pageVo.menuName, pageVo.pagePath)
+  const pageShortLabel = graphShortLabel(pageVo.menuBreadcrumb, pageVo.menuName, pageVo.pagePath)
   const stats = countPageStats(pageVo)
   /** @type {Record<string, Record<string, unknown>>} */
   const eventMap = {}
@@ -385,11 +443,12 @@ export function buildPageDetailModel(pageVo, sessionId, pageIndex) {
   return {
     pageNodeId: pageId,
     pageLabel,
+    pageShortLabel,
     eventCount: stats.eventCount,
     actionCount: stats.actionCount,
     useListFallback,
     tree: {
-      name: pageLabel,
+      name: pageShortLabel,
       nodeId: `t:${pageId}`,
       pageNodeId: pageId,
       nodeRole: 'page',

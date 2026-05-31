@@ -21,38 +21,121 @@ const COLORS = {
   error: '#F56C6C'
 }
 
-const GRAPH_COMPACT_THRESHOLD = 30
+/** 超过此数量隐藏边上的跳转文字（节点仍显示短菜单名） */
+const GRAPH_EDGE_LABEL_THRESHOLD = 24
+/** 超过此数量自动换行展示 */
+const GRAPH_NODES_PER_ROW = 8
+const GRAPH_NODE_GAP = 40
+const GRAPH_PADDING_X = 72
+const GRAPH_ROW_HEIGHT = 132
+const GRAPH_BASE_HEIGHT = 300
+
+/**
+ * 节点展示名：优先 shortName，否则从完整面包屑取最后一段。
+ * @param {Record<string, unknown>} node
+ * @returns {string}
+ */
+function resolveGraphNodeLabel(node) {
+  if (node.shortName != null && String(node.shortName).trim()) {
+    return String(node.shortName).trim()
+  }
+  const name = node.name != null ? String(node.name).trim() : ''
+  if (name.includes('/')) {
+    const parts = name.split('/').map((s) => s.trim()).filter(Boolean)
+    if (parts.length) {
+      return parts[parts.length - 1]
+    }
+  }
+  return name || '页面'
+}
+
+/**
+ * @param {string|undefined} label
+ * @returns {number}
+ */
+function estimateNodeWidth(label) {
+  const len = String(label || '').length
+  return Math.min(148, Math.max(92, len * 11 + 36))
+}
+
+/**
+ * 计算单行节点中心 x 坐标与行宽。
+ * @param {Record<string, unknown>[]} rowNodes
+ * @param {boolean} compact
+ * @returns {{ centers: number[], rowWidth: number }}
+ */
+function layoutGraphRow(rowNodes) {
+  const widths = rowNodes.map((node) => estimateNodeWidth(resolveGraphNodeLabel(node)))
+  if (!widths.length) {
+    return { centers: [], rowWidth: 720 }
+  }
+  const centers = []
+  let cx = GRAPH_PADDING_X + widths[0] / 2
+  centers.push(cx)
+  for (let i = 1; i < widths.length; i += 1) {
+    cx += widths[i - 1] / 2 + GRAPH_NODE_GAP + widths[i] / 2
+    centers.push(cx)
+  }
+  const rowWidth = cx + widths[widths.length - 1] / 2 + GRAPH_PADDING_X
+  return { centers, rowWidth, widths }
+}
+
+/**
+ * 计算跳转路径图布局尺寸（供容器 minWidth / height 与 ECharts 对齐）。
+ * @param {Record<string, unknown>[]} rawNodes
+ * @returns {{ minWidth: string, height?: string, chartWidth: number, chartHeight: number }}
+ */
+export function computeGraphChartSize(rawNodes) {
+  const count = rawNodes?.length || 0
+  if (count <= 1) {
+    return { minWidth: '100%', chartWidth: 720, chartHeight: GRAPH_BASE_HEIGHT }
+  }
+  const rowCount = Math.ceil(count / GRAPH_NODES_PER_ROW)
+  let chartWidth = 720
+  for (let row = 0; row < rowCount; row += 1) {
+    const slice = rawNodes.slice(row * GRAPH_NODES_PER_ROW, (row + 1) * GRAPH_NODES_PER_ROW)
+    const { rowWidth } = layoutGraphRow(slice)
+    chartWidth = Math.max(chartWidth, rowWidth)
+  }
+  const chartHeight = GRAPH_BASE_HEIGHT + Math.max(0, rowCount - 1) * GRAPH_ROW_HEIGHT
+  return {
+    minWidth: `${Math.ceil(chartWidth)}px`,
+    height: `${Math.ceil(chartHeight)}px`,
+    chartWidth: Math.ceil(chartWidth),
+    chartHeight: Math.ceil(chartHeight)
+  }
+}
 
 /**
  * @param {Record<string, unknown>} node
  * @param {number} index
  * @param {number} count
  * @param {string|undefined} selectedPageId
- * @param {boolean} compact
+ * @param {{ x: number, y: number, width: number }} layout
  */
-function buildGraphNode(node, index, count, selectedPageId, compact) {
+function buildGraphNode(node, index, selectedPageId, layout) {
   const selected = selectedPageId && node.id === selectedPageId
   const step = index + 1
-  const span = count <= 1 ? 0 : Math.min(220, Math.max(100, 680 / Math.max(count - 1, 1)))
+  const displayName = resolveGraphNodeLabel(node)
+  const nodeWidth = layout.width
+  const nodeHeight = 64
   return {
     ...node,
-    x: count <= 1 ? 400 : 60 + index * span,
-    y: 160,
+    x: layout.x,
+    y: layout.y,
     fixed: true,
     symbol: 'roundRect',
-    symbolSize: compact
-      ? [Math.min(120, Math.max(80, String(node.name || '').length * 10 + 32)), 48]
-      : [Math.min(160, Math.max(100, String(node.name || '').length * 12 + 40)), 56],
+    symbolSize: [nodeWidth, nodeHeight],
     itemStyle: {
       color: selected ? COLORS.pageSelected : COLORS.page,
       borderColor: selected ? '#F56C6C' : COLORS.pageBorder,
       borderWidth: selected ? 3 : 1.5,
-      shadowBlur: compact ? 0 : selected ? 12 : 4,
-      shadowColor: compact ? 'transparent' : selected ? 'rgba(230, 162, 60, 0.45)' : 'rgba(64, 158, 255, 0.25)'
+      shadowBlur: selected ? 12 : 4,
+      shadowColor: selected ? 'rgba(230, 162, 60, 0.45)' : 'rgba(64, 158, 255, 0.25)'
     },
     label: {
       show: true,
-      formatter: compact ? `{step|${step}}` : `{step|${step}}\n{name|${node.name || '页面'}}`,
+      formatter: `{step|${step}}\n{name|${displayName}}`,
       rich: {
         step: {
           color: '#fff',
@@ -68,11 +151,43 @@ function buildGraphNode(node, index, count, selectedPageId, compact) {
           fontSize: 12,
           fontWeight: 600,
           lineHeight: 18,
-          padding: [4, 0, 0, 0]
+          padding: [4, 0, 0, 0],
+          width: nodeWidth - 12,
+          overflow: 'truncate'
         }
       }
     }
   }
+}
+
+/**
+ * @param {Record<string, unknown>[]} rawNodes
+ * @param {string|undefined} selectedPageId
+ * @returns {Record<string, unknown>[]}
+ */
+function buildGraphNodes(rawNodes, selectedPageId) {
+  const count = rawNodes.length
+  const rowCount = Math.ceil(count / GRAPH_NODES_PER_ROW)
+  /** @type {Record<string, unknown>[]} */
+  const nodes = []
+
+  for (let row = 0; row < rowCount; row += 1) {
+    const start = row * GRAPH_NODES_PER_ROW
+    const slice = rawNodes.slice(start, start + GRAPH_NODES_PER_ROW)
+    const { centers, widths } = layoutGraphRow(slice)
+    const y = 128 + row * GRAPH_ROW_HEIGHT
+    slice.forEach((node, colIndex) => {
+      const globalIndex = start + colIndex
+      nodes.push(
+        buildGraphNode(node, globalIndex, selectedPageId, {
+          x: centers[colIndex],
+          y,
+          width: widths[colIndex]
+        })
+      )
+    })
+  }
+  return nodes
 }
 
 /**
@@ -84,13 +199,14 @@ export function createGraphOption(model, options = {}) {
   const { selectedPageId } = options
   const rawNodes = model.graph?.nodes || []
   const count = rawNodes.length
-  const compact = count > GRAPH_COMPACT_THRESHOLD
+  const hideEdgeLabels = count > GRAPH_EDGE_LABEL_THRESHOLD
+  const size = computeGraphChartSize(rawNodes)
 
-  const nodes = rawNodes.map((node, index) => buildGraphNode(node, index, count, selectedPageId, compact))
+  const nodes = buildGraphNodes(rawNodes, selectedPageId)
 
   const links = (model.graph?.links || []).map((link, index) => ({
     ...link,
-    label: compact
+    label: hideEdgeLabels
       ? { show: false }
       : {
           show: true,
@@ -100,8 +216,8 @@ export function createGraphOption(model, options = {}) {
         },
     lineStyle: {
       color: COLORS.edgeActive,
-      width: compact ? 1.5 : 2.5,
-      curveness: 0.08
+      width: hideEdgeLabels ? 1.5 : 2.5,
+      curveness: count > GRAPH_NODES_PER_ROW ? 0.22 : 0.08
     }
   }))
 
@@ -109,7 +225,10 @@ export function createGraphOption(model, options = {}) {
     animation: false,
     title: {
       text: '页面跳转路径（按时间从左到右）',
-      subtext: compact ? '节点较多已精简标签；点击节点查看该页操作明细' : '点击节点查看该页操作明细',
+      subtext:
+        count > GRAPH_NODES_PER_ROW
+          ? '已自动换行；悬停查看完整路径，点击节点查看该页操作明细'
+          : '悬停查看完整路径，点击节点查看该页操作明细',
       left: 'center',
       top: 4,
       textStyle: { fontSize: 15, fontWeight: 600 },
@@ -123,7 +242,14 @@ export function createGraphOption(model, options = {}) {
           return [`${d.source} → ${d.target}`, d.value].filter(Boolean).join('<br/>')
         }
         const d = params.data || {}
-        return [d.name, d.pagePath].filter(Boolean).join('<br/>')
+        const lines = []
+        if (d.name) {
+          lines.push(String(d.name))
+        }
+        if (d.pagePath) {
+          lines.push(String(d.pagePath))
+        }
+        return lines.join('<br/>') || ''
       }
     },
     series: [
@@ -136,8 +262,13 @@ export function createGraphOption(model, options = {}) {
         links,
         edgeSymbol: ['circle', 'arrow'],
         edgeSymbolSize: [6, 12],
-        emphasis: { focus: 'adjacency', scale: !compact },
-        label: { show: true }
+        emphasis: { focus: 'adjacency', scale: true },
+        label: { show: true },
+        top: 48,
+        bottom: 16,
+        left: 16,
+        right: 16,
+        height: size.chartHeight - 64
       }
     ]
   }
@@ -152,11 +283,7 @@ export function createGraphOption(model, options = {}) {
 export function patchGraphSelection(chart, model, selectedPageId) {
   if (!chart || !model?.graph?.nodes) return
   const rawNodes = model.graph.nodes
-  const count = rawNodes.length
-  const compact = count > GRAPH_COMPACT_THRESHOLD
-  const nodes = rawNodes.map((node, index) =>
-    buildGraphNode(node, index, count, selectedPageId || undefined, compact)
-  )
+  const nodes = buildGraphNodes(rawNodes, selectedPageId || undefined)
   chart.setOption({ series: [{ data: nodes }] })
 }
 
@@ -190,13 +317,49 @@ function nodeStyle(role, eventType) {
 }
 
 /**
- * @param {{ tree?: Record<string, unknown>, pageLabel?: string }} pageDetailModel
+ * 统计行为树节点数（含根），用于估算图表高度。
+ * @param {Record<string, unknown>|undefined|null} node
+ * @returns {number}
+ */
+function countTreeNodes(node) {
+  if (!node) return 0
+  let total = 1
+  const children = node.children
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      total += countTreeNodes(child)
+    }
+  }
+  return total
+}
+
+/**
+ * 行为树容器高度（随事件数量增高，减轻标签重叠）。
+ * @param {{ tree?: Record<string, unknown>, eventCount?: number }} pageDetailModel
+ * @returns {{ height: string, minHeight: string }}
+ */
+export function computeTreeChartSize(pageDetailModel) {
+  const tree = pageDetailModel?.tree
+  const nodeCount = countTreeNodes(tree)
+  const eventCount = pageDetailModel?.eventCount ?? Math.max(0, nodeCount - 1)
+  const height = Math.max(360, Math.min(760, 300 + eventCount * 34 + Math.ceil(nodeCount / 4) * 20))
+  return {
+    height: `${height}px`,
+    minHeight: '360px'
+  }
+}
+
+/**
+ * @param {{ tree?: Record<string, unknown>, pageLabel?: string, pageShortLabel?: string }} pageDetailModel
  * @param {{ expandDepth?: number }} [options]
  * @returns {Record<string, unknown>}
  */
 export function createTreeOption(pageDetailModel, options = {}) {
   const { expandDepth = 4 } = options
   const root = pageDetailModel?.tree || { name: '行为明细', children: [] }
+  const pageLabel = pageDetailModel?.pageLabel || root.name || '当前页面'
+  const pageShortLabel = pageDetailModel?.pageShortLabel || pageLabel
+  const size = computeTreeChartSize(pageDetailModel)
 
   /**
    * @param {Record<string, unknown>} node
@@ -206,7 +369,8 @@ export function createTreeOption(pageDetailModel, options = {}) {
     const children = Array.isArray(node.children) ? node.children.map(decorate) : undefined
     const role = node.nodeRole
     const isLeaf = node.isEventLeaf
-    const symbolSize = isLeaf ? 10 : role === 'page' ? 16 : 12
+    const symbolSize = isLeaf ? 10 : role === 'page' ? 14 : 12
+    const labelWidth = isLeaf ? 168 : role === 'action' ? 148 : 120
     return {
       name: node.name,
       nodeId: node.nodeId,
@@ -218,12 +382,15 @@ export function createTreeOption(pageDetailModel, options = {}) {
       symbolSize,
       itemStyle: nodeStyle(role, node.eventType),
       label: {
-        fontSize: isLeaf ? 11 : role === 'page' ? 13 : 12,
-        fontWeight: role === 'page' || role === 'action' ? 600 : 400,
+        show: role !== 'page',
+        fontSize: isLeaf ? 11 : role === 'action' ? 12 : 12,
+        fontWeight: role === 'action' ? 600 : 400,
         color: isLeaf ? '#606266' : '#303133',
-        backgroundColor: isLeaf ? 'rgba(255,255,255,0.85)' : 'transparent',
-        padding: isLeaf ? [2, 6, 2, 6] : 0,
-        borderRadius: 4
+        backgroundColor: isLeaf ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.85)',
+        padding: isLeaf ? [2, 6, 2, 6] : [2, 8, 2, 8],
+        borderRadius: 4,
+        width: labelWidth,
+        overflow: 'truncate'
       },
       lineStyle: role === 'page' ? { color: COLORS.page, width: 2 } : undefined,
       children
@@ -231,22 +398,28 @@ export function createTreeOption(pageDetailModel, options = {}) {
   }
 
   const treeData = decorate(root)
-  const pageLabel = pageDetailModel?.pageLabel || root.name || '当前页面'
+  const subtext =
+    pageLabel !== pageShortLabel
+      ? `${pageLabel} · 点击 [API]/[点击] 叶子查看明细`
+      : '展开到操作层；点击 [API]/[点击] 叶子查看明细'
 
   return {
     animation: false,
     title: {
-      text: `${pageLabel} · 行为树`,
-      subtext: '展开到操作层；点击 [API]/[点击] 叶子查看明细',
+      text: `${pageShortLabel} · 行为树`,
+      subtext,
       left: 'center',
       top: 4,
       textStyle: { fontSize: 15, fontWeight: 600 },
-      subtextStyle: { fontSize: 12, color: '#909399' }
+      subtextStyle: { fontSize: 12, color: '#909399', width: 560, overflow: 'break' }
     },
     tooltip: {
       trigger: 'item',
       formatter: (params) => {
         const d = params.data || {}
+        if (d.nodeRole === 'page' && pageLabel && pageLabel !== d.name) {
+          return pageLabel
+        }
         return d.name || ''
       }
     },
@@ -254,22 +427,24 @@ export function createTreeOption(pageDetailModel, options = {}) {
       {
         type: 'tree',
         data: [treeData],
-        top: 56,
-        bottom: 20,
-        left: 40,
-        right: 40,
+        top: pageLabel !== pageShortLabel ? 72 : 64,
+        bottom: 24,
+        left: 24,
+        right: 24,
         orient: 'TB',
         expandAndCollapse: true,
         initialTreeDepth: expandDepth,
         edgeShape: 'polyline',
         edgeForkPosition: '50%',
-        label: { position: 'top', verticalAlign: 'middle', align: 'center', distance: 8 },
-        leaves: { label: { position: 'bottom', align: 'center', distance: 6 } },
+        layerGap: 56,
+        nodeGap: 28,
+        label: { position: 'top', verticalAlign: 'bottom', align: 'center', distance: 6 },
+        leaves: { label: { position: 'bottom', verticalAlign: 'top', align: 'center', distance: 8 } },
         emphasis: { focus: 'descendant' },
         animationDuration: 0,
         animationDurationUpdate: 0
       }
-    ]
+    ],
+    _chartHeight: size.height
   }
 }
-

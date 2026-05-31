@@ -3,9 +3,11 @@ import {
   buildTimelineOverview,
   buildPageDetailModel,
   buildTimelineModel,
+  graphShortLabel,
   pageDisplayLabel,
   pageNodeId,
   sessionTabLabel,
+  shortenTreeText,
   PAGE_DETAIL_TREE_THRESHOLD
 } from './buildTimelineModel'
 
@@ -158,6 +160,9 @@ describe('buildPageDetailModel', () => {
     const detail = buildPageDetailModel(mockPage, 'sess-1', 0)
 
     expect(detail.pageNodeId).toBe('p:sess-1:pv-1')
+    expect(detail.pageLabel).toBe('系统管理 / 用户管理')
+    expect(detail.pageShortLabel).toBe('用户管理')
+    expect(detail.tree.name).toBe('用户管理')
     expect(detail.eventCount).toBe(3)
     expect(detail.useListFallback).toBe(false)
     expect(detail.tree.children).toHaveLength(2)
@@ -184,6 +189,23 @@ describe('buildPageDetailModel', () => {
     const detail = buildPageDetailModel(heavyPage, 'sess-1', 0)
     expect(detail.useListFallback).toBe(true)
     expect(detail.batchGroups.length).toBeGreaterThan(0)
+  })
+})
+
+describe('shortenTreeText', () => {
+  it('短文本不截断', () => {
+    expect(shortenTreeText('用户管理', 20)).toBe('用户管理')
+  })
+
+  it('面包屑优先取末段', () => {
+    const long = '系统管理 / 日志管理 / 登录日志 / 行为轨迹详情'
+    expect(shortenTreeText(long, 12)).toBe('行为轨迹详情')
+  })
+
+  it('纯长文本截断并加省略号', () => {
+    const long = '这是一段没有任何斜杠分隔的超长操作描述文字内容'
+    expect(shortenTreeText(long, 12)).toMatch(/…$/)
+    expect(shortenTreeText(long, 12).length).toBeLessThanOrEqual(13)
   })
 })
 
