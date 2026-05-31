@@ -1,5 +1,6 @@
 package io.github.genkidoudou.auth;
 
+import io.github.genkidoudou.common.api.ClientIds;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.useragent.UserAgent;
 import cn.hutool.http.useragent.UserAgentUtil;
@@ -60,6 +61,7 @@ public class SysLogininforLogService {
         row.setOs(ua.getOs() != null ? StrUtil.blankToDefault(ua.getOs().getName(), "Unknown") : "Unknown");
         row.setStatus(status);
         row.setMsg(msg);
+        row.setClientId(ClientIds.normalizeHeader(request.getHeader(ClientIds.HEADER_NAME)));
         row.setLoginTime(LocalDateTime.now());
         return row;
     }

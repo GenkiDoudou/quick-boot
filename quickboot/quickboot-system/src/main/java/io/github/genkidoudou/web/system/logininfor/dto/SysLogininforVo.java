@@ -26,4 +26,6 @@ public class SysLogininforVo implements Serializable {
     private String status;
     private String msg;
     private LocalDateTime loginTime;
+    @Schema(description = "OAuth 客户端 ID")
+    private String clientId;
 }

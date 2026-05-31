@@ -34,6 +34,9 @@ public class SysLogininforExcelRow {
     @ExcelProperty("描述")
     private String msg;
 
+    @ExcelProperty("客户端ID")
+    private String clientId;
+
     @ExcelProperty("访问时间")
     private LocalDateTime loginTime;
 }

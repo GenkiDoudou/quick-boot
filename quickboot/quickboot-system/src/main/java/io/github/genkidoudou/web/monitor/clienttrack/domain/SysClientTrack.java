@@ -30,6 +30,15 @@ public class SysClientTrack implements Serializable {
     /** 前端一次用户操作 ID，主关联键。 */
     private String operationId;
 
+    /** 浏览器访问 ID，打开浏览器访问本系统时生成，跨 tab 共用；登出不换。 */
+    private String browserVisitId;
+
+    /** 登录会话 ID，同一次登录内多批次共用。 */
+    private String sessionId;
+
+    /** 页面访问 ID，同页访问批与按钮操作批共用。 */
+    private String pageVisitId;
+
     /** 触发操作标识（data-track / beginOperation），如 user-edit:1。 */
     private String triggerAction;
 

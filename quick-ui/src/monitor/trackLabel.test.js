@@ -43,6 +43,15 @@ describe('trackLabel', () => {
     expect(label).toBe('新增')
   })
 
+  it('resolveBatchTriggerAction 从 route_enter 推断访问页面', () => {
+    const { raw, label } = resolveBatchTriggerAction([
+      { type: 'route_enter', path: '/system/user', title: '用户管理' },
+      { type: 'api_call', url: '/system/user/list' }
+    ])
+    expect(raw).toBe('访问:用户管理')
+    expect(label).toBe('访问:用户管理')
+  })
+
   it('extractVisibleActionLabel 读取 innerText / aria-label', () => {
     expect(extractVisibleActionLabel({ innerText: '查看', getAttribute: () => null })).toBe('查看')
     expect(

@@ -2,6 +2,8 @@ package io.github.genkidoudou.web.monitor.clienttrack.service;
 
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackReportBo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineQueryBo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackVo;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +30,14 @@ public interface SysClientTrackService {
      * @return 分页结果
      */
     PageInfo<SysClientTrackVo> page(SysClientTrackQueryBo query);
+
+    /**
+     * 行为轨迹聚合：按 browserVisitId / sessionId / userName 合并批次为页面跳转 + 操作树。
+     *
+     * @param query 至少一项主键条件；用户名查询合并时间范围内全部批次
+     * @return 聚合结果（最多 500 批，超出 {@code truncated=true}）
+     */
+    ClientTrackTimelineVo timeline(ClientTrackTimelineQueryBo query);
 
     /**
      * 按主键批量删除。

@@ -54,7 +54,6 @@
         <el-button
           link
           type="primary"
-          data-track="user-edit"
           @click="openEdit(row)"
           v-hasPermi="['system:user:edit']"
         >修改</el-button>

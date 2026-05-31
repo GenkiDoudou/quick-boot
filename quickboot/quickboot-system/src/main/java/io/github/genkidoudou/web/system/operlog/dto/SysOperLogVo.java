@@ -40,4 +40,6 @@ public class SysOperLogVo implements Serializable {
     private String traceId;
     @Schema(description = "前端操作 ID")
     private String clientOperationId;
+    @Schema(description = "OAuth 客户端 ID")
+    private String clientId;
 }

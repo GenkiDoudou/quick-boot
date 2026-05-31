@@ -21,6 +21,15 @@ public class SysClientTrackVo {
     @Schema(description = "前端操作 ID")
     private String operationId;
 
+    @Schema(description = "浏览器访问 ID")
+    private String browserVisitId;
+
+    @Schema(description = "登录会话 ID")
+    private String sessionId;
+
+    @Schema(description = "页面访问 ID")
+    private String pageVisitId;
+
     @Schema(description = "触发操作标识")
     private String triggerAction;
 

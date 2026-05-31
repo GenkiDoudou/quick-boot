@@ -20,6 +20,14 @@ function envBool(raw, defaultValue) {
 }
 
 /**
+ * 是否启用前端行为监控（与 VITE_APP_MONITOR_ENABLED 一致，供 request 拦截器等热路径快速判断）。
+ * @returns {boolean}
+ */
+export function isMonitorEnabled() {
+  return envBool(import.meta.env.VITE_APP_MONITOR_ENABLED, true)
+}
+
+/**
  * @returns {UserMonitorOptions}
  */
 export function loadMonitorConfig() {
@@ -29,6 +37,8 @@ export function loadMonitorConfig() {
     reportUrl: `${baseApi}/monitor/clientTrack/report`,
     maxKeep: Number(import.meta.env.VITE_APP_MONITOR_MAX_KEEP || 40),
     interval: Number(import.meta.env.VITE_APP_MONITOR_INTERVAL || 10000),
+    /** 主操作批次 idle flush 间隔（ms），最后一次 click/api 后无新事件则上报 */
+    idleMs: Number(import.meta.env.VITE_APP_MONITOR_IDLE_MS || 2000),
     slowApiMs: Number(import.meta.env.VITE_APP_MONITOR_SLOW_API_MS || 3000),
     allowPages: [
       '/login',
@@ -40,8 +50,8 @@ export function loadMonitorConfig() {
       '/report',
       '/oauth'
     ],
-    /** 不采集行为事件的路由前缀（前端监控页自身，避免查看日志时产生噪声） */
-    excludePages: ['/system/clientTrack', '/monitor/clientTrack']
+    /** 不采集行为事件的路由前缀（监控管理页自身，避免查看日志时产生噪声） */
+    excludePages: ['/system/clientTrack', '/system/clientTrackEvents', '/system/clientTrackTimeline', '/monitor/clientTrack']
   }
 }
 

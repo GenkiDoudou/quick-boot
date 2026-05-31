@@ -25,6 +25,18 @@ public class ClientTrackReportBo {
     @Schema(description = "前端一次用户操作 ID，与 oper_log.client_operation_id 联查")
     private String operationId;
 
+    @Size(max = 64, message = "browserVisitId 过长")
+    @Schema(description = "浏览器访问 ID，打开浏览器访问本系统时生成，跨 tab 共用")
+    private String browserVisitId;
+
+    @Size(max = 64, message = "sessionId 过长")
+    @Schema(description = "登录会话 ID，串联同一次登录内的全部批次")
+    private String sessionId;
+
+    @Size(max = 64, message = "pageVisitId 过长")
+    @Schema(description = "页面访问 ID，串联同页访问批与按钮操作批")
+    private String pageVisitId;
+
     @Size(max = 128, message = "triggerAction 过长")
     @Schema(description = "触发操作标识，如 user-edit:1、c7-json-table-delete")
     private String triggerAction;

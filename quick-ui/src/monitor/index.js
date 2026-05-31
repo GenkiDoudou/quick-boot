@@ -3,7 +3,7 @@
  */
 import { createUserMonitor } from './createUserMonitor'
 import { bindRequestMonitor } from './bindRequestMonitor'
-import { loadMonitorConfig } from './config'
+import { loadMonitorConfig, isMonitorEnabled } from './config'
 import request from '@/utils/request'
 
 /**
@@ -23,7 +23,7 @@ export function setupUserMonitor() {
   return monitor
 }
 
-export { createUserMonitor, bindRequestMonitor, loadMonitorConfig }
+export { createUserMonitor, bindRequestMonitor, loadMonitorConfig, isMonitorEnabled }
 export {
   registerObservationEmitter,
   beginRequestObservation,
@@ -36,9 +36,21 @@ export {
   recordApiError
 } from './requestObservation'
 export {
+  getOrCreateSessionId,
+  resetSessionId,
+  clearSessionId
+} from './sessionContext'
+export {
+  getOrCreateBrowserVisitId,
+  startBrowserVisitHeartbeat,
+  stopBrowserVisitHeartbeat
+} from './browserVisitContext'
+export {
   beginOperation,
   ensureOperation,
   getOperationId,
+  getPageVisitId,
+  getBatchKind,
   endOperation,
   cancelOperation,
   runInOperation,
@@ -49,8 +61,23 @@ export {
   setPendingTrigger,
   getLastTrigger,
   suppressEndOperation,
-  resumeEndOperation
+  resumeEndOperation,
+  openBatch,
+  openPageVisit,
+  flushPageVisitIfNeeded,
+  touchBatch,
+  touchBatchPassive,
+  flushBatchSync,
+  registerBatchFlushHook,
+  configureBatchSession,
+  isOverlayBlocking
 } from './operationContext'
+export {
+  isPrimaryAction,
+  isPassiveAction,
+  isQueryOnlyAction,
+  shouldRecordPendingTrigger
+} from './operationRules'
 export { nextRequestTraceHeaders, shouldAttachRequestTrace } from './requestTrace'
 export { formatTrackLabel, resolveBatchTriggerAction, resolveDisplayTrigger, isHumanReadableLabel, extractVisibleActionLabel } from './trackLabel'
 export { readClickTarget } from './clickTarget'

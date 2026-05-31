@@ -1,5 +1,6 @@
 package io.github.genkidoudou.common.tracing;
 
+import io.github.genkidoudou.common.api.ClientIds;
 import io.github.genkidoudou.common.api.ClientOperationIds;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -47,6 +48,18 @@ class ClientOperationFilterTest {
             seen.set(ClientOperationIds.current());
         });
         assertThat(seen.get()).isNull();
+    }
+
+    @Test
+    void clientIdHeaderWrittenToMdc() throws ServletException, IOException {
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.addHeader(ClientIds.HEADER_NAME, "  quick-ui  ");
+        AtomicReference<String> seen = new AtomicReference<>();
+        filter.doFilter(req, new MockHttpServletResponse(), (request, response) -> {
+            seen.set(ClientIds.current());
+        });
+        assertThat(seen.get()).isEqualTo("quick-ui");
+        assertThat(ClientIds.current()).isNull();
     }
 
     @Test

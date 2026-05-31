@@ -50,4 +50,7 @@ public class SysOperLogExcelRow {
 
     @ExcelProperty("操作ID")
     private String clientOperationId;
+
+    @ExcelProperty("客户端ID")
+    private String clientId;
 }

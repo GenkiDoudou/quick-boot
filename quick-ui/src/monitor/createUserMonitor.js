@@ -1,19 +1,27 @@
 /**
  * Vue 全局用户行为监控插件（轻量版，对齐公众号「全局插件 + 本地缓冲 + 错误立即 flush」方案）。
  */
-import { postTrackBatch } from './report'
-import { resolveBatchTriggerAction, formatTrackLabel } from './trackLabel'
-import { shouldRecordPendingTrigger, shouldAutoBeginOperation } from './operationRules'
+import { postTrackBatch, postTrackBatchDeferred } from './report'
+import { isUrgentFlushReason } from './scheduleIdle'
+import { resolveBatchTriggerAction } from './trackLabel'
+import { isPrimaryAction, isPassiveAction, isQueryOnlyAction } from './operationRules'
 import { readClickTarget } from './clickTarget'
+import { getOrCreateSessionId } from './sessionContext'
+import { getBrowserVisitId, getOrCreateBrowserVisitId, startBrowserVisitHeartbeat } from './browserVisitContext'
 import {
-  beginOperation,
+  configureBatchSession,
+  registerBatchFlushHook,
+  openBatch,
+  openPageVisit,
+  touchBatch,
+  touchBatchPassive,
+  cancelBatch,
+  flushBatchSync,
   getOperationId,
-  endOperation,
-  cancelOperation,
-  registerOperationEndHook,
-  registerOperationBeginHook,
+  getPageVisitId,
+  getBatchKind,
   setActivePage
-} from './operationContext'
+} from './batchSession'
 
 /**
  * @typedef {Object} UserMonitorOptions
@@ -21,6 +29,7 @@ import {
  * @property {string} [reportUrl]
  * @property {number} [maxKeep=40]
  * @property {number} [interval=10000]
+ * @property {number} [idleMs=2000]
  * @property {string[]} [allowPages] 路径前缀白名单
  * @property {string[]} [excludePages] 路径前缀黑名单（优先于白名单）
  */
@@ -60,23 +69,46 @@ export function createUserMonitor(options = {}) {
   const allowPages = options.allowPages || []
   const excludePages = options.excludePages || []
   const intervalMs = options.interval || 10000
+  const idleMs = options.idleMs ?? 2000
   let currentRoute = typeof location !== 'undefined' ? location.pathname : ''
   let timerId = null
   /** @type {ReturnType<typeof setTimeout> | null} */
-  let actionFlushTimer = null
+  let queryFlushTimer = null
+  /** 热路径缓存，避免每次 push 读 localStorage */
+  let cachedBrowserVisitId = ''
+  let cachedSessionId = ''
+  /** canTrackPath 结果缓存，避免每次 click 扫描白名单 */
+  let trackingCachePath = ''
+  let trackingCacheValue = false
 
-  /**
-   * 当前路由是否处于采集态（排除页整页静默，不采集、不 flush、不开 operation）。
-   * @returns {boolean}
-   */
-  function isTracking() {
-    return enabled && canTrackPath(currentRoute, allowPages, excludePages)
+  configureBatchSession({ idleMs })
+
+  function invalidateTrackingCache() {
+    trackingCachePath = ''
   }
 
-  function clearPendingActionFlush() {
-    if (actionFlushTimer) {
-      clearTimeout(actionFlushTimer)
-      actionFlushTimer = null
+  function refreshContextIds() {
+    cachedBrowserVisitId = getBrowserVisitId() || getOrCreateBrowserVisitId()
+    cachedSessionId = getOrCreateSessionId()
+    return { browserVisitId: cachedBrowserVisitId, sessionId: cachedSessionId }
+  }
+
+  function isTracking() {
+    if (!enabled) {
+      return false
+    }
+    if (currentRoute === trackingCachePath) {
+      return trackingCacheValue
+    }
+    trackingCachePath = currentRoute
+    trackingCacheValue = canTrackPath(currentRoute, allowPages, excludePages)
+    return trackingCacheValue
+  }
+
+  function clearQueryFlushTimer() {
+    if (queryFlushTimer) {
+      clearTimeout(queryFlushTimer)
+      queryFlushTimer = null
     }
   }
 
@@ -84,34 +116,53 @@ export function createUserMonitor(options = {}) {
     store.length = 0
   }
 
-  /**
-   * 进入排除页时丢弃本地缓冲与 operation，避免维护操作污染业务页统计。
-   */
   function resetMonitorOnExcludedPage() {
-    clearPendingActionFlush()
-    cancelOperation()
+    clearQueryFlushTimer()
+    cancelBatch()
     discardBuffer()
   }
 
-  /**
-   * 无活跃 operation 时，在操作类点击后延迟 flush，合并紧随其后的 API（如弹窗 getXxx）。
-   */
-  function scheduleActionFlush() {
+  function scheduleQueryFlush() {
     if (!isTracking()) {
       return
     }
-    if (actionFlushTimer) {
-      clearTimeout(actionFlushTimer)
-    }
-    actionFlushTimer = setTimeout(() => {
-      actionFlushTimer = null
-      if (!isTracking()) {
+    clearQueryFlushTimer()
+    queryFlushTimer = setTimeout(() => {
+      queryFlushTimer = null
+      if (!isTracking() || !store.length) {
         return
       }
-      if (!getOperationId() && store.length > 0) {
+      if (!getOperationId()) {
         flush('action_click')
       }
     }, 1500)
+  }
+
+  /**
+   * @param {Record<string, unknown>[]} events
+   * @param {string | null | undefined} operationId
+   * @param {string | null | undefined} pageVisitId
+   */
+  function attachBatchContext(events, operationId, pageVisitId) {
+    if (!cachedBrowserVisitId || !cachedSessionId) {
+      refreshContextIds()
+    }
+    const sessionId = cachedSessionId
+    const browserVisitId = cachedBrowserVisitId
+    for (const ev of events) {
+      if (!ev.browserVisitId) {
+        ev.browserVisitId = browserVisitId
+      }
+      if (!ev.sessionId) {
+        ev.sessionId = sessionId
+      }
+      if (pageVisitId && !ev.pageVisitId) {
+        ev.pageVisitId = pageVisitId
+      }
+      if (operationId && !ev.operationId) {
+        ev.operationId = operationId
+      }
+    }
   }
 
   /**
@@ -122,10 +173,16 @@ export function createUserMonitor(options = {}) {
       return
     }
     const opId = getOperationId()
+    const pvId = getPageVisitId()
+    if (!cachedBrowserVisitId || !cachedSessionId) {
+      refreshContextIds()
+    }
     const item = {
       page: currentRoute || (typeof location !== 'undefined' ? location.pathname : ''),
       ts: Date.now(),
-      ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      browserVisitId: cachedBrowserVisitId,
+      sessionId: cachedSessionId,
+      ...(pvId ? { pageVisitId: pvId } : {}),
       ...(opId ? { operationId: opId } : {}),
       ...row
     }
@@ -133,47 +190,85 @@ export function createUserMonitor(options = {}) {
     if (store.length > maxKeep) {
       store.shift()
     }
+    if (getBatchKind() === 'action') {
+      touchBatch()
+    }
     if (row.level === 'error') {
-      flush('error')
+      flush('error', undefined, { urgent: true })
     }
   }
 
   /**
    * @param {string} [reason='normal']
-   * @param {string} [forcedOperationId] operation_end 时传入，保证批次级 operationId 不丢
+   * @param {string} [forcedOperationId]
+   * @param {{ urgent?: boolean }} [options]
    */
-  function flush(reason = 'normal', forcedOperationId) {
+  function flush(reason = 'normal', forcedOperationId, options = {}) {
     if (!enabled || !store.length) {
       return
     }
+    const pvId = getPageVisitId() || resolvePageVisitIdFromStore()
+    attachBatchContext(store, forcedOperationId || getOperationId(), pvId)
     const events = store.splice(0, store.length)
     if (isNoiseFlush(events, reason)) {
       return
     }
     const batchOpId = forcedOperationId || resolveBatchOperationId(events)
+    const batchPvId = resolvePageVisitId(events) || pvId || undefined
     const { raw: triggerAction, label: triggerLabel } = resolveBatchTriggerAction(events)
-    postTrackBatch(reportUrl, {
+    if (!cachedBrowserVisitId || !cachedSessionId) {
+      refreshContextIds()
+    }
+    const payload = {
       reason,
+      browserVisitId: cachedBrowserVisitId,
+      sessionId: cachedSessionId,
+      pageVisitId: batchPvId,
       operationId: batchOpId || undefined,
       triggerAction: triggerAction || undefined,
       triggerLabel: triggerLabel || undefined,
       events
-    })
+    }
+    const urgent = options.urgent === true || isUrgentFlushReason(reason)
+    if (urgent) {
+      postTrackBatch(reportUrl, payload)
+    } else {
+      postTrackBatchDeferred(reportUrl, payload)
+    }
   }
+
+  function resolvePageVisitIdFromStore() {
+    for (let i = store.length - 1; i >= 0; i -= 1) {
+      const id = store[i].pageVisitId
+      if (id != null && String(id).trim()) {
+        return String(id).trim()
+      }
+    }
+    return ''
+  }
+
+  registerBatchFlushHook((reason, operationId) => {
+    if (!enabled) {
+      return
+    }
+    flush(reason, operationId || undefined, { urgent: isUrgentFlushReason(reason) })
+  })
 
   return {
     pushEvent,
     flush,
-    /**
-     * @param {import('vue').App} app
-     * @param {{ router?: import('vue-router').Router }} [pluginOptions]
-     */
     install(app, pluginOptions = {}) {
       if (!enabled) {
         return
       }
       const router = pluginOptions.router
+      refreshContextIds()
+      startBrowserVisitHeartbeat()
       app.config.globalProperties.$track = pushEvent
+
+      /** 仅匹配可操作控件，避免每次 click 做无效 DOM 回溯 */
+      const ACTIONABLE_SELECTOR =
+        'button, .el-button, .c7-button, [data-track], a[role="button"], input[type="submit"], input[type="button"]'
 
       document.addEventListener(
         'click',
@@ -181,13 +276,22 @@ export function createUserMonitor(options = {}) {
           if (!isTracking()) {
             return
           }
-          const target = /** @type {HTMLElement | null} */ (e.target)
-          if (!target) {
+          const rawTarget = e.target
+          if (!(rawTarget instanceof Element)) {
             return
           }
-          const { label, isAction } = readClickTarget(target)
+          const actionable = rawTarget.closest(ACTIONABLE_SELECTOR)
+          if (!actionable || !(actionable instanceof HTMLElement)) {
+            return
+          }
+          const { label, isAction } = readClickTarget(actionable)
           if (!isAction) {
             return
+          }
+          if (isPrimaryAction(label)) {
+            openBatch(label)
+          } else if (isPassiveAction(label)) {
+            touchBatchPassive()
           }
           pushEvent({
             type: 'click',
@@ -195,13 +299,11 @@ export function createUserMonitor(options = {}) {
             x: e.clientX,
             y: e.clientY
           })
-          if (shouldAutoBeginOperation(label)) {
-            beginOperation(label)
-          } else if (shouldRecordPendingTrigger(label)) {
-            scheduleActionFlush()
+          if (isQueryOnlyAction(label)) {
+            scheduleQueryFlush()
           }
         },
-        true
+        { passive: true }
       )
 
       window.addEventListener('error', (e) => {
@@ -229,129 +331,50 @@ export function createUserMonitor(options = {}) {
       })
 
       window.addEventListener('beforeunload', () => {
-        flush('leave')
+        flushBatchSync('leave')
       })
-
-      /**
-       * 立即 flush（路由切换 / operation 结束须同步，避免 afterEach 的 route_enter 混入上一批）。
-       * @param {string} reason
-       * @param {string} [forcedOperationId]
-       */
-      function flushNow(reason, forcedOperationId) {
-        flush(reason, forcedOperationId)
-      }
-
-      /**
-       * 延后 flush，仅用于非边界场景（如 beforeunload 尽力上报）。
-       * @param {string} reason
-       * @param {string} [forcedOperationId]
-       */
-      function scheduleFlush(reason, forcedOperationId) {
-        window.setTimeout(() => flush(reason, forcedOperationId), 0)
-      }
 
       if (router) {
         setActivePage(currentRoute)
 
         router.beforeEach((to, from, next) => {
           const fromTrackable = canTrackPath(from.path, allowPages, excludePages)
-          if (fromTrackable) {
-            pushEvent({
-              type: 'route_leave',
-              from: from.fullPath,
-              to: to.fullPath
-            })
-            const hadOperation = getOperationId()
-            if (hadOperation) {
-              endOperation()
-            } else if (store.length > 0) {
-              flushNow('route_leave')
-            }
+          if (fromTrackable && (store.length > 0 || getBatchKind())) {
+            flushBatchSync('page_leave', getOperationId() || getPageVisitId() || undefined)
+          } else if (fromTrackable) {
+            cancelBatch()
           }
           currentRoute = to.path
+          invalidateTrackingCache()
           next()
         })
         router.afterEach((to) => {
           currentRoute = to.path
+          invalidateTrackingCache()
           setActivePage(to.path)
           if (!canTrackPath(to.path, allowPages, excludePages)) {
             resetMonitorOnExcludedPage()
             return
           }
+          const title = typeof document !== 'undefined' ? document.title : ''
+          openPageVisit(title || to.meta?.title || to.path, to.path)
           pushEvent({
             type: 'route_enter',
             path: to.fullPath,
-            title: typeof document !== 'undefined' ? document.title : ''
+            title
           })
         })
       }
 
-      registerOperationEndHook((endingOperationId) => {
-        queueMicrotask(() => {
-          if (!enabled) {
-            return
-          }
-          // operation 结束须上报：切到 excludePages 时 isTracking 已为 false，不能因此丢批次
-          if (!endingOperationId && !isTracking()) {
-            discardBuffer()
-            return
-          }
-          if (endingOperationId) {
-            for (const ev of store) {
-              if (!ev.operationId) {
-                ev.operationId = endingOperationId
-              }
-            }
-          }
-          flushNow('operation_end', endingOperationId || undefined)
-        })
-      })
-
-      /**
-       * operation 开始时：回填紧邻 click；若无则补写一条触发点击（如 C7JsonTable onAdd 仅回调未走全局 begin）。
-       * @param {string} operationId
-       * @param {string | null} triggerLabel
-       */
-      function syncOperationBeginClick(operationId, triggerLabel) {
-        if (!triggerLabel || !isTracking()) {
-          return
-        }
-        const displayTarget = formatTrackLabel(triggerLabel) || triggerLabel
-        for (let i = store.length - 1; i >= 0; i -= 1) {
-          const ev = store[i]
-          if (ev.operationId === operationId && ev.type === 'click') {
-            return
-          }
-        }
-        for (let i = store.length - 1; i >= 0; i -= 1) {
-          const ev = store[i]
-          if (ev.type === 'click' && !ev.operationId) {
-            ev.operationId = operationId
-            if (ev.source !== 'operation_begin') {
-              ev.target = displayTarget
-            }
-            return
-          }
-        }
-        pushEvent({
-          type: 'click',
-          target: displayTarget,
-          source: 'operation_begin'
-        })
-      }
-
-      registerOperationBeginHook((operationId, triggerLabel) => {
-        syncOperationBeginClick(operationId, triggerLabel)
-      })
-
       timerId = window.setInterval(() => {
-        if (!isTracking()) {
+        if (!isTracking() || !store.length) {
           return
         }
-        if (getOperationId()) {
+        if (getBatchKind() !== 'action') {
           return
         }
         flush('timer')
+        cancelBatch()
       }, intervalMs)
       app.config.globalProperties.$trackFlush = flush
 
@@ -360,16 +383,13 @@ export function createUserMonitor(options = {}) {
         console.info('[monitor] user behavior monitor installed')
       }
 
-      /** 供测试或手动卸载时清理定时器 */
       app.config.globalProperties.$trackDispose = () => {
         if (timerId != null) {
           clearInterval(timerId)
           timerId = null
         }
-        if (actionFlushTimer != null) {
-          clearTimeout(actionFlushTimer)
-          actionFlushTimer = null
-        }
+        clearQueryFlushTimer()
+        cancelBatch()
       }
     }
   }
@@ -390,13 +410,26 @@ function resolveBatchOperationId(events) {
 }
 
 /**
- * 丢弃仅含 route_leave 的孤立批次（切页边界噪声）。
+ * @param {Record<string, unknown>[]} events
+ * @returns {string}
+ */
+function resolvePageVisitId(events) {
+  for (const ev of events) {
+    const id = ev.pageVisitId
+    if (id != null && String(id).trim()) {
+      return String(id).trim()
+    }
+  }
+  return ''
+}
+
+/**
  * @param {Record<string, unknown>[]} events
  * @param {string} reason
  * @returns {boolean}
  */
 function isNoiseFlush(events, reason) {
-  if (reason !== 'route_leave' || events.length !== 1) {
+  if (reason !== 'page_leave' || events.length !== 1) {
     return false
   }
   return events[0].type === 'route_leave'

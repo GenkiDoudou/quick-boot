@@ -28,6 +28,9 @@ public class SysLogininforQueryBo {
     @Schema(description = "状态：0 成功 1 失败")
     private String status;
 
+    @Schema(description = "OAuth 客户端 ID clientId，精确匹配")
+    private String clientId;
+
     @Schema(description = "访问时间起 yyyy-MM-dd")
     private String beginTime;
 

@@ -39,5 +39,8 @@ public class SysLogininfor implements Serializable {
 
     private String msg;
 
+    /** OAuth 客户端 ID，来自 {@code X-Client-Id}，可空。 */
+    private String clientId;
+
     private LocalDateTime loginTime;
 }

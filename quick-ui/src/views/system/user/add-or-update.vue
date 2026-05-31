@@ -98,11 +98,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getUser, addUser, updateUser } from '@/api/system/user'
 import { listRole } from '@/api/system/role'
-import { ensureOperation, endOperation } from '@/monitor/operationContext'
 import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
 
@@ -150,17 +149,6 @@ onMounted(() => {
   listTreeDept().then((res) => {
     deptTree.value = res.data || res || []
   })
-})
-
-/**
- * 弹窗显隐与 operation 边界对齐（与 C7Dialog 一致；el-dialog 须自行绑定）。
- */
-watch(visibleRef, (open, wasOpen) => {
-  if (open && !wasOpen) {
-    ensureOperation(dataForm.value.userId ? '修改' : '新增')
-  } else if (!open && wasOpen) {
-    queueMicrotask(() => endOperation())
-  }
 })
 
 function handleClose() {

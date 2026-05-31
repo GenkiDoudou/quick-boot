@@ -86,6 +86,7 @@ public class SysLogininforServiceImpl implements SysLogininforService {
             .like(StrUtil.isNotBlank(query.getIpaddr()), SysLogininfor::getIpaddr, query.getIpaddr())
             .like(StrUtil.isNotBlank(query.getUserName()), SysLogininfor::getUserName, query.getUserName())
             .eq(StrUtil.isNotBlank(query.getStatus()), SysLogininfor::getStatus, query.getStatus())
+            .eq(StrUtil.isNotBlank(query.getClientId()), SysLogininfor::getClientId, query.getClientId())
             .ge(begin != null, SysLogininfor::getLoginTime, begin)
             .le(end != null, SysLogininfor::getLoginTime, end);
     }

@@ -17,12 +17,26 @@ export function reportClientTrack(data) {
 /**
  * 管理端：分页查询监控批次。
  *
- * @param {Record<string, unknown>} query pageNum/pageSize/traceId/userName/reason/beginDate/endDate
+ * @param {Record<string, unknown>} query pageNum/pageSize/batchId/browserVisitId/sessionId/pageVisitId/operationId/traceId/userName/menuName/pagePath/triggerAction/reason/beginDate/endDate
  * @returns {Promise<{ rows: Record<string, unknown>[], total: number }>}
  */
 export function listClientTrack(query) {
   return request({
     url: '/monitor/clientTrack/list',
+    method: 'get',
+    params: query
+  })
+}
+
+/**
+ * 管理端：行为轨迹聚合（页面跳转 + 操作树，最多 500 批）。
+ *
+ * @param {{ browserVisitId?: string, sessionId?: string, userName?: string, beginDate?: string, endDate?: string }} query
+ * @returns {Promise<{ data: Record<string, unknown> }>}
+ */
+export function getClientTrackTimeline(query) {
+  return request({
+    url: '/monitor/clientTrack/timeline',
     method: 'get',
     params: query
   })

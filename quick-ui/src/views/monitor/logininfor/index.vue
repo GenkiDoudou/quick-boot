@@ -65,12 +65,14 @@ const defaultSearchParam = {
   ipaddr: '',
   userName: '',
   status: '',
+  clientId: '',
   loginTimeRange: [],
 }
 
 const searchColumns = computed(() => [
   { prop: 'ipaddr', label: '登录地址', type: 'input', span: 8, props: { placeholder: 'IP', clearable: true } },
   { prop: 'userName', label: '用户名', type: 'input', span: 8, props: { placeholder: '用户名', clearable: true } },
+  { prop: 'clientId', label: '客户端ID', type: 'input', span: 8, props: { placeholder: 'clientId 精确匹配', clearable: true } },
   {
     prop: 'status',
     label: '状态',
@@ -91,6 +93,7 @@ const searchColumns = computed(() => [
 const tableColumns = computed(() => [
   { prop: 'infoId', label: '访问编号', width: 120 },
   { prop: 'userName', label: '用户名', minWidth: 120, showOverflowTooltip: true },
+  { prop: 'clientId', label: '客户端ID', minWidth: 120, showOverflowTooltip: true },
   { prop: 'ipaddr', label: 'IP', width: 140, showOverflowTooltip: true },
   { prop: 'loginLocation', label: '登录地点', minWidth: 120, showOverflowTooltip: true },
   { prop: 'os', label: '操作系统', width: 120, showOverflowTooltip: true },
@@ -111,6 +114,7 @@ function normalizeListParams(raw) {
   if (p.status === '' || p.status === null) delete p.status
   if (p.ipaddr === '') delete p.ipaddr
   if (p.userName === '') delete p.userName
+  if (p.clientId === '') delete p.clientId
   return p
 }
 

@@ -32,6 +32,34 @@ public class ClientTrackMenuPathResolver {
     private final SysMenuMapper sysMenuMapper;
 
     /**
+     * 按菜单名称或面包屑关键字反查可能的前端路由 path 列表，供监控批次 {@code pagePath} 筛选。
+     *
+     * @param keyword 菜单名 / 面包屑片段，模糊匹配（忽略大小写）
+     * @return 规范化后的 path 列表（去重）；无匹配时空列表
+     */
+    public List<String> resolvePathsByMenuKeyword(String keyword) {
+        if (StrUtil.isBlank(keyword)) {
+            return List.of();
+        }
+        String kw = keyword.trim().toLowerCase();
+        Map<String, MenuMatch> index = buildMenuPathIndex();
+        List<String> paths = new ArrayList<>();
+        for (Map.Entry<String, MenuMatch> e : index.entrySet()) {
+            MenuMatch match = e.getValue();
+            if (match == null) {
+                continue;
+            }
+            boolean hit = StrUtil.containsIgnoreCase(match.menuName(), kw)
+                    || StrUtil.containsIgnoreCase(match.breadcrumb(), kw);
+            if (hit) {
+                paths.add(e.getKey());
+            }
+        }
+        paths.sort(Comparator.comparingInt(String::length).reversed());
+        return paths;
+    }
+
+    /**
      * @param pagePath 监控批次 pagePath
      * @return 匹配结果；无匹配时 {@code null}
      */

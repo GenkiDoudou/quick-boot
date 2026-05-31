@@ -5,9 +5,11 @@
 import {
   getOperationId,
   getActivePage,
-  getLastTrigger
+  getLastTrigger,
+  getBatchKind
 } from './operationContext'
 import { nextRequestTraceHeaders, shouldAttachRequestTrace } from './requestTrace'
+import { scheduleIdleTask } from './scheduleIdle'
 
 /** @typedef {(row: Record<string, unknown>) => void} TrackFn */
 
@@ -81,9 +83,24 @@ export function beginRequestObservation(config) {
     return
   }
 
+  config.headers = config.headers || {}
+
+  if (shouldAttachRequestTrace(config)) {
+    const trace = nextRequestTraceHeaders()
+    config.headers['traceparent'] = trace.traceparent
+    config.headers['x-trace-id'] = trace.traceId
+  }
+
+  // 无活跃批次时不建 observation，列表页背景 GET 不再走 finalize（trace 头仍保留供 oper_log）
+  if (!trackFn || (!getOperationId() && !getBatchKind())) {
+    return
+  }
+
+  const operationId = getOperationId()
+
   /** @type {RequestObservation} */
   const observation = {
-    operationId: getOperationId(),
+    operationId,
     page: getActivePage(),
     trigger: getLastTrigger(),
     method: String(config.method || 'get').toLowerCase(),
@@ -93,18 +110,13 @@ export function beginRequestObservation(config) {
     traceparent: null
   }
 
-  config.headers = config.headers || {}
-
-  if (observation.operationId) {
-    config.headers['X-Client-Operation-Id'] = observation.operationId
+  if (operationId) {
+    config.headers['X-Client-Operation-Id'] = operationId
   }
 
-  if (shouldAttachRequestTrace(config)) {
-    const trace = nextRequestTraceHeaders()
-    observation.clientTraceId = trace.traceId
-    observation.traceparent = trace.traceparent
-    config.headers['traceparent'] = trace.traceparent
-    config.headers['x-trace-id'] = trace.traceId
+  if (config.headers['x-trace-id']) {
+    observation.clientTraceId = String(config.headers['x-trace-id'])
+    observation.traceparent = config.headers['traceparent'] ? String(config.headers['traceparent']) : null
   }
 
   config.metadata = { ...(config.metadata || {}), observation }
@@ -181,11 +193,15 @@ function buildApiEvent(obs, cost, traceIds, extra = {}) {
  * @param {RequestObservation} obs
  * @param {Record<string, unknown>} event
  */
-function emitApiEvent(obs, event) {
+function emitApiEvent(_obs, event) {
   if (!trackFn) {
     return
   }
-  trackFn(event)
+  scheduleIdleTask(() => {
+    if (trackFn) {
+      trackFn(event)
+    }
+  })
 }
 
 /**

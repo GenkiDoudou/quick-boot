@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.genkidoudou.common.api.ClientIds;
 import io.github.genkidoudou.common.api.ClientOperationIds;
 import io.github.genkidoudou.common.api.TraceIds;
 import jakarta.servlet.ServletRequest;
@@ -126,6 +127,7 @@ public class OperLogPublishingAspect {
             .endTimeMs(end)
             .traceId(TraceIds.current())
             .clientOperationId(ClientOperationIds.current())
+            .clientId(ClientIds.current())
             .signature(ms)
             .args(argsForLog)
             .result(resultForLog)

@@ -100,6 +100,25 @@ async function serializeBodyBytes(config) {
   return new Uint8Array(0)
 }
 
+/** 空 body 的 SHA256（GET 等无体请求复用，减少主线程重复哈希） */
+const EMPTY_BODY_BYTES = new Uint8Array(0)
+const EMPTY_BODY_HASH = CryptoJS.SHA256(bytesToWordArray(EMPTY_BODY_BYTES)).toString(CryptoJS.enc.Hex)
+
+/**
+ * @param {import('axios').InternalAxiosRequestConfig} config
+ * @returns {boolean}
+ */
+function isEmptyBodyRequest(config) {
+  const data = config.data
+  if (data == null || data === '') {
+    return true
+  }
+  if (typeof data === 'string' && data.length === 0) {
+    return true
+  }
+  return false
+}
+
 /**
  * @param {Uint8Array} bytes
  * @returns {string} 小写 hex
@@ -152,7 +171,10 @@ export async function applyClientSignHeaders(config) {
 
   const method = (config.method || 'get').toUpperCase()
   const path = resolveSignPath(config)
-  const bodyBytes = await serializeBodyBytes(config)
+  let bodyBytes = EMPTY_BODY_BYTES
+  if (!isEmptyBodyRequest(config)) {
+    bodyBytes = await serializeBodyBytes(config)
+  }
   const signed = buildSignedHeaders(method, path, bodyBytes, clientId, signKey)
 
   config.headers = config.headers || {}
@@ -187,7 +209,10 @@ export async function buildSignedFetchHeaders(method, path, bodyString = '') {
  * @returns {Record<string, string>}
  */
 function buildSignedHeaders(method, path, bodyBytes, clientId, signKey) {
-  const bodyHash = sha256Hex(bodyBytes)
+  const bodyHash =
+    bodyBytes === EMPTY_BODY_BYTES || bodyBytes.length === 0
+      ? EMPTY_BODY_HASH
+      : sha256Hex(bodyBytes)
   const timestamp = String(Math.floor(Date.now() / 1000))
   const nonce = randomNonce()
   const canonical = `${(method || 'get').toUpperCase()}\n${path}\n${bodyHash}\n${timestamp}\n${nonce}\n${clientId}`

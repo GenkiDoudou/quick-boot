@@ -89,7 +89,6 @@
             type="primary"
             plain
             v-bind="addButtonProps"
-            data-track="c7-json-table-add"
             @click="handleBuiltInAddClick"
         >{{ addButtonText }}</el-button>
         <el-button
@@ -98,7 +97,6 @@
             plain
             :disabled="selectedRows.length !== 1"
             v-bind="editButtonProps"
-            data-track="c7-json-table-edit"
             @click="handleBuiltInEditClick"
         >{{ editButtonText }}</el-button>
         <el-button
@@ -107,14 +105,12 @@
             plain
             :disabled="!selectedRows.length"
             v-bind="deleteButtonProps"
-            data-track="c7-json-table-delete"
             @click="handleBatchDelete"
         >{{ deleteButtonText }}</el-button>
         <C7ExcelDownload
             v-if="showExportButtonResolved"
             type="primary"
             plain
-            data-track="c7-json-table-export"
             :download-fn="exportDownloadFn"
             :default-file-name="exportDefaultFileName"
             @success="onExportBlobSuccess"
@@ -126,7 +122,6 @@
             type="warning"
             plain
             v-bind="importButtonProps"
-            data-track="c7-json-table-import"
             @click="openImportDialog"
         >{{ importButtonText }}</el-button>
       </el-col>
@@ -226,7 +221,6 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 import {checkPermission} from '@/directive/permission/permissionUtils'
 import useUserStore from '@/store/modules/user'
-import { endOperation } from '@/monitor/operationContext'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
@@ -620,46 +614,41 @@ function onSortChange(evt) {
 }
 
 async function handleBatchDelete() {
+  const rows = selectedRows.value
+  if (!rows.length) return
+  const key = props.rowKey
+  const ids = rows.map((r) => r[key]).filter((v) => v != null)
+  if (typeof props.beforeDelete === 'function') {
+    const ok = await props.beforeDelete(ids, rows)
+    if (ok === false) return
+  }
   try {
-    const rows = selectedRows.value
-    if (!rows.length) return
-    const key = props.rowKey
-    const ids = rows.map((r) => r[key]).filter((v) => v != null)
-    if (typeof props.beforeDelete === 'function') {
-      const ok = await props.beforeDelete(ids, rows)
-      if (ok === false) return
+    await ElMessageBox.confirm(props.deleteConfirmMessage, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  if (!props.deleteFunction) return
+  try {
+    const res = await props.deleteFunction(ids)
+    let success
+    if (typeof props.checkDeleteSuccess === 'function') {
+      success = props.checkDeleteSuccess(res)
+    } else {
+      success = !!res
     }
-    try {
-      await ElMessageBox.confirm(props.deleteConfirmMessage, '提示', {
-        type: 'warning',
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-      })
-    } catch {
+    if (!success) {
+      ElMessage.error('删除失败')
       return
     }
-    if (!props.deleteFunction) return
-    try {
-      const res = await props.deleteFunction(ids)
-      let success
-      if (typeof props.checkDeleteSuccess === 'function') {
-        success = props.checkDeleteSuccess(res)
-      } else {
-        success = !!res
-      }
-      if (!success) {
-        ElMessage.error('删除失败')
-        return
-      }
-      ElMessage.success('删除成功')
-      emit('delete-success', ids)
-      await refreshData()
-    } catch (e) {
-      emit('fetch-error', e)
-    }
-  } finally {
-    // 与工具栏删除按钮 click 触发的 beginOperation 成对
-    endOperation()
+    ElMessage.success('删除成功')
+    emit('delete-success', ids)
+    await refreshData()
+  } catch (e) {
+    emit('fetch-error', e)
   }
 }
 

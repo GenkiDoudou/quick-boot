@@ -138,6 +138,7 @@ public class SysOperLogServiceImpl implements SysOperLogService {
             .eq(statusInt != null, SysOperLog::getStatus, statusInt)
             .eq(StrUtil.isNotBlank(query.getTraceId()), SysOperLog::getTraceId, query.getTraceId())
             .eq(StrUtil.isNotBlank(query.getClientOperationId()), SysOperLog::getClientOperationId, query.getClientOperationId())
+            .eq(StrUtil.isNotBlank(query.getClientId()), SysOperLog::getClientId, query.getClientId())
             .ge(begin != null, SysOperLog::getOperTime, begin)
             .le(end != null, SysOperLog::getOperTime, end);
     }

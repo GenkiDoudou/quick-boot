@@ -63,7 +63,7 @@ export function extractVisibleActionLabel(node) {
   if (!node) {
     return ''
   }
-  const text = normalizeWhitespace(node.innerText || '')
+  const text = normalizeWhitespace(node.textContent || node.innerText || '')
   if (text && text.length <= 40) {
     return text
   }
@@ -188,6 +188,17 @@ export function resolveBatchTriggerAction(events) {
   }
   if (fallbackClick) {
     return fallbackClick
+  }
+  for (const ev of events) {
+    if (ev.type === 'route_enter') {
+      const title = ev.title != null ? String(ev.title).trim() : ''
+      const path = ev.path != null ? String(ev.path).trim() : ''
+      const raw = title || path
+      if (raw) {
+        const label = title ? `访问:${title}` : `访问:${path}`
+        return { raw: label, label: formatTrackLabel(label) || label }
+      }
+    }
   }
   for (const ev of events) {
     const trigger = ev.trigger

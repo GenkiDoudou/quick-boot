@@ -4,16 +4,23 @@
  */
 import {
   openBatch,
+  openPageVisit,
   touchBatch,
   touchBatchPassive,
   closeBatch,
   cancelBatch,
   flushBatchSync,
+  flushPageVisitIfNeeded,
   setActivePage,
   getActivePage,
   getOperationId,
+  getPageVisitId,
+  getBatchKind,
   getLastTrigger,
-  registerBatchFlushHook
+  registerBatchFlushHook,
+  resetBatchSessionForTest,
+  configureBatchSession,
+  isOverlayBlocking
 } from './batchSession'
 
 /**
@@ -104,14 +111,21 @@ export {
   setActivePage,
   getActivePage,
   getOperationId,
+  getPageVisitId,
+  getBatchKind,
   getLastTrigger,
   openBatch,
+  openPageVisit,
+  flushPageVisitIfNeeded,
   touchBatch,
   touchBatchPassive,
   closeBatch,
   cancelBatch,
   flushBatchSync,
-  registerBatchFlushHook
+  registerBatchFlushHook,
+  resetBatchSessionForTest,
+  configureBatchSession,
+  isOverlayBlocking
 }
 
 export default {

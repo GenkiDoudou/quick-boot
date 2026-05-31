@@ -63,4 +63,7 @@ public class SysOperLog implements Serializable {
 
     /** 前端一次用户操作 ID，来自 {@code X-Client-Operation-Id}，可空。 */
     private String clientOperationId;
+
+    /** OAuth 客户端 ID，来自 {@code X-Client-Id}，可空。 */
+    private String clientId;
 }

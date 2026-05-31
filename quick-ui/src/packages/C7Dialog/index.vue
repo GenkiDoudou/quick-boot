@@ -69,7 +69,6 @@
 
 <script setup>
 import {computed, onBeforeUnmount, ref, useAttrs, useSlots, watch} from 'vue'
-import { endOperation, ensureOperation } from '@/monitor/operationContext'
 
 defineOptions({name: 'C7Dialog', inheritAttrs: false})
 
@@ -159,17 +158,6 @@ const isOpen = computed(() => {
 })
 
 const footerSectionVisible = computed(() => Boolean(slots.footer) || props.footer)
-
-watch(
-    isOpen,
-    (open, prev) => {
-      if (open && !prev) {
-        ensureOperation(props.title || 'dialog')
-      } else if (!open && prev) {
-        queueMicrotask(() => endOperation())
-      }
-    },
-)
 
 watch(
     () => [props.modelValue, props.visible, isOpen.value],
