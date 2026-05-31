@@ -134,7 +134,7 @@ export function eventDetailItems(ev) {
     items.push({ label: 'pageVisitId', value: String(ev.pageVisitId), copyable: true })
   }
   if (ev.serverTraceId) {
-    items.push({ label: 'serverTraceId', value: String(ev.serverTraceId), copyable: true })
+    items.push({ label: 'serverTraceId', value: String(ev.serverTraceId), copyable: true, linkOperLog: true })
   } else if (ev.clientTraceId) {
     items.push({ label: 'clientTraceId', value: String(ev.clientTraceId), copyable: true })
   }

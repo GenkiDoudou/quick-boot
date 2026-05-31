@@ -40,7 +40,7 @@
         <c7-dict-tag :model-value="String(row.operatorType)" :options="sys_oper_operator_type" />
       </template>
       <template #operTime="{ row }">
-        <span class="operlog-cell-text">{{ formatOperTime(row.operTime) }}</span>
+        <span class="operlog-cell-text">{{ formatOperTimeCell(row.operTime) }}</span>
       </template>
       <template #actions="scope">
         <el-button link type="primary" v-hasPermi="['monitor:operlog:query']" @click="openDetail(scope.row)">
@@ -49,40 +49,7 @@
       </template>
     </C7JsonTable>
     <el-dialog v-model="detailVisible" title="操作日志详情" width="880px" destroy-on-close>
-      <el-descriptions v-if="detailRow" :column="2" border size="small" class="operlog-detail">
-        <el-descriptions-item label="日志编号">{{ detailRow.operId }}</el-descriptions-item>
-        <el-descriptions-item label="链路ID">{{ detailRow.traceId || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="操作ID" :span="2">{{ detailRow.clientOperationId || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="客户端ID" :span="2">{{ detailRow.clientId || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="系统模块" :span="2">{{ detailRow.title || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="业务类型">
-          <c7-dict-tag :model-value="String(detailRow.businessType ?? '')" :options="sys_oper_business_type" />
-        </el-descriptions-item>
-        <el-descriptions-item label="操作类别">
-          <c7-dict-tag :model-value="String(detailRow.operatorType ?? '')" :options="sys_oper_operator_type" />
-        </el-descriptions-item>
-        <el-descriptions-item label="方法" :span="2">{{ detailRow.method || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="请求地址" :span="2">{{ detailRow.operUrl || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="请求方式">{{ detailRow.requestMethod || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <c7-dict-tag :model-value="detailRow.status" :options="sys_oper_status" />
-        </el-descriptions-item>
-        <el-descriptions-item label="操作人员">{{ detailRow.operName || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="部门">{{ detailRow.deptName || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="IP">{{ detailRow.operIp || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="地点">{{ detailRow.operLocation || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="操作时间">{{ formatOperTime(detailRow.operTime) }}</el-descriptions-item>
-        <el-descriptions-item label="耗时(ms)">{{ detailRow.costTime ?? '—' }}</el-descriptions-item>
-        <el-descriptions-item label="请求参数" :span="2">
-          <pre class="oper-pre">{{ detailRow.operParam || '—' }}</pre>
-        </el-descriptions-item>
-        <el-descriptions-item label="返回参数" :span="2">
-          <pre class="oper-pre">{{ detailRow.jsonResult || '—' }}</pre>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailRow.errorMsg" label="异常信息" :span="2">
-          <pre class="oper-pre oper-pre--error">{{ detailRow.errorMsg }}</pre>
-        </el-descriptions-item>
-      </el-descriptions>
+      <OperLogDetailPanel :row="detailRow" />
     </el-dialog>
   </div>
 </template>
@@ -91,8 +58,9 @@
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { parseTime } from '@/utils/ruoyi'
 import { cleanOperlog, exportOperlog, getOperlog, listOperlog, removeOperlog } from '@/api/monitor/operlog'
+import OperLogDetailPanel from './OperLogDetailPanel.vue'
+import { formatOperTime } from './operLogFormat'
 
 /**
  * 操作日志：查询、导出、批量删除、清空、详情。
@@ -169,16 +137,11 @@ const tableColumns = computed(() => [
 ])
 
 /**
- * 统一展示操作时间（兼容 API 返回 ISO 或 yyyy-MM-dd HH:mm:ss）。
  * @param {string|number|Date|null|undefined} value
  * @returns {string}
  */
-function formatOperTime(value) {
-  if (value == null || value === '') {
-    return '—'
-  }
-  const formatted = parseTime(value, '{y}-{m}-{d} {h}:{i}:{s}')
-  return formatted || String(value)
+function formatOperTimeCell(value) {
+  return formatOperTime(value)
 }
 
 function normalizeListParams(raw) {
@@ -239,31 +202,8 @@ async function openDetail(row) {
 </script>
 
 <style scoped>
-.operlog-detail {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-.operlog-detail :deep(.el-descriptions__label) {
-  width: 96px;
-}
-
 .operlog-cell-text {
   -webkit-user-select: text;
   user-select: text;
-}
-
-.oper-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 200px;
-  overflow: auto;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.oper-pre--error {
-  color: var(--el-color-danger);
 }
 </style>

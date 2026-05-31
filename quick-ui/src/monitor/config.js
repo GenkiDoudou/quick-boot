@@ -1,6 +1,6 @@
 /**
  * 前端用户行为监控默认配置（可通过环境变量覆盖）。
- * 页面白名单采用路径前缀匹配：仅对白名单内路由采集事件，避免低频页污染日志。
+ * allowPages 为空表示全站采集；excludePages 为不采集的路由前缀（如监控管理页自身）。
  */
 
 /** @typedef {import('./createUserMonitor.js').UserMonitorOptions} UserMonitorOptions */
@@ -40,19 +40,49 @@ export function loadMonitorConfig() {
     /** 主操作批次 idle flush 间隔（ms），最后一次 click/api 后无新事件则上报 */
     idleMs: Number(import.meta.env.VITE_APP_MONITOR_IDLE_MS || 2000),
     slowApiMs: Number(import.meta.env.VITE_APP_MONITOR_SLOW_API_MS || 3000),
-    allowPages: [
-      '/login',
-      '/index',
-      '/system',
-      '/monitor',
-      '/tool',
-      '/user',
-      '/report',
-      '/oauth'
-    ],
+    /** 空数组 = 全站采集（除 excludePages）；非空则仅匹配前缀白名单 */
+    allowPages: parseAllowPages(import.meta.env.VITE_APP_MONITOR_ALLOW_PAGES),
     /** 不采集行为事件的路由前缀（监控管理页自身，避免查看日志时产生噪声） */
-    excludePages: ['/system/clientTrack', '/system/clientTrackEvents', '/system/clientTrackTimeline', '/monitor/clientTrack']
+    excludePages: parseExcludePages(import.meta.env.VITE_APP_MONITOR_EXCLUDE_PAGES)
   }
+}
+
+/**
+ * 解析逗号分隔的路径前缀列表；未配置时返回空数组（表示不限制）。
+ *
+ * @param {string | undefined} raw
+ * @returns {string[]}
+ */
+function parseAllowPages(raw) {
+  if (raw === undefined || raw === '') {
+    return []
+  }
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/**
+ * 解析排除路径；未配置时使用监控页默认黑名单。
+ *
+ * @param {string | undefined} raw
+ * @returns {string[]}
+ */
+function parseExcludePages(raw) {
+  if (raw !== undefined && raw !== '') {
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  return [
+    '/redirect',
+    '/system/clientTrack',
+    '/system/clientTrackEvents',
+    '/system/clientTrackTimeline',
+    '/monitor/clientTrack'
+  ]
 }
 
 export default loadMonitorConfig

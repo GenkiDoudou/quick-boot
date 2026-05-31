@@ -3,6 +3,7 @@ import {
   getOrCreateSessionId,
   resetSessionId,
   clearSessionId,
+  onSessionContextChange,
   resetSessionContextForTest
 } from '@/monitor/sessionContext'
 
@@ -34,5 +35,16 @@ describe('sessionContext', () => {
     clearSessionId()
     const b = getOrCreateSessionId()
     expect(b).not.toBe(a)
+  })
+
+  it('onSessionContextChange 在 clear 时触发', () => {
+    getOrCreateSessionId()
+    let called = 0
+    const off = onSessionContextChange(() => {
+      called += 1
+    })
+    clearSessionId()
+    expect(called).toBe(1)
+    off()
   })
 })

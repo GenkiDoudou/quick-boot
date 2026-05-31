@@ -8,6 +8,8 @@ import io.github.genkidoudou.common.api.HttpCodes;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.monitor.operlog.OperLogBusinessType;
+import io.github.genkidoudou.common.monitor.operlog.OperLogMeta;
 import io.github.genkidoudou.core.service.LoginLockService;
 import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.oauthclient.service.AuthLoginService;
@@ -74,6 +76,7 @@ public class AuthController {
      * @param captchaId 天爱验证码二次校验 id（{@code /api/captcha/validate} 成功后返回）；{@code qc.login.captcha-enabled=false} 时可不传
      * @return {@code data.access_token} 供前端存入 Storage/Cookie
      */
+    @OperLogMeta(title = "用户登录", businessType = OperLogBusinessType.OTHER, operatorType = 0)
     @PostMapping("/login")
     public R<Map<String, Object>> login(HttpServletRequest request,
                                         @RequestParam String username,

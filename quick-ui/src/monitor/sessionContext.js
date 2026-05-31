@@ -7,6 +7,29 @@ const STORAGE_KEY = 'qb_client_track_session'
 /** Node/单测无 localStorage 时的内存回退 */
 let memorySessionId = null
 
+/** @type {Set<() => void>} */
+const changeListeners = new Set()
+
+/**
+ * 注册 session 变更监听（登出 clear / 手动 reset 后通知监控刷新缓存）。
+ * @param {() => void} listener
+ * @returns {() => void} 取消订阅
+ */
+export function onSessionContextChange(listener) {
+  changeListeners.add(listener)
+  return () => changeListeners.delete(listener)
+}
+
+function notifySessionContextChange() {
+  changeListeners.forEach((fn) => {
+    try {
+      fn()
+    } catch {
+      /* ignore */
+    }
+  })
+}
+
 /**
  * @returns {string}
  */
@@ -87,11 +110,13 @@ export function getOrCreateSessionId() {
 
 /**
  * 登录成功后轮换 sessionId（新登录 = 新会话链路）。
+ * 注意：勿在登录成功瞬间调用，否则登录页与首页会被拆成两次 session；登出请用 {@link clearSessionId}。
  * @returns {string}
  */
 export function resetSessionId() {
   const id = newSessionId()
   writeStoredSessionId(id)
+  notifySessionContextChange()
   return id
 }
 
@@ -100,6 +125,7 @@ export function resetSessionId() {
  */
 export function clearSessionId() {
   removeStoredSessionId()
+  notifySessionContextChange()
 }
 
 /** 供单测重置模块状态 */
@@ -111,5 +137,6 @@ export default {
   getOrCreateSessionId,
   resetSessionId,
   clearSessionId,
+  onSessionContextChange,
   resetSessionContextForTest
 }

@@ -19,6 +19,7 @@ import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackActionNodeVo
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackEventItemVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackPageFlowEdgeVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackPageVisitNodeVo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackSessionNodeVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackVo;
 import io.github.genkidoudou.web.monitor.clienttrack.mapper.SysClientTrackMapper;
@@ -39,6 +40,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 前端用户行为监控批次服务实现。
@@ -429,8 +431,58 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         }
         pages.sort(Comparator.comparing(ClientTrackPageVisitNodeVo::getFirstTime, Comparator.nullsLast(Comparator.naturalOrder())));
         vo.setPages(pages);
-        vo.setPageFlowEdges(buildPageFlowEdges(pages));
+        List<ClientTrackSessionNodeVo> sessions = buildSessionNodes(pages);
+        vo.setSessions(sessions);
+        vo.setPageFlowEdges(buildPageFlowEdgesWithinSessions(sessions));
         return vo;
+    }
+
+    /**
+     * 按 sessionId 分段；同 session 内页面按 firstTime 升序，会话段按 firstTime 降序（最近登录在前）。
+     */
+    private static List<ClientTrackSessionNodeVo> buildSessionNodes(List<ClientTrackPageVisitNodeVo> pages) {
+        Map<String, List<ClientTrackPageVisitNodeVo>> grouped = new LinkedHashMap<>();
+        for (ClientTrackPageVisitNodeVo page : pages) {
+            String key = StrUtil.blankToDefault(page.getSessionId(), UNKNOWN_PAGE_VISIT_KEY);
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(page);
+        }
+        List<ClientTrackSessionNodeVo> sessions = new ArrayList<>();
+        for (Map.Entry<String, List<ClientTrackPageVisitNodeVo>> entry : grouped.entrySet()) {
+            List<ClientTrackPageVisitNodeVo> sessionPages = new ArrayList<>(entry.getValue());
+            sessionPages.sort(Comparator.comparing(ClientTrackPageVisitNodeVo::getFirstTime,
+                    Comparator.nullsLast(Comparator.naturalOrder())));
+            ClientTrackSessionNodeVo session = new ClientTrackSessionNodeVo();
+            String sessionId = UNKNOWN_PAGE_VISIT_KEY.equals(entry.getKey()) ? "" : entry.getKey();
+            session.setSessionId(sessionId);
+            session.setBrowserVisitId(StrUtil.blankToDefault(sessionPages.get(0).getBrowserVisitId(), ""));
+            session.setFirstTime(sessionPages.stream()
+                    .map(ClientTrackPageVisitNodeVo::getFirstTime)
+                    .filter(Objects::nonNull)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null));
+            session.setLastTime(sessionPages.stream()
+                    .map(ClientTrackPageVisitNodeVo::getFirstTime)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null));
+            session.setPageCount(sessionPages.size());
+            session.setPages(sessionPages);
+            session.setPageFlowEdges(buildPageFlowEdges(sessionPages));
+            sessions.add(session);
+        }
+        sessions.sort(Comparator.comparing(ClientTrackSessionNodeVo::getFirstTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return sessions;
+    }
+
+    private static List<ClientTrackPageFlowEdgeVo> buildPageFlowEdgesWithinSessions(List<ClientTrackSessionNodeVo> sessions) {
+        List<ClientTrackPageFlowEdgeVo> edges = new ArrayList<>();
+        for (ClientTrackSessionNodeVo session : sessions) {
+            if (session.getPageFlowEdges() != null) {
+                edges.addAll(session.getPageFlowEdges());
+            }
+        }
+        return edges;
     }
 
     private ClientTrackPageVisitNodeVo buildPageVisitNode(String pageVisitKey, List<SysClientTrack> batches,
@@ -439,6 +491,8 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         ClientTrackPageVisitNodeVo page = new ClientTrackPageVisitNodeVo();
         page.setPageVisitId(UNKNOWN_PAGE_VISIT_KEY.equals(pageVisitKey) ? "" : pageVisitKey);
         SysClientTrack head = batches.get(0);
+        page.setSessionId(StrUtil.blankToDefault(head.getSessionId(), ""));
+        page.setBrowserVisitId(StrUtil.blankToDefault(head.getBrowserVisitId(), ""));
         page.setPagePath(head.getPagePath());
         page.setFirstTime(head.getCreateTime());
         enrichPageMenu(page, head.getPagePath(), menuByPath);
@@ -455,7 +509,24 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
             }
             page.getActions().add(toActionNode(row, false));
         }
+        page.setActionCount(page.getActions().size());
+        page.setEventCount(countPageEvents(page));
         return page;
+    }
+
+    private static int countPageEvents(ClientTrackPageVisitNodeVo page) {
+        int total = 0;
+        if (page.getPageVisitBatch() != null && page.getPageVisitBatch().getEvents() != null) {
+            total += page.getPageVisitBatch().getEvents().size();
+        }
+        if (page.getActions() != null) {
+            for (ClientTrackActionNodeVo action : page.getActions()) {
+                if (action.getEvents() != null) {
+                    total += action.getEvents().size();
+                }
+            }
+        }
+        return total;
     }
 
     private void enrichPageMenu(ClientTrackPageVisitNodeVo page, String pagePath, Map<String, MenuMatch> menuByPath) {

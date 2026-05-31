@@ -31,6 +31,9 @@ public class ClientTrackTimelineVo {
     @Schema(description = "按时间排序的页面访问节点")
     private List<ClientTrackPageVisitNodeVo> pages = new ArrayList<>();
 
-    @Schema(description = "相邻页面跳转边")
+    @Schema(description = "相邻页面跳转边（仅同 session 内；多 session 时建议用 sessions）")
     private List<ClientTrackPageFlowEdgeVo> pageFlowEdges = new ArrayList<>();
+
+    @Schema(description = "按 sessionId 分段的会话列表（多登录时按 firstTime 降序）")
+    private List<ClientTrackSessionNodeVo> sessions = new ArrayList<>();
 }

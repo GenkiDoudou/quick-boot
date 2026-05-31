@@ -37,7 +37,6 @@ public class OperLogProperties {
 
     private static List<String> defaultIgnorePatterns() {
         List<String> p = new ArrayList<>();
-        p.add("/login");
         p.add("/login/captcha-config");
         p.add("/logout");
         p.add("/actuator/**");

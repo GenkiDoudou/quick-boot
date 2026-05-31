@@ -6,7 +6,7 @@ import { isUrgentFlushReason } from './scheduleIdle'
 import { resolveBatchTriggerAction } from './trackLabel'
 import { isPrimaryAction, isPassiveAction, isQueryOnlyAction } from './operationRules'
 import { readClickTarget } from './clickTarget'
-import { getOrCreateSessionId } from './sessionContext'
+import { getOrCreateSessionId, onSessionContextChange } from './sessionContext'
 import { getBrowserVisitId, getOrCreateBrowserVisitId, startBrowserVisitHeartbeat } from './browserVisitContext'
 import {
   configureBatchSession,
@@ -81,7 +81,14 @@ export function createUserMonitor(options = {}) {
   let trackingCachePath = ''
   let trackingCacheValue = false
 
+  function invalidateContextCache() {
+    cachedBrowserVisitId = ''
+    cachedSessionId = ''
+  }
+
   configureBatchSession({ idleMs })
+
+  onSessionContextChange(invalidateContextCache)
 
   function invalidateTrackingCache() {
     trackingCachePath = ''
@@ -338,6 +345,7 @@ export function createUserMonitor(options = {}) {
         setActivePage(currentRoute)
 
         router.beforeEach((to, from, next) => {
+          refreshContextIds()
           const fromTrackable = canTrackPath(from.path, allowPages, excludePages)
           if (fromTrackable && (store.length > 0 || getBatchKind())) {
             flushBatchSync('page_leave', getOperationId() || getPageVisitId() || undefined)

@@ -93,12 +93,42 @@ public class OperLogAssembler {
                 row.setOperName("");
                 row.setDeptName("");
             }
+        } else if (isLoginRequest(payload.getRequestUri())) {
+            row.setOperatorType(meta.operatorType());
+            row.setOperName(resolveLoginAttemptUserName(payload));
+            row.setDeptName("");
         } else {
             row.setOperatorType(0);
             row.setOperName("");
             row.setDeptName("");
         }
         return row;
+    }
+
+    private static boolean isLoginRequest(String requestUri) {
+        if (StrUtil.isBlank(requestUri)) {
+            return false;
+        }
+        String uri = requestUri.trim();
+        return uri.endsWith("/login") && !uri.endsWith("/login/captcha-config");
+    }
+
+    /**
+     * 登录失败或未建立会话时，从方法参数中提取尝试登录的用户名。
+     */
+    private String resolveLoginAttemptUserName(OperLogCapturePayload payload) {
+        MethodSignature ms = (MethodSignature) payload.getSignature();
+        String[] names = ms.getParameterNames();
+        Object[] args = payload.getArgs();
+        if (names == null || args == null) {
+            return "";
+        }
+        for (int i = 0; i < names.length && i < args.length; i++) {
+            if ("username".equals(names[i]) && args[i] instanceof String username) {
+                return StrUtil.blankToDefault(username, "");
+            }
+        }
+        return "";
     }
 
     private String resolveDeptName(Long deptId) {

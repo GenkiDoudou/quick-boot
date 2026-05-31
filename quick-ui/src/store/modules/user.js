@@ -1,6 +1,6 @@
 import { login, logout, getInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
-import { resetSessionId, clearSessionId } from '@/monitor/sessionContext'
+import { clearSessionId } from '@/monitor/sessionContext'
 import defAva from '@/assets/images/profile.jpg'
 
 const useUserStore = defineStore(
@@ -22,7 +22,6 @@ const useUserStore = defineStore(
         return new Promise((resolve, reject) => {
           login(username, password, captchaId).then(res => {
             setToken(res.data.access_token)
-            resetSessionId()
             this.token = res.data.access_token
             resolve()
           }).catch(error => {

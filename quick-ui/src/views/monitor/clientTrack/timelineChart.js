@@ -21,8 +21,62 @@ const COLORS = {
   error: '#F56C6C'
 }
 
+const GRAPH_COMPACT_THRESHOLD = 30
+
 /**
- * @param {ReturnType<import('./buildTimelineModel.js').buildTimelineModel>} model
+ * @param {Record<string, unknown>} node
+ * @param {number} index
+ * @param {number} count
+ * @param {string|undefined} selectedPageId
+ * @param {boolean} compact
+ */
+function buildGraphNode(node, index, count, selectedPageId, compact) {
+  const selected = selectedPageId && node.id === selectedPageId
+  const step = index + 1
+  const span = count <= 1 ? 0 : Math.min(220, Math.max(100, 680 / Math.max(count - 1, 1)))
+  return {
+    ...node,
+    x: count <= 1 ? 400 : 60 + index * span,
+    y: 160,
+    fixed: true,
+    symbol: 'roundRect',
+    symbolSize: compact
+      ? [Math.min(120, Math.max(80, String(node.name || '').length * 10 + 32)), 48]
+      : [Math.min(160, Math.max(100, String(node.name || '').length * 12 + 40)), 56],
+    itemStyle: {
+      color: selected ? COLORS.pageSelected : COLORS.page,
+      borderColor: selected ? '#F56C6C' : COLORS.pageBorder,
+      borderWidth: selected ? 3 : 1.5,
+      shadowBlur: compact ? 0 : selected ? 12 : 4,
+      shadowColor: compact ? 'transparent' : selected ? 'rgba(230, 162, 60, 0.45)' : 'rgba(64, 158, 255, 0.25)'
+    },
+    label: {
+      show: true,
+      formatter: compact ? `{step|${step}}` : `{step|${step}}\n{name|${node.name || '页面'}}`,
+      rich: {
+        step: {
+          color: '#fff',
+          backgroundColor: selected ? '#F56C6C' : '#337ecc',
+          borderRadius: 10,
+          padding: [2, 8, 2, 8],
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: 18
+        },
+        name: {
+          color: '#303133',
+          fontSize: 12,
+          fontWeight: 600,
+          lineHeight: 18,
+          padding: [4, 0, 0, 0]
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @param {{ graph?: { nodes?: Record<string, unknown>[], links?: Record<string, unknown>[] } }} model
  * @param {{ selectedPageId?: string }} [options]
  * @returns {Record<string, unknown>}
  */
@@ -30,69 +84,32 @@ export function createGraphOption(model, options = {}) {
   const { selectedPageId } = options
   const rawNodes = model.graph?.nodes || []
   const count = rawNodes.length
-  const span = count <= 1 ? 0 : Math.min(220, Math.max(140, 680 / Math.max(count - 1, 1)))
+  const compact = count > GRAPH_COMPACT_THRESHOLD
 
-  const nodes = rawNodes.map((node, index) => {
-    const selected = selectedPageId && node.id === selectedPageId
-    const step = index + 1
-    return {
-      ...node,
-      x: count <= 1 ? 400 : 80 + index * span,
-      y: 160,
-      fixed: true,
-      symbol: 'roundRect',
-      symbolSize: [Math.min(160, Math.max(100, String(node.name || '').length * 12 + 40)), 56],
-      itemStyle: {
-        color: selected ? COLORS.pageSelected : COLORS.page,
-        borderColor: selected ? '#F56C6C' : COLORS.pageBorder,
-        borderWidth: selected ? 3 : 1.5,
-        shadowBlur: selected ? 12 : 4,
-        shadowColor: selected ? 'rgba(230, 162, 60, 0.45)' : 'rgba(64, 158, 255, 0.25)'
-      },
-      label: {
-        show: true,
-        formatter: `{step|${step}}\n{name|${node.name || '页面'}}`,
-        rich: {
-          step: {
-            color: '#fff',
-            backgroundColor: selected ? '#F56C6C' : '#337ecc',
-            borderRadius: 10,
-            padding: [2, 8, 2, 8],
-            fontSize: 11,
-            fontWeight: 700,
-            lineHeight: 18
-          },
-          name: {
-            color: '#303133',
-            fontSize: 12,
-            fontWeight: 600,
-            lineHeight: 18,
-            padding: [4, 0, 0, 0]
-          }
-        }
-      }
-    }
-  })
+  const nodes = rawNodes.map((node, index) => buildGraphNode(node, index, count, selectedPageId, compact))
 
   const links = (model.graph?.links || []).map((link, index) => ({
     ...link,
-    label: {
-      show: true,
-      formatter: link.value ? `跳转\n${link.value}` : `第 ${index + 1} 步`,
-      fontSize: 11,
-      color: COLORS.edge
-    },
+    label: compact
+      ? { show: false }
+      : {
+          show: true,
+          formatter: link.value ? `跳转\n${link.value}` : `第 ${index + 1} 步`,
+          fontSize: 11,
+          color: COLORS.edge
+        },
     lineStyle: {
       color: COLORS.edgeActive,
-      width: 2.5,
+      width: compact ? 1.5 : 2.5,
       curveness: 0.08
     }
   }))
 
   return {
+    animation: false,
     title: {
       text: '页面跳转路径（按时间从左到右）',
-      subtext: '点击节点可联动下方行为树',
+      subtext: compact ? '节点较多已精简标签；点击节点查看该页操作明细' : '点击节点查看该页操作明细',
       left: 'center',
       top: 4,
       textStyle: { fontSize: 15, fontWeight: 600 },
@@ -119,7 +136,7 @@ export function createGraphOption(model, options = {}) {
         links,
         edgeSymbol: ['circle', 'arrow'],
         edgeSymbolSize: [6, 12],
-        emphasis: { focus: 'adjacency', scale: true },
+        emphasis: { focus: 'adjacency', scale: !compact },
         label: { show: true }
       }
     ]
@@ -127,17 +144,29 @@ export function createGraphOption(model, options = {}) {
 }
 
 /**
+ * 仅更新 graph 节点选中样式，避免全量重建 option。
+ * @param {import('echarts/core').EChartsType} chart
+ * @param {{ graph?: { nodes?: Record<string, unknown>[] } }} model
+ * @param {string} selectedPageId
+ */
+export function patchGraphSelection(chart, model, selectedPageId) {
+  if (!chart || !model?.graph?.nodes) return
+  const rawNodes = model.graph.nodes
+  const count = rawNodes.length
+  const compact = count > GRAPH_COMPACT_THRESHOLD
+  const nodes = rawNodes.map((node, index) =>
+    buildGraphNode(node, index, count, selectedPageId || undefined, compact)
+  )
+  chart.setOption({ series: [{ data: nodes }] })
+}
+
+/**
  * @param {string|undefined} role
- * @param {boolean} selected
  * @param {string|undefined} eventType
  */
-function nodeStyle(role, selected, eventType) {
+function nodeStyle(role, eventType) {
   if (role === 'page') {
-    return {
-      color: selected ? COLORS.pageSelected : COLORS.page,
-      borderColor: selected ? '#F56C6C' : COLORS.pageBorder,
-      borderWidth: selected ? 2 : 1
-    }
+    return { color: COLORS.page, borderColor: COLORS.pageBorder, borderWidth: 1 }
   }
   if (role === 'visit') {
     return { color: COLORS.visit, borderColor: '#337ecc' }
@@ -161,20 +190,13 @@ function nodeStyle(role, selected, eventType) {
 }
 
 /**
- * @param {ReturnType<import('./buildTimelineModel.js').buildTimelineModel>} model
- * @param {{ selectedPageId?: string, expandDepth?: number }} [options]
+ * @param {{ tree?: Record<string, unknown>, pageLabel?: string }} pageDetailModel
+ * @param {{ expandDepth?: number }} [options]
  * @returns {Record<string, unknown>}
  */
-export function createTreeOption(model, options = {}) {
-  const { selectedPageId, expandDepth = 3 } = options
-
-  let root = model.tree || { name: '行为轨迹', children: [] }
-  if (selectedPageId && Array.isArray(root.children)) {
-    const hit = root.children.find((c) => c.pageNodeId === selectedPageId)
-    if (hit) {
-      root = { ...root, name: `${root.name} · 当前页`, children: [hit] }
-    }
-  }
+export function createTreeOption(pageDetailModel, options = {}) {
+  const { expandDepth = 4 } = options
+  const root = pageDetailModel?.tree || { name: '行为明细', children: [] }
 
   /**
    * @param {Record<string, unknown>} node
@@ -183,8 +205,6 @@ export function createTreeOption(model, options = {}) {
   function decorate(node) {
     const children = Array.isArray(node.children) ? node.children.map(decorate) : undefined
     const role = node.nodeRole
-    const isPage = role === 'page'
-    const selected = isPage && selectedPageId && node.pageNodeId === selectedPageId
     const isLeaf = node.isEventLeaf
     const symbolSize = isLeaf ? 10 : role === 'page' ? 16 : 12
     return {
@@ -196,11 +216,11 @@ export function createTreeOption(model, options = {}) {
       eventType: node.eventType,
       symbol: isLeaf ? 'circle' : 'roundRect',
       symbolSize,
-      itemStyle: nodeStyle(role, selected, node.eventType),
+      itemStyle: nodeStyle(role, node.eventType),
       label: {
         fontSize: isLeaf ? 11 : role === 'page' ? 13 : 12,
-        fontWeight: isPage || role === 'action' ? 600 : 400,
-        color: selected ? COLORS.pageSelected : isLeaf ? '#606266' : '#303133',
+        fontWeight: role === 'page' || role === 'action' ? 600 : 400,
+        color: isLeaf ? '#606266' : '#303133',
         backgroundColor: isLeaf ? 'rgba(255,255,255,0.85)' : 'transparent',
         padding: isLeaf ? [2, 6, 2, 6] : 0,
         borderRadius: 4
@@ -211,10 +231,12 @@ export function createTreeOption(model, options = {}) {
   }
 
   const treeData = decorate(root)
+  const pageLabel = pageDetailModel?.pageLabel || root.name || '当前页面'
 
   return {
+    animation: false,
     title: {
-      text: selectedPageId ? '当前页面行为树' : '全链路行为树',
+      text: `${pageLabel} · 行为树`,
       subtext: '展开到操作层；点击 [API]/[点击] 叶子查看明细',
       left: 'center',
       top: 4,
@@ -244,8 +266,10 @@ export function createTreeOption(model, options = {}) {
         label: { position: 'top', verticalAlign: 'middle', align: 'center', distance: 8 },
         leaves: { label: { position: 'bottom', align: 'center', distance: 6 } },
         emphasis: { focus: 'descendant' },
-        animationDurationUpdate: 250
+        animationDuration: 0,
+        animationDurationUpdate: 0
       }
     ]
   }
 }
+

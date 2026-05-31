@@ -29,6 +29,13 @@ public class ClientTrackMenuPathResolver {
     private static final String TYPE_DIR = "M";
     private static final String TYPE_MENU = "C";
 
+    /** 无 sys_menu 条目时的固定路由展示名（登录页、首页等） */
+    private static final Map<String, MenuMatch> STATIC_PATH_LABELS = Map.of(
+            "/login", new MenuMatch("登录", "登录"),
+            "/index", new MenuMatch("首页", "首页"),
+            "/", new MenuMatch("首页", "首页")
+    );
+
     private final SysMenuMapper sysMenuMapper;
 
     /**
@@ -193,7 +200,14 @@ public class ClientTrackMenuPathResolver {
     }
 
     private static MenuMatch match(Map<String, MenuMatch> index, String path) {
-        if (index.isEmpty() || StrUtil.isBlank(path)) {
+        if (StrUtil.isBlank(path)) {
+            return null;
+        }
+        MenuMatch staticMatch = STATIC_PATH_LABELS.get(path);
+        if (staticMatch != null) {
+            return staticMatch;
+        }
+        if (index.isEmpty()) {
             return null;
         }
         MenuMatch exact = index.get(path);

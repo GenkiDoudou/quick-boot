@@ -17,6 +17,12 @@ public class ClientTrackPageVisitNodeVo {
     @Schema(description = "pageVisitId")
     private String pageVisitId;
 
+    @Schema(description = "所属 sessionId（同一次登录）")
+    private String sessionId;
+
+    @Schema(description = "所属 browserVisitId")
+    private String browserVisitId;
+
     @Schema(description = "页面路径")
     private String pagePath;
 
@@ -28,6 +34,12 @@ public class ClientTrackPageVisitNodeVo {
 
     @Schema(description = "该页首次批次时间")
     private LocalDateTime firstTime;
+
+    @Schema(description = "页面内按钮操作批数量（不含访问批）")
+    private Integer actionCount;
+
+    @Schema(description = "页面内事件总数（含访问批与操作批）")
+    private Integer eventCount;
 
     @Schema(description = "页面访问批（route_enter + 初始化 API）")
     private ClientTrackActionNodeVo pageVisitBatch;

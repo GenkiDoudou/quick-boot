@@ -38,7 +38,8 @@ export {
 export {
   getOrCreateSessionId,
   resetSessionId,
-  clearSessionId
+  clearSessionId,
+  onSessionContextChange
 } from './sessionContext'
 export {
   getOrCreateBrowserVisitId,
