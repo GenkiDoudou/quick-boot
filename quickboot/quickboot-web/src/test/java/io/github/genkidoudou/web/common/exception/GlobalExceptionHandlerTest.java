@@ -4,6 +4,7 @@ import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.file.FileStorageException;
 import io.github.genkidoudou.common.security.firewall.idempotent.IdempotentException;
 import io.github.genkidoudou.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -78,6 +79,17 @@ class GlobalExceptionHandlerTest {
         assertThat(idempotent.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(idempotent.getBody()).isNotNull();
         assertThat(idempotent.getBody().getCode()).isEqualTo(ErrorCodes.Biz.IDEMPOTENT_REPEAT);
+    }
+
+    @Test
+    void shouldMapFileStorageExceptionToBadRequestWithMessage() {
+        FileStorageException ex = new FileStorageException("不允许的文件后缀: .exe");
+        ResponseEntity<R<Void>> entity = handler.handleFileStorage(ex);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(entity.getBody()).isNotNull();
+        assertThat(entity.getBody().getCode()).isEqualTo(ErrorCodes.Biz.FILE_STORAGE);
+        assertThat(entity.getBody().getMsg()).isEqualTo("不允许的文件后缀: .exe");
     }
 
     @Test

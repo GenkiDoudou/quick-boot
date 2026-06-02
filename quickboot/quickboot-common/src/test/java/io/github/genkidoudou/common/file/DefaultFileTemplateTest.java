@@ -75,4 +75,31 @@ class DefaultFileTemplateTest {
         assertThatThrownBy(() -> tpl.upload(mf, "img")).isInstanceOf(IllegalStateException.class);
         assertThat(onError[0]).isTrue();
     }
+
+    @Test
+    void hook_after_abort_rollbacks_object_and_triggers_onError() {
+        QcFileProperties props = new QcFileProperties();
+        props.getLocal().setPath(tempDir.toString());
+        LocalFileStorageBackend storage = new LocalFileStorageBackend(tempDir);
+        boolean[] onError = {false};
+        String[] relativePath = {null};
+        FileUploadHook hook = new FileUploadHook() {
+            @Override
+            public void afterUpload(FileUploadAfterContext ctx) {
+                relativePath[0] = ctx.getRelativePath();
+                throw new IllegalStateException("after");
+            }
+
+            @Override
+            public void onError(FileUploadErrorContext ctx) {
+                onError[0] = true;
+            }
+        };
+        DefaultFileTemplate tpl = new DefaultFileTemplate(props, storage, List.of(hook));
+        MockMultipartFile mf = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1});
+        assertThatThrownBy(() -> tpl.upload(mf, "img")).isInstanceOf(IllegalStateException.class);
+        assertThat(onError[0]).isTrue();
+        assertThat(relativePath[0]).isNotBlank();
+        assertThat(tpl.exists(relativePath[0])).isFalse();
+    }
 }

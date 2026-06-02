@@ -8,6 +8,8 @@ qc:
       # 勿省略积木路径：dev 会整体覆盖 application.yml 的 exclude-paths，缺则 iframe 内 /jmreport/** 返回 30002
       exclude-paths:
         - /error
+        - /system/file/view/**
+        - /file/preview/**
         - /oauth2/**
         - /swagger-ui.html
         - /swagger-ui/**
@@ -20,6 +22,11 @@ qc:
     web:
       anonymous-paths:
         - /actuator/**
+        - /file/preview/**
+        - /file/preview/**
+        - /file/upload/**
+        - /file/classifies
+        - /file/classifies/**
     firewall:
       method-and-host:
         enabled: true
@@ -34,6 +41,12 @@ qc:
             default-key-id: default
             keys:
               default: "0123456789abcdef0123456789abcdef"
+
+  file:
+    # @FileUrl 序列化补全：管理端预览走 view 接口（与前端 VITE_APP_BASE_API 一致）
+    view-url-base: http://localhost:9992/file/preview
+
+
 
 spring:
   flyway:

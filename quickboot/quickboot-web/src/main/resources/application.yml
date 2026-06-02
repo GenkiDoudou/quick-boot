@@ -165,7 +165,12 @@ qc:
   security:
     web:
       # 额外匿名路径（生产保持空；开发见 application-dev.yml）
-      anonymous-paths: []
+      # /file/upload、/file/classifies 放行后由 FileAccessService 按分类 anonymous 校验上传登录
+      anonymous-paths:
+        - /file/preview/**
+        - /file/upload/**
+        - /file/classifies
+        - /file/classifies/**
     # 首方/第三方 Client HMAC 签名校验（见 docs/superpowers/specs/2026-05-23-oauth2-integration-design.md §16）
     client-sign:
       enabled: true
@@ -173,6 +178,7 @@ qc:
       nonce-cache-name: clientSignNonce#300
       exclude-paths:
         - /error
+        - /system/file/view/**
         - /oauth2/**
         - /swagger-ui.html
         - /swagger-ui/**
@@ -266,21 +272,25 @@ qc:
     type: SLIDER
     # local：内存 CacheStore（本地开发无 Redis）；redis：使用 StringRedisTemplate
     store: local
+  file:
+    enabled: true
+    type: local
+    default-classify: default
+    classifies:
+      - classify:  default
+        limit-size: 10MB
+        limit-count: 5
+        anonymous:  true
+      - classify: avatar
+        limit-size: 10MB
+        limit-count: 1
+        anonymous:  false
+      - classify: thumb
+        limit-size: 512KB
+        limit-count: 3
+        limit-ext: png,jpg,jpeg,webp
+        anonymous:  false
 
-  # 文件存储（quickboot-common FileTemplate，业务 Controller 自行提供下载接口）
-  # file:
-  #   enabled: true
-  #   type: local
-  #   domain: https://cdn.example.com
-  #   defaultClassify: default
-  #   local:
-  #     path: /data/uploads
-  #   minio:
-  #     endpoint: http://localhost:9000
-  #     accessKey: ""
-  #     secretKey: ""
-  #     bucket: quickboot
-  #     pathStyleAccess: true
 
 # Actuator 最小暴露
 management:

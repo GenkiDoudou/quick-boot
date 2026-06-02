@@ -24,6 +24,7 @@ import C7JsonTableColumn from './C7JsonTableColumn/index.vue'
 import C7JsonTable from './C7JsonTable/index.vue'
 import C7ExcelDownload from './C7ExcelDownload/index.vue'
 import C7ExcelUpload from './C7ExcelUpload/index.vue'
+import C7Upload from './C7Upload/index.vue'
 import {
   setMessageBoxDefaults,
   c7Confirm,
@@ -61,6 +62,7 @@ export {
   C7JsonTable,
   C7ExcelDownload,
   C7ExcelUpload,
+  C7Upload,
   setMessageBoxDefaults,
   c7Confirm,
   c7Alert,
@@ -102,4 +104,5 @@ export function installPackages(app) {
   app.component('C7JsonTable', C7JsonTable)
   app.component('C7ExcelDownload', C7ExcelDownload)
   app.component('C7ExcelUpload', C7ExcelUpload)
+  app.component('C7Upload', C7Upload)
 }

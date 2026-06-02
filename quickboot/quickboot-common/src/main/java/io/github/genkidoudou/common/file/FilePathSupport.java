@@ -95,8 +95,8 @@ public final class FilePathSupport {
         } else {
             allowed = DEFAULT_ALLOWED_EXT;
         }
-        if (rule != null && rule.getLimitSize() > 0) {
-            max = rule.getLimitSize();
+        if (rule != null) {
+            max = rule.resolveLimitSizeBytes();
         } else {
             max = 10L * 1024 * 1024;
         }
@@ -107,7 +107,10 @@ public final class FilePathSupport {
             throw new FileStorageException("不允许的文件后缀: ." + extLower);
         }
         if (size > max) {
-            throw new FileStorageException("文件超过大小限制: 最大 " + max + " 字节");
+            String limitHint = rule != null && rule.getLimitSize() != null
+                ? rule.getLimitSize().toString()
+                : "10MB";
+            throw new FileStorageException("文件超过大小限制: 最大 " + limitHint);
         }
     }
 

@@ -48,7 +48,16 @@ public class FileUrlSerializer extends JsonSerializer<String> {
         if (StringUtils.hasText(explicitDomain)) {
             return explicitDomain.trim();
         }
-        return props != null && StringUtils.hasText(props.getDomain()) ? props.getDomain().trim() : "";
+        if (props == null) {
+            return "";
+        }
+        if (StringUtils.hasText(props.getDomain())) {
+            return props.getDomain().trim();
+        }
+        if (StringUtils.hasText(props.getViewUrlBase())) {
+            return props.getViewUrlBase().trim();
+        }
+        return "";
     }
 
     static boolean isAbsoluteUrl(String s) {

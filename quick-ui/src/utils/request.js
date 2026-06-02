@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 import {ElMessageBox, ElMessage, ElLoading} from 'element-plus'
 import {getToken, removeToken} from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
@@ -29,6 +29,12 @@ const service = axios.create({
 service.interceptors.request.use(async (config) => {
     if (monitorEnabled) {
         beginRequestObservation(config)
+    }
+    // FormData：去掉 application/json（否则 axios 会转成 {"file":{}}）；勿手写 multipart/form-data（无 boundary 后端解析不到 file 部件）
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        const headers = AxiosHeaders.from(config.headers)
+        headers.delete('Content-Type')
+        config.headers = headers
     }
     const isToken = (config.headers || {}).isToken === false
     if (getToken() && !isToken) {

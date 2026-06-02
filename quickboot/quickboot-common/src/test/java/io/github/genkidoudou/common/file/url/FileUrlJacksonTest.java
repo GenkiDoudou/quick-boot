@@ -21,6 +21,20 @@ class FileUrlJacksonTest {
         public String path;
     }
 
+    /** 模拟 {@code @Data}：注解在字段、序列化走 getter。 */
+    static class LombokStyleDto {
+        @FileUrl
+        private String relativePath;
+
+        public String getRelativePath() {
+            return relativePath;
+        }
+
+        public void setRelativePath(String relativePath) {
+            this.relativePath = relativePath;
+        }
+    }
+
     private static ObjectMapper mapper(QcFileProperties props) {
         ObjectMapper om = new ObjectMapper();
         om.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -49,6 +63,27 @@ class FileUrlJacksonTest {
         Dto d = new Dto();
         d.path = "img/2026/01/x.png";
         assertThat(om.writeValueAsString(d)).contains("https://cdn.example.com/img/2026/01/x.png");
+    }
+
+    @Test
+    void serialize_lombokGetter_reads_field_annotation() throws Exception {
+        QcFileProperties props = new QcFileProperties();
+        props.setDomain("https://cdn.example.com");
+        ObjectMapper om = mapper(props);
+        LombokStyleDto d = new LombokStyleDto();
+        d.setRelativePath("img/a.png");
+        assertThat(om.writeValueAsString(d)).contains("https://cdn.example.com/img/a.png");
+    }
+
+    @Test
+    void serialize_uses_viewUrlBase_when_domain_blank() throws Exception {
+        QcFileProperties props = new QcFileProperties();
+        props.setViewUrlBase("http://localhost:8800/dev-api/system/file/view");
+        ObjectMapper om = mapper(props);
+        Dto d = new Dto();
+        d.path = "img/a.png";
+        assertThat(om.writeValueAsString(d))
+            .contains("http://localhost:8800/dev-api/system/file/view/img/a.png");
     }
 
     @Test

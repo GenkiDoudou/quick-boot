@@ -20,6 +20,9 @@ import java.io.IOException;
  * 全局 Client HMAC 签名校验过滤器（优先于登录拦截）。
  * <p>
  * Filter 内异常不会进入 {@code @RestControllerAdvice}，须在本类写出与 {@link io.github.genkidoudou.common.api.R} 一致的 JSON。
+ * <p>
+ * {@code multipart/*} 不得包装为 {@link CachedBodyHttpServletRequest}：提前读空输入流后，
+ * Tomcat {@code getParts()} 无法解析，会导致 {@code MissingServletRequestPartException}。
  */
 @Slf4j
 @Component
@@ -38,9 +41,14 @@ public class ClientSignFilter extends OncePerRequestFilter {
             return;
         }
         try {
-            CachedBodyHttpServletRequest wrapped = new CachedBodyHttpServletRequest(request);
-            clientSignService.verify(wrapped);
-            filterChain.doFilter(wrapped, response);
+            if (ClientSignService.isMultipartContentType(request.getContentType())) {
+                clientSignService.verify(request);
+                filterChain.doFilter(request, response);
+            } else {
+                CachedBodyHttpServletRequest wrapped = new CachedBodyHttpServletRequest(request);
+                clientSignService.verify(wrapped);
+                filterChain.doFilter(wrapped, response);
+            }
         } catch (WarningException ex) {
             ServletUtils.writeResponse(response, ex.getCode(), ex.getMsg());
         } catch (Exception ex) {

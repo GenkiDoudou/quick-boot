@@ -5,6 +5,7 @@ import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.file.FileStorageException;
 import io.github.genkidoudou.common.i18n.I18nUtil;
 import io.github.genkidoudou.common.security.firewall.idempotent.IdempotentException;
 import io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordException;
@@ -27,8 +28,9 @@ import java.util.Objects;
  * <p>
  * 规则：
  * 1. {@link WarningException} 视为可预期异常，按映射表返回 4xx/429。
- * 2. {@link ErrorException} 与兜底 {@link Throwable} 统一返回 HTTP 500。
- * 3. 文案优先走 i18n，未命中回退异常默认文案，再回退统一兜底文案。
+ * 2. {@link FileStorageException} 返回 HTTP 400 与业务码 {@link ErrorCodes.Biz#FILE_STORAGE}。
+ * 3. {@link ErrorException} 与兜底 {@link Throwable} 统一返回 HTTP 500。
+ * 4. 文案优先走 i18n，未命中回退异常默认文案，再回退统一兜底文案。
  */
 @Slf4j
 @RestControllerAdvice
@@ -113,6 +115,17 @@ public class GlobalExceptionHandler {
     String message = resolveMessage(code, null, ex.getMessage());
     log.warn("敏感词, code={}, msg={}", code, message);
     return ResponseEntity.status(HttpStatus.OK).body(R.error(code, message));
+  }
+
+  /**
+   * 文件存储业务异常（后缀/大小/路径非法、读写失败等），返回可读文案而非 500 兜底。
+   */
+  @ExceptionHandler(FileStorageException.class)
+  public ResponseEntity<R<Void>> handleFileStorage(FileStorageException ex) {
+    int code = ErrorCodes.Biz.FILE_STORAGE;
+    String message = resolveMessage(code, null, ex.getMessage());
+    log.warn("file storage exception, code={}, msg={}", code, message, ex);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(R.error(code, message));
   }
 
   /**

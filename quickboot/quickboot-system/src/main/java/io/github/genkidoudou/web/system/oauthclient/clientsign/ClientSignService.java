@@ -43,9 +43,9 @@ public class ClientSignService {
     /**
      * 校验请求签名；失败抛 {@link WarningException}。
      *
-     * @param request 已缓存 body 的请求
+     * @param request 原始请求，或已缓存 body 的 {@link CachedBodyHttpServletRequest}
      */
-    public void verify(CachedBodyHttpServletRequest request) {
+    public void verify(HttpServletRequest request) {
         if (!properties.isEnabled()) {
             return;
         }
@@ -99,7 +99,7 @@ public class ClientSignService {
         String canonical = buildCanonical(
                 request.getMethod(),
                 servletPath,
-                request.getCachedBody(),
+                bodyBytesForSignature(request),
                 timestamp.trim(),
                 nonce.trim(),
                 clientId.trim());
@@ -122,6 +122,29 @@ public class ClientSignService {
         if (existing != null) {
             throw fail("重复请求（nonce 已使用）");
         }
+    }
+
+    /**
+     * 是否为 multipart 请求（与前端 FormData 上传一致）。
+     *
+     * @param contentType {@link HttpServletRequest#getContentType()}
+     * @return true 表示 multipart
+     */
+    public static boolean isMultipartContentType(String contentType) {
+        return contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart/");
+    }
+
+    /**
+     * 参与签名的 body 字节：{@code multipart/*} 与前端 {@code FormData} 约定一致，使用空 body 哈希。
+     */
+    private static byte[] bodyBytesForSignature(HttpServletRequest request) {
+        if (isMultipartContentType(request.getContentType())) {
+            return new byte[0];
+        }
+        if (request instanceof CachedBodyHttpServletRequest cached) {
+            return cached.getCachedBody();
+        }
+        return new byte[0];
     }
 
     /**

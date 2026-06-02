@@ -26,6 +26,8 @@ public final class ErrorCodes {
     public static final class Biz {
         public static final int STATE_NOT_ALLOWED = 20001;
         public static final int IDEMPOTENT_REPEAT = HttpCodes.IDEMPOTENT_REPEAT;
+        /** 文件存储：后缀/大小/路径非法或读写失败等 */
+        public static final int FILE_STORAGE = 20024;
 
         private Biz() {
         }

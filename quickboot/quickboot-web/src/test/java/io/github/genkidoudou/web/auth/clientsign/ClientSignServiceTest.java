@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -88,6 +90,46 @@ class ClientSignServiceTest {
         CachedBodyHttpServletRequest request = new CachedBodyHttpServletRequest(raw);
 
         assertThatCode(() -> clientSignService.verify(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void verify_acceptsMultipartWhenSignedWithEmptyBodyHash() throws Exception {
+        byte[] multipartBody = "------Bb\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nx\r\n------Bb--\r\n"
+                .getBytes(StandardCharsets.UTF_8);
+        byte[] signBody = new byte[0];
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String nonce = "multipart-empty-body01";
+        String canonical = ClientSignService.buildCanonical("POST", "/login", signBody, timestamp, nonce, CLIENT_ID);
+        String signature = hmacSha256Base64(SECRET, canonical);
+
+        MockHttpServletRequest raw = new MockHttpServletRequest("POST", "/login");
+        raw.setContent(multipartBody);
+        raw.setContentType("multipart/form-data; boundary=----Bb");
+        raw.addHeader("X-Client-Id", CLIENT_ID);
+        raw.addHeader("X-Client-Timestamp", timestamp);
+        raw.addHeader("X-Client-Nonce", nonce);
+        raw.addHeader("X-Client-Signature", signature);
+        CachedBodyHttpServletRequest request = new CachedBodyHttpServletRequest(raw);
+
+        assertThatCode(() -> clientSignService.verify(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void verify_acceptsMultipartOnOriginalRequestWithoutBodyCache() throws Exception {
+        byte[] signBody = new byte[0];
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String nonce = "multipart-raw-request01";
+        String canonical = ClientSignService.buildCanonical("POST", "/login", signBody, timestamp, nonce, CLIENT_ID);
+        String signature = hmacSha256Base64(SECRET, canonical);
+
+        MockHttpServletRequest raw = new MockHttpServletRequest("POST", "/login");
+        raw.setContentType("multipart/form-data; boundary=----Bb");
+        raw.addHeader("X-Client-Id", CLIENT_ID);
+        raw.addHeader("X-Client-Timestamp", timestamp);
+        raw.addHeader("X-Client-Nonce", nonce);
+        raw.addHeader("X-Client-Signature", signature);
+
+        assertThatCode(() -> clientSignService.verify(raw)).doesNotThrowAnyException();
     }
 
     @Test

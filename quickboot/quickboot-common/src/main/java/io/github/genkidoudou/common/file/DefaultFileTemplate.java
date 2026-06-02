@@ -162,7 +162,17 @@ public class DefaultFileTemplate implements FileTemplate {
     private void invokeAfter(String relativePath, FileUploadBeforeContext before) {
         FileUploadAfterContext after = new FileUploadAfterContext(relativePath, before);
         for (FileUploadHook h : hooks) {
-            h.afterUpload(after);
+            try {
+                h.afterUpload(after);
+            } catch (RuntimeException ex) {
+                try {
+                    storage.remove(relativePath);
+                } catch (Exception ignore) {
+                    // 避免掩盖原始 afterUpload 异常；回滚失败由后续排障处理
+                }
+                invokeOnError(before, ex, relativePath);
+                throw ex;
+            }
         }
     }
 

@@ -2,12 +2,41 @@ package io.github.genkidoudou.common.file.url;
 
 import org.springframework.util.StringUtils;
 
+import io.github.genkidoudou.common.file.QcFileProperties;
+
 /**
  * {@link io.github.genkidoudou.common.file.FileTemplate#view} 与 {@link FileUrl} 共用的 domain 拼接/剥离。
  */
 public final class FileUrlSupport {
 
     private FileUrlSupport() {
+    }
+
+    /**
+     * 将相对路径解析为对外绝对 URL：优先 {@code qc.file.domain}，否则 {@code qc.file.viewUrlBase}。
+     *
+     * @param props        文件配置
+     * @param relativePath 相对路径
+     * @return 绝对 URL；无配置前缀时返回相对路径本身
+     */
+    public static String resolvePublicUrl(QcFileProperties props, String relativePath) {
+        if (!StringUtils.hasText(relativePath)) {
+            return relativePath;
+        }
+        String p = relativePath.trim();
+        if (p.startsWith("http://") || p.startsWith("https://")) {
+            return p;
+        }
+        if (props == null) {
+            return p;
+        }
+        if (StringUtils.hasText(props.getDomain())) {
+            return join(props.getDomain().trim(), p);
+        }
+        if (StringUtils.hasText(props.getViewUrlBase())) {
+            return join(props.getViewUrlBase().trim(), p);
+        }
+        return p;
     }
 
     public static String join(String domain, String relativePath) {

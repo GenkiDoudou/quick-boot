@@ -2,6 +2,7 @@ package io.github.genkidoudou.common.file;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
+import org.springframework.util.unit.DataSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,12 @@ public class QcFileProperties {
      * 对外访问域名，用于 {@code view} 与 {@link io.github.genkidoudou.common.file.url.FileUrl}（如 {@code https://cdn.example.com}，无尾斜杠亦可）。
      */
     private String domain = "";
+
+    /**
+     * {@link io.github.genkidoudou.common.file.url.FileUrl} 在 {@link #domain} 为空时的回退前缀（如管理端预览：
+     * {@code http://localhost:8800/dev-api/system/file/view}）。
+     */
+    private String viewUrlBase = "";
 
     private String defaultClassify = "default";
 
@@ -56,6 +63,14 @@ public class QcFileProperties {
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public String getViewUrlBase() {
+        return viewUrlBase;
+    }
+
+    public void setViewUrlBase(String viewUrlBase) {
+        this.viewUrlBase = viewUrlBase;
     }
 
     public String getDefaultClassify() {
@@ -100,11 +115,16 @@ public class QcFileProperties {
     }
 
     public static class ClassifyProperties {
+        /** 分类名（上传参数 classify）。 */
         private String classify;
         /** 逗号分隔，带点或不带点均可，比对时归一为小写 */
         private String limitExt = "";
-        /** 最大字节数，默认 10MB */
-        private long limitSize = 10L * 1024 * 1024;
+        /** 最大大小（如 {@code 10MB}、{@code 512KB}），默认 10MB。 */
+        private DataSize limitSize = DataSize.ofMegabytes(10);
+        /** 单次上传允许的最大文件个数，默认 1。 */
+        private int limitCount = 1;
+        /** 该分类上传是否允许匿名（未登录）；预览始终需登录。 */
+        private boolean anonymous = false;
 
         public String getClassify() {
             return classify;
@@ -122,12 +142,34 @@ public class QcFileProperties {
             this.limitExt = limitExt;
         }
 
-        public long getLimitSize() {
+        public DataSize getLimitSize() {
             return limitSize;
         }
 
-        public void setLimitSize(long limitSize) {
+        public void setLimitSize(DataSize limitSize) {
             this.limitSize = limitSize;
+        }
+
+        public int getLimitCount() {
+            return limitCount;
+        }
+
+        public void setLimitCount(int limitCount) {
+            this.limitCount = limitCount;
+        }
+
+        /** 最大字节数（用于校验）。 */
+        public long resolveLimitSizeBytes() {
+            DataSize size = limitSize != null ? limitSize : DataSize.ofMegabytes(10);
+            return size.toBytes();
+        }
+
+        public boolean isAnonymous() {
+            return anonymous;
+        }
+
+        public void setAnonymous(boolean anonymous) {
+            this.anonymous = anonymous;
         }
     }
 
