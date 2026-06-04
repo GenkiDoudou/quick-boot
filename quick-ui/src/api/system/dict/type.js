@@ -1,4 +1,5 @@
-import request, { downloadRequest } from '@/utils/request'
+import request, { downloadRequest, importRequest } from '@/utils/request'
+import { appendImportFormFields } from '@/utils/excelImportForm'
 
 export function listType(params) { return request({ url: '/system/dict/type/list', method: 'get', params }) }
 export function getType(dictId) { return request({ url: '/system/dict/type/' + dictId, method: 'get' }) }
@@ -10,11 +11,11 @@ export function exportType(data) {
 }
 export function refreshType(dictType) { return request({ url: '/system/dict/type/refresh/' + dictType, method: 'post' }) }
 export function refreshAllType() { return request({ url: '/system/dict/type/refresh', method: 'post' }) }
-export function importType(file, updateSupport = false) {
+export function importType(file, updateSupport = false, opts = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('updateSupport', updateSupport ? 'true' : 'false')
-  return request({
+  appendImportFormFields(formData, updateSupport, { mode: 'async', ...opts })
+  return importRequest({
     url: '/system/dict/type/import',
     method: 'post',
     data: formData,

@@ -59,4 +59,10 @@ public interface SysConfigService {
      * 刷新全部参数缓存。
      */
     void refreshCache();
+
+    /** 按筛选条件统计可导出行数。 */
+    long countExportRows(SysConfigQueryBo query);
+
+    /** 生成导出 Excel 字节（最多 {@code maxRows} 行）。 */
+    byte[] exportExcelBytes(SysConfigQueryBo query, int maxRows);
 }

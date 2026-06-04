@@ -17,6 +17,11 @@ import io.github.genkidoudou.web.system.user.dto.UserAuthRoleVo;
 import io.github.genkidoudou.web.system.user.dto.UserChangeStatusRequest;
 import io.github.genkidoudou.web.system.user.dto.UserImportResultVo;
 import io.github.genkidoudou.web.system.user.dto.UserResetPwdRequest;
+import io.github.genkidoudou.web.system.file.service.SysFileService;
+import io.github.genkidoudou.web.system.importtask.dto.ImportSubmitResultVo;
+import io.github.genkidoudou.web.system.importtask.handler.impl.UserBizImportHandler;
+import io.github.genkidoudou.web.system.importtask.service.ImportOrchestratorService;
+import io.github.genkidoudou.web.system.importtask.support.ImportSubmitMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +47,8 @@ import java.util.List;
 public class SysUserController {
 
     private final SysUserService userService;
+    private final ImportOrchestratorService importOrchestratorService;
+    private final SysFileService sysFileService;
 
     @Operation(summary = "用户分页列表")
     @SaCheckPermission("system:user:list")
@@ -121,8 +128,12 @@ public class SysUserController {
     @PostMapping(value = "/importData", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public R<UserImportResultVo> importData(
             @RequestPart("file") MultipartFile file,
-            @RequestParam(value = "updateSupport", defaultValue = "false") boolean updateSupport) {
-        return R.ok(userService.importData(file, updateSupport));
+            @RequestParam(value = "updateSupport", defaultValue = "false") boolean updateSupport,
+            @RequestParam(required = false) String mode,
+            @RequestParam(required = false) Integer syncMaxRows) {
+        ImportSubmitResultVo submitted = importOrchestratorService.submit(
+            file, UserBizImportHandler.BIZ_TYPE, updateSupport, mode, syncMaxRows, null);
+        return R.ok(ImportSubmitMapper.toUserImportResult(submitted));
     }
 
     @Operation(summary = "下载用户导入模板")
@@ -137,7 +148,19 @@ public class SysUserController {
     @GetMapping("/importError")
     public void importError(
             @Parameter(description = "导入结果返回的 errorKey") @RequestParam String errorKey,
-            HttpServletResponse response) {
+            HttpServletResponse response) throws Exception {
+        if (errorKey != null && errorKey.startsWith("file:")) {
+            Long fileId = Long.parseLong(errorKey.substring(5));
+            var payload = sysFileService.download(fileId);
+            response.setContentType(payload.contentType() != null ? payload.contentType()
+                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + java.net.URLEncoder.encode(payload.originalName(), java.nio.charset.StandardCharsets.UTF_8) + "\"");
+            try (var in = payload.resource().getInputStream()) {
+                in.transferTo(response.getOutputStream());
+            }
+            return;
+        }
         userService.importError(errorKey, response);
     }
 

@@ -54,14 +54,32 @@ public class SysLogininforServiceImpl implements SysLogininforService {
 
     @Override
     public void export(SysLogininforQueryBo query, HttpServletResponse response) {
+        List<SysLogininforExcelRow> rows = loadExportRows(query, Integer.MAX_VALUE);
+        ExcelUtils.exportExcel(rows, "logininfor", SysLogininforExcelRow.class, response);
+    }
+
+    @Override
+    public long countExportRows(SysLogininforQueryBo query) {
+        Long c = mapper.selectCount(buildWrapper(query));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysLogininforQueryBo query, int maxRows) {
+        List<SysLogininforExcelRow> rows = loadExportRows(query, maxRows);
+        return ExcelUtils.writeBytes("logininfor", SysLogininforExcelRow.class, rows);
+    }
+
+    private List<SysLogininforExcelRow> loadExportRows(SysLogininforQueryBo query, int maxRows) {
         LambdaQueryWrapper<SysLogininfor> w = buildWrapper(query);
         applyOrder(w, query);
-        List<SysLogininfor> list = mapper.selectList(w);
+        int limit = Math.max(1, maxRows);
+        List<SysLogininfor> list = mapper.selectList(w.last("LIMIT " + limit));
         List<SysLogininforExcelRow> rows = new ArrayList<>(list.size());
         for (SysLogininfor row : list) {
             rows.add(BeanUtil.copyProperties(row, SysLogininforExcelRow.class));
         }
-        ExcelUtils.exportExcel(rows, "logininfor", SysLogininforExcelRow.class, response);
+        return rows;
     }
 
     @Override

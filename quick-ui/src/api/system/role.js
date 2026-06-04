@@ -1,4 +1,5 @@
-import request, { downloadRequest } from '@/utils/request'
+import request, { downloadRequest, importRequest } from '@/utils/request'
+import { appendImportFormFields } from '@/utils/excelImportForm'
 
 /**
  * 角色分页列表。
@@ -132,11 +133,11 @@ export function cancelRoleUsers(data) {
  * @param {boolean} [updateSupport=false] 是否更新已存在（按权限字符）
  * @returns {Promise<any>}
  */
-export function importRole(file, updateSupport = false) {
+export function importRole(file, updateSupport = false, opts = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('updateSupport', updateSupport ? 'true' : 'false')
-  return request({
+  appendImportFormFields(formData, updateSupport, opts)
+  return importRequest({
     url: '/system/role/import',
     method: 'post',
     data: formData,

@@ -214,22 +214,41 @@ public class SysJobServiceImpl implements SysJobService {
 
     @Override
     public void export(SysJobQueryBo query, HttpServletResponse response) {
-        LambdaQueryWrapper<SysJob> w = Wrappers.<SysJob>lambdaQuery()
-            .like(StrUtil.isNotBlank(query.getJobName()), SysJob::getJobName, query.getJobName())
-            .eq(StrUtil.isNotBlank(query.getJobGroup()), SysJob::getJobGroup, query.getJobGroup())
-            .eq(StrUtil.isNotBlank(query.getStatus()), SysJob::getStatus, query.getStatus())
-            .orderByDesc(SysJob::getCreateTime);
         int max = Math.max(1, properties.getExportMaxRows());
-        List<SysJob> list = mapper.selectList(w.last("LIMIT " + (max + 1)));
-        if (list.size() > max) {
+        List<SysJobExcelRow> rows = loadJobExcelRows(query, max + 1);
+        if (rows.size() > max) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "导出数据超过上限（" + max + " 条），请缩小筛选条件");
         }
+        ExcelUtils.exportExcel(rows, "job", SysJobExcelRow.class, response);
+    }
+
+    @Override
+    public long countExportRows(SysJobQueryBo query) {
+        Long c = mapper.selectCount(buildJobExportWrapper(query));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysJobQueryBo query, int maxRows) {
+        return ExcelUtils.writeBytes("job", SysJobExcelRow.class, loadJobExcelRows(query, maxRows));
+    }
+
+    private LambdaQueryWrapper<SysJob> buildJobExportWrapper(SysJobQueryBo query) {
+        return Wrappers.<SysJob>lambdaQuery()
+            .like(StrUtil.isNotBlank(query.getJobName()), SysJob::getJobName, query.getJobName())
+            .eq(StrUtil.isNotBlank(query.getJobGroup()), SysJob::getJobGroup, query.getJobGroup())
+            .eq(StrUtil.isNotBlank(query.getStatus()), SysJob::getStatus, query.getStatus());
+    }
+
+    private List<SysJobExcelRow> loadJobExcelRows(SysJobQueryBo query, int maxRows) {
+        LambdaQueryWrapper<SysJob> w = buildJobExportWrapper(query).orderByDesc(SysJob::getCreateTime);
+        int limit = Math.max(1, maxRows);
+        List<SysJob> list = mapper.selectList(w.last("LIMIT " + limit));
         List<SysJobExcelRow> rows = new ArrayList<>(list.size());
         for (SysJob row : list) {
-            SysJobExcelRow excel = BeanUtil.copyProperties(row, SysJobExcelRow.class);
-            rows.add(excel);
+            rows.add(BeanUtil.copyProperties(row, SysJobExcelRow.class));
         }
-        ExcelUtils.exportExcel(rows, "job", SysJobExcelRow.class, response);
+        return rows;
     }
 
     private SysJob requireJob(Long jobId) {

@@ -173,7 +173,7 @@
         </el-table>
       </el-card>
 
-      <el-card shadow="never" class="client-track-timeline-chart-card">
+      <el-card v-loading="detailLoading" shadow="never" class="client-track-timeline-chart-card">
         <template #header>
           <div class="client-track-timeline-card-head">
             <span>当前页面行为明细</span>
@@ -308,7 +308,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getClientTrackTimeline } from '@/api/monitor/clientTrack'
+import { getClientTrackTimeline, getClientTrackTimelinePage } from '@/api/monitor/clientTrack'
 import { scheduleIdleTask } from '@/monitor/scheduleIdle'
 import {
   buildPageDetailModel,
@@ -342,7 +342,10 @@ defineOptions({ name: 'SysClientTrackTimeline' })
 
 const route = useRoute()
 const loading = ref(false)
+const detailLoading = ref(false)
 const searched = ref(false)
+/** @type {Map<string, Record<string, unknown>>} */
+const pageDetailCache = new Map()
 const drawerVisible = ref(false)
 const selectedEvent = ref(null)
 const {
@@ -428,7 +431,7 @@ const summaryText = computed(() => {
     if (s.browserVisitId) parts.push(`browserVisitId ${s.browserVisitId}`)
   }
   parts.push(`${s.totalPages ?? 0} 页 · ${s.totalBatches ?? 0} 批`)
-  parts.push('点击页面查看操作明细')
+  parts.push('点击页面按需加载操作明细')
   if (s.truncated) parts.push('（已截断，请缩小时间范围）')
   return parts.join(' · ')
 })
@@ -501,10 +504,51 @@ function validateSearch() {
   return true
 }
 
+/**
+ * 概览节点未带 events 时需懒加载单页明细。
+ * @param {Record<string, unknown>|null|undefined} page
+ */
+function pageNeedsDetailFetch(page) {
+  if (!page) return false
+  if (page.pageVisitBatch || (Array.isArray(page.actions) && page.actions.length > 0)) {
+    return false
+  }
+  const ec = Number(page.eventCount) || 0
+  const ac = Number(page.actionCount) || 0
+  return ec > 0 || ac > 0
+}
+
+/**
+ * 将懒加载的页面明细写回 rawTimelineVo，便于再次选中时复用。
+ * @param {{ sessionId: string, pageIndex: number }} hit
+ * @param {Record<string, unknown>} pageDetail
+ */
+function mergePageIntoRawVo(hit, pageDetail) {
+  const vo = rawTimelineVo.value
+  if (!vo) return
+  const sessionSources =
+    Array.isArray(vo.sessions) && vo.sessions.length
+      ? vo.sessions
+      : [{ sessionId: vo.sessionId, pages: vo.pages }]
+  const activeKey = activeSessionKey.value
+  for (let si = 0; si < sessionSources.length; si++) {
+    const sessionVo = sessionSources[si]
+    const sessionId = sessionVo.sessionId ? String(sessionVo.sessionId) : `s${si}`
+    const key = sessionId || `session-${si}`
+    if (key !== activeKey && sessionId !== activeKey) continue
+    const pages = Array.isArray(sessionVo.pages) ? sessionVo.pages : []
+    if (pages[hit.pageIndex]) {
+      pages[hit.pageIndex] = pageDetail
+      return
+    }
+  }
+}
+
 function handleSearch() {
   if (!validateSearch()) return
   loading.value = true
   searched.value = true
+  pageDetailCache.clear()
   disposePageDetailChart()
   pageDetailModel.value = null
   selectedPageId.value = ''
@@ -628,14 +672,42 @@ function selectPage(pageId, _idx) {
   }
 }
 
-function loadPageDetail(pageId) {
+/**
+ * @param {string} pageId
+ */
+async function loadPageDetail(pageId) {
   if (!rawTimelineVo.value || !activeSessionKey.value) return
   const hit = findPageVo(rawTimelineVo.value, activeSessionKey.value, pageId)
   if (!hit) {
     pageDetailModel.value = null
     return
   }
-  pageDetailModel.value = buildPageDetailModel(hit.page, hit.sessionId, hit.pageIndex)
+
+  const cacheKey = `${activeSessionKey.value}:${pageId}`
+  let page = pageDetailCache.get(cacheKey) || hit.page
+
+  if (pageNeedsDetailFetch(page)) {
+    detailLoading.value = true
+    try {
+      const scope = buildQueryParams()
+      const res = await getClientTrackTimelinePage({
+        ...scope,
+        sessionId: hit.sessionId || scope.sessionId || '',
+        pageVisitId: page.pageVisitId || hit.page.pageVisitId || '',
+        pagePath: page.pagePath || hit.page.pagePath || ''
+      })
+      page = res.data || page
+      pageDetailCache.set(cacheKey, page)
+      mergePageIntoRawVo(hit, page)
+    } catch {
+      pageDetailModel.value = null
+      return
+    } finally {
+      detailLoading.value = false
+    }
+  }
+
+  pageDetailModel.value = buildPageDetailModel(page, hit.sessionId, hit.pageIndex)
   selectedEvent.value = null
   drawerVisible.value = false
   scheduleIdleTask(() => {

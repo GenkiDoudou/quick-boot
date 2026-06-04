@@ -2,6 +2,8 @@ package io.github.genkidoudou.web.monitor.clienttrack.service;
 
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackReportBo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackPageVisitNodeVo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelinePageQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackQueryBo;
@@ -38,6 +40,14 @@ public interface SysClientTrackService {
      * @return 聚合结果（最多 500 批，超出 {@code truncated=true}）
      */
     ClientTrackTimelineVo timeline(ClientTrackTimelineQueryBo query);
+
+    /**
+     * 行为轨迹单页明细：在 timeline 概览范围内按 pageVisitId / pagePath 加载操作批与事件（懒加载）。
+     *
+     * @param query 与 timeline 相同的主键范围 + sessionId + pageVisitId 或 pagePath
+     * @return 单页节点（含 pageVisitBatch、actions、events）
+     */
+    ClientTrackPageVisitNodeVo timelinePageDetail(ClientTrackTimelinePageQueryBo query);
 
     /**
      * 按主键批量删除。

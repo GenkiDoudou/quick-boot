@@ -24,6 +24,8 @@
 | `notice/index.vue` | `api/system/notice.js` | `SysNoticeController` |
 | **`oauthClient/index.vue`** | `api/system/oauthClient.js` | `SysOauthClientController` |
 | **`oauthProvider/index.vue`** | `api/system/oauthProvider.js` | `SysOauthProviderController` |
+| **`file/index.vue`** | `api/system/file.js` | `SysFileController` |
+| **`importExportCenter/index.vue`** | `api/import/task.js`、`api/export/task.js` | 导入/导出任务中心 |
 | `user/profile/` | — | 个人中心、改密、头像 |
 
 **列表页参考模板**：`system/config/index.vue`（C7JsonTable + 查询区 + 工具栏）。
@@ -40,8 +42,10 @@
 | **`clientTrack/index.vue`** | `api/monitor/clientTrack.js` | `SysClientTrackController` |
 | **`clientTrack/events.vue`** | 同上 | 事件链 |
 | **`clientTrack/timeline.vue`** | 同上 | 行为轨迹 |
+| **`slowSql/index.vue`** | `api/monitor/slowSql.js` | `SysSlowSqlController` |
+| **`traceChain/index.vue`** | `api/monitor/traceChain.js` | `SysTraceChainController` |
 
-前端采集 SDK 见 **[用户行为监控](./user-behavior-monitor)**（`src/monitor`）。
+前端采集 SDK 见 **[用户行为监控](./user-behavior-monitor)**（`src/monitor`）。全链路页依赖埋点中的 `operationId` / `traceId`，详见后端 [全链路监控](../../backend/modules/trace-chain)。
 
 ## 系统工具（`tool/gen/`）
 
@@ -82,6 +86,7 @@ C7 组件 E2E 页，菜单由后端动态下发，例如：
 | `oauth/authorize.js` | 登录页 IdP 列表 |
 | `system/*.js` | 系统管理各域 |
 | `monitor/*.js` | 监控与任务 |
+| `import/task.js`、`export/task.js` | 导入导出编排 |
 | `tool/gen.js` | 代码生成 |
 
 ---
@@ -103,3 +108,5 @@ C7 组件 E2E 页，菜单由后端动态下发，例如：
 - [前端概述](../index)
 - [OAuth2 集成](../../backend/modules/oauth2)
 - [后端功能模块](../../backend/modules/index)
+- [导入导出中心](../../backend/modules/import-export-center)
+- [文件管理](../../backend/modules/file-management)

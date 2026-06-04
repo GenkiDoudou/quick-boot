@@ -28,4 +28,8 @@ public interface SysJobService {
     void runOnce(Long jobId);
 
     void export(SysJobQueryBo query, HttpServletResponse response);
+
+    long countExportRows(SysJobQueryBo query);
+
+    byte[] exportExcelBytes(SysJobQueryBo query, int maxRows);
 }

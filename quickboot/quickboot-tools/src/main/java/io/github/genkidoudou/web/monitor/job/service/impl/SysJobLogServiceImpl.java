@@ -89,13 +89,30 @@ public class SysJobLogServiceImpl implements SysJobLogService {
 
     @Override
     public void export(SysJobLogQueryBo query, HttpServletResponse response) {
-        LambdaQueryWrapper<SysJobLog> w = buildWrapper(query);
-        w.orderByDesc(SysJobLog::getCreateTime);
         int max = Math.max(1, properties.getExportMaxRows());
-        List<SysJobLog> list = mapper.selectList(w.last("LIMIT " + (max + 1)));
-        if (list.size() > max) {
+        List<SysJobLogExcelRow> rows = loadJobLogExcelRows(query, max + 1);
+        if (rows.size() > max) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "导出数据超过上限（" + max + " 条），请缩小筛选条件");
         }
+        ExcelUtils.exportExcel(rows, "jobLog", SysJobLogExcelRow.class, response);
+    }
+
+    @Override
+    public long countExportRows(SysJobLogQueryBo query) {
+        Long c = mapper.selectCount(buildWrapper(query));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysJobLogQueryBo query, int maxRows) {
+        return ExcelUtils.writeBytes("jobLog", SysJobLogExcelRow.class, loadJobLogExcelRows(query, maxRows));
+    }
+
+    private List<SysJobLogExcelRow> loadJobLogExcelRows(SysJobLogQueryBo query, int maxRows) {
+        LambdaQueryWrapper<SysJobLog> w = buildWrapper(query);
+        w.orderByDesc(SysJobLog::getCreateTime);
+        int limit = Math.max(1, maxRows);
+        List<SysJobLog> list = mapper.selectList(w.last("LIMIT " + limit));
         List<SysJobLogExcelRow> rows = new ArrayList<>(list.size());
         for (SysJobLog row : list) {
             SysJobLogExcelRow excel = new SysJobLogExcelRow();
@@ -110,7 +127,7 @@ public class SysJobLogServiceImpl implements SysJobLogService {
             }
             rows.add(excel);
         }
-        ExcelUtils.exportExcel(rows, "jobLog", SysJobLogExcelRow.class, response);
+        return rows;
     }
 
     private LambdaQueryWrapper<SysJobLog> buildWrapper(SysJobLogQueryBo query) {

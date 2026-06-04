@@ -6,6 +6,8 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackReportBo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackPageVisitNodeVo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelinePageQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.SysClientTrackQueryBo;
@@ -62,11 +64,18 @@ public class SysClientTrackController {
         return R.ok(clientTrackService.page(query));
     }
 
-    @Operation(summary = "行为轨迹聚合（页面跳转 + 操作树，最多 500 批）")
+    @Operation(summary = "行为轨迹概览（页面跳转链，不含事件明细，最多 500 批）")
     @SaCheckPermission("monitor:clientTrack:list")
     @GetMapping("/timeline")
     public R<ClientTrackTimelineVo> timeline(@Validated ClientTrackTimelineQueryBo query) {
         return R.ok(clientTrackService.timeline(query));
+    }
+
+    @Operation(summary = "行为轨迹单页明细（操作批与事件，按需懒加载）")
+    @SaCheckPermission("monitor:clientTrack:list")
+    @GetMapping("/timeline/page")
+    public R<ClientTrackPageVisitNodeVo> timelinePage(@Validated ClientTrackTimelinePageQueryBo query) {
+        return R.ok(clientTrackService.timelinePageDetail(query));
     }
 
     @Operation(summary = "删除前端监控批次（批量）")

@@ -380,12 +380,31 @@ public class SysRoleServiceImpl implements SysRoleService {
 
     @Override
     public void export(SysRoleQueryBo query, HttpServletResponse response) {
+        List<SysRoleExcelRow> out = loadRoleExcelRows(query, Integer.MAX_VALUE);
+        ExcelUtils.exportExcel(out, "sys-role", SysRoleExcelRow.class, response);
+    }
+
+    @Override
+    public long countExportRows(SysRoleQueryBo query) {
+        LocalDateTime begin = parseBeginTime(query.getBeginTime());
+        LocalDateTime end = parseEndTime(query.getEndTime());
+        Long c = roleMapper.selectCount(buildRoleQueryWrapper(query, begin, end));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysRoleQueryBo query, int maxRows) {
+        return ExcelUtils.writeBytes("sys-role", SysRoleExcelRow.class, loadRoleExcelRows(query, maxRows));
+    }
+
+    private List<SysRoleExcelRow> loadRoleExcelRows(SysRoleQueryBo query, int maxRows) {
         LocalDateTime begin = parseBeginTime(query.getBeginTime());
         LocalDateTime end = parseEndTime(query.getEndTime());
         LambdaQueryWrapper<SysRole> w = buildRoleQueryWrapper(query, begin, end)
-                .orderByAsc(SysRole::getRoleSort)
-                .orderByAsc(SysRole::getRoleId);
-        List<SysRole> rows = roleMapper.selectList(w);
+            .orderByAsc(SysRole::getRoleSort)
+            .orderByAsc(SysRole::getRoleId);
+        int limit = Math.max(1, maxRows);
+        List<SysRole> rows = roleMapper.selectList(w.last("LIMIT " + limit));
         List<SysRoleExcelRow> out = new ArrayList<>(rows.size());
         for (SysRole row : rows) {
             SysRoleExcelRow er = BeanUtil.copyProperties(row, SysRoleExcelRow.class);
@@ -393,11 +412,10 @@ public class SysRoleServiceImpl implements SysRoleService {
             er.setDataScopeLabel(dataScopeLabel(row.getDataScope()));
             out.add(er);
         }
-        ExcelUtils.exportExcel(out, "sys-role", SysRoleExcelRow.class, response);
+        return out;
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException {
         ExcelResult<SysRoleImportExcelRow> readResult = ExcelUtils.importExcel(
                 file.getInputStream(),
@@ -406,6 +424,11 @@ public class SysRoleServiceImpl implements SysRoleService {
                 (rows, context) -> {
                 });
         return ExcelImportResult.build(readResult);
+    }
+
+    @Override
+    public void importRoleExcelRow(SysRoleImportExcelRow row, boolean updateSupport) {
+        importOneRoleRow(row, updateSupport);
     }
 
     /**

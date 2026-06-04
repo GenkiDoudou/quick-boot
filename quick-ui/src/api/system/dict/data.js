@@ -1,4 +1,5 @@
-import request, { downloadRequest } from '@/utils/request'
+import request, { downloadRequest, importRequest } from '@/utils/request'
+import { appendImportFormFields } from '@/utils/excelImportForm'
 
 export function listData(query) { return request({ url: '/system/dict/data/list', method: 'get', params: query }) }
 export function getData(dictCode) { return request({ url: '/system/dict/data/' + dictCode, method: 'get' }) }
@@ -9,12 +10,12 @@ export function delData(dictCode) { return request({ url: '/system/dict/data/rem
 export function exportData(data) {
   return downloadRequest('/system/dict/data/export', data, { returnBlobWithHeaders: true })
 }
-export function importData(file, dictType, updateSupport = false) {
+export function importData(file, dictType, updateSupport = false, opts = {}) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('dictType', dictType || '')
-  formData.append('updateSupport', updateSupport ? 'true' : 'false')
-  return request({
+  appendImportFormFields(formData, updateSupport, { mode: 'async', ...opts })
+  return importRequest({
     url: '/system/dict/data/import',
     method: 'post',
     data: formData,

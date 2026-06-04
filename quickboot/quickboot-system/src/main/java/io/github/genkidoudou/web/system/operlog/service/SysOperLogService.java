@@ -18,6 +18,10 @@ public interface SysOperLogService {
 
     void export(SysOperLogQueryBo query, HttpServletResponse response);
 
+    long countExportRows(SysOperLogQueryBo query);
+
+    byte[] exportExcelBytes(SysOperLogQueryBo query, int maxRows);
+
     void removeBatch(List<Long> operIds);
 
     void cleanAll();

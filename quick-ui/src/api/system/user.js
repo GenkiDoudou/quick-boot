@@ -1,4 +1,5 @@
-import request, { downloadRequest } from '@/utils/request'
+import request, { downloadRequest, importRequest } from '@/utils/request'
+import { appendImportFormFields } from '@/utils/excelImportForm'
 import { parseStrEmpty } from '@/utils/ruoyi'
 
 /**
@@ -122,11 +123,11 @@ export function exportUser(data) {
  * @param {boolean} updateSupport 是否更新已存在用户
  * @returns {Promise<any>}
  */
-export function importUser(file, updateSupport) {
+export function importUser(file, updateSupport, opts = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('updateSupport', String(updateSupport))
-  return request({
+  appendImportFormFields(formData, updateSupport, opts)
+  return importRequest({
     url: '/system/user/importData',
     method: 'post',
     data: formData,

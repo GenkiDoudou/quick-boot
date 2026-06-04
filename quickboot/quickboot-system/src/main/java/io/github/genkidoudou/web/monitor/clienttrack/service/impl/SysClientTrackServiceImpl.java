@@ -13,6 +13,7 @@ import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.monitor.clienttrack.domain.SysClientTrack;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackReportBo;
+import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelinePageQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineQueryBo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackTimelineVo;
 import io.github.genkidoudou.web.monitor.clienttrack.dto.ClientTrackActionNodeVo;
@@ -51,8 +52,11 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
 
     private static final int MAX_EVENTS_JSON_LEN = 65535;
 
-    /** 行为轨迹聚合最多加载批次数，超出提示缩小时间范围 */
+    /** 行为轨迹概览最多加载批次数，超出提示缩小时间范围 */
     private static final int MAX_TIMELINE_BATCHES = 500;
+
+    /** 单页明细最多加载批次数，防止单页异常膨胀 */
+    private static final int MAX_PAGE_DETAIL_BATCHES = 200;
 
     private static final String UNKNOWN_PAGE_VISIT_KEY = "__unknown__";
 
@@ -139,7 +143,36 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         if (truncated) {
             rows = rows.subList(0, MAX_TIMELINE_BATCHES);
         }
-        return buildTimelineVo(query, rows, truncated);
+        return buildTimelineVo(query, rows, truncated, false);
+    }
+
+    @Override
+    public ClientTrackPageVisitNodeVo timelinePageDetail(ClientTrackTimelinePageQueryBo query) {
+        validateTimelineQuery(query);
+        validateTimelinePageQuery(query);
+        SysClientTrackQueryBo listQuery = toListQuery(query);
+        LambdaQueryWrapper<SysClientTrack> w = buildWrapper(listQuery);
+        if (StrUtil.isNotBlank(query.getSessionId())) {
+            w.eq(SysClientTrack::getSessionId, query.getSessionId().trim());
+        }
+        if (StrUtil.isNotBlank(query.getPageVisitId())) {
+            w.eq(SysClientTrack::getPageVisitId, query.getPageVisitId().trim());
+        } else if (StrUtil.isNotBlank(query.getPagePath())) {
+            w.eq(SysClientTrack::getPagePath, query.getPagePath().trim());
+        }
+        w.orderByAsc(SysClientTrack::getCreateTime);
+        w.last("LIMIT " + (MAX_PAGE_DETAIL_BATCHES + 1));
+        List<SysClientTrack> rows = mapper.selectList(w);
+        if (rows.isEmpty()) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "未找到该页面的监控批次");
+        }
+        if (rows.size() > MAX_PAGE_DETAIL_BATCHES) {
+            rows = rows.subList(0, MAX_PAGE_DETAIL_BATCHES);
+        }
+        String pageVisitKey = StrUtil.blankToDefault(rows.get(0).getPageVisitId(), UNKNOWN_PAGE_VISIT_KEY);
+        List<String> paths = rows.stream().map(SysClientTrack::getPagePath).distinct().toList();
+        Map<String, MenuMatch> menuByPath = menuPathResolver.resolveBatch(paths);
+        return buildPageVisitNode(pageVisitKey, rows, menuByPath, true);
     }
 
     @Override
@@ -401,7 +434,14 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
         return bo;
     }
 
-    private ClientTrackTimelineVo buildTimelineVo(ClientTrackTimelineQueryBo query, List<SysClientTrack> rows, boolean truncated) {
+    private static void validateTimelinePageQuery(ClientTrackTimelinePageQueryBo query) {
+        if (StrUtil.isAllBlank(query.getPageVisitId(), query.getPagePath())) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "pageVisitId 与 pagePath 至少填写一项");
+        }
+    }
+
+    private ClientTrackTimelineVo buildTimelineVo(ClientTrackTimelineQueryBo query, List<SysClientTrack> rows,
+            boolean truncated, boolean includeDetail) {
         ClientTrackTimelineVo vo = new ClientTrackTimelineVo();
         vo.setTotalBatches(rows.size());
         vo.setTruncated(truncated);
@@ -427,7 +467,7 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
 
         List<ClientTrackPageVisitNodeVo> pages = new ArrayList<>();
         for (Map.Entry<String, List<SysClientTrack>> entry : grouped.entrySet()) {
-            pages.add(buildPageVisitNode(entry.getKey(), entry.getValue(), menuByPath));
+            pages.add(buildPageVisitNode(entry.getKey(), entry.getValue(), menuByPath, includeDetail));
         }
         pages.sort(Comparator.comparing(ClientTrackPageVisitNodeVo::getFirstTime, Comparator.nullsLast(Comparator.naturalOrder())));
         vo.setPages(pages);
@@ -486,7 +526,7 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
     }
 
     private ClientTrackPageVisitNodeVo buildPageVisitNode(String pageVisitKey, List<SysClientTrack> batches,
-            Map<String, MenuMatch> menuByPath) {
+            Map<String, MenuMatch> menuByPath, boolean includeDetail) {
         batches.sort(Comparator.comparing(SysClientTrack::getCreateTime, Comparator.nullsLast(Comparator.naturalOrder())));
         ClientTrackPageVisitNodeVo page = new ClientTrackPageVisitNodeVo();
         page.setPageVisitId(UNKNOWN_PAGE_VISIT_KEY.equals(pageVisitKey) ? "" : pageVisitKey);
@@ -501,17 +541,46 @@ public class SysClientTrackServiceImpl implements SysClientTrackService {
                 .filter(this::isPageVisitBatch)
                 .findFirst()
                 .orElse(head);
-        page.setPageVisitBatch(toActionNode(visitBatchRow, true));
 
-        for (SysClientTrack row : batches) {
-            if (row.getBatchId().equals(visitBatchRow.getBatchId())) {
-                continue;
+        if (includeDetail) {
+            page.setPageVisitBatch(toActionNode(visitBatchRow, true));
+            for (SysClientTrack row : batches) {
+                if (row.getBatchId().equals(visitBatchRow.getBatchId())) {
+                    continue;
+                }
+                page.getActions().add(toActionNode(row, false));
             }
-            page.getActions().add(toActionNode(row, false));
+            page.setActionCount(page.getActions().size());
+            page.setEventCount(countPageEvents(page));
+        } else {
+            int actionCount = 0;
+            int eventCount = 0;
+            for (SysClientTrack row : batches) {
+                eventCount += countEventsInJson(row.getEventsJson());
+                if (!row.getBatchId().equals(visitBatchRow.getBatchId())) {
+                    actionCount++;
+                }
+            }
+            page.setActionCount(actionCount);
+            page.setEventCount(eventCount);
         }
-        page.setActionCount(page.getActions().size());
-        page.setEventCount(countPageEvents(page));
         return page;
+    }
+
+    /**
+     * 仅统计 eventsJson 数组长度，避免概览接口全量解析事件明细。
+     */
+    @SuppressWarnings("unchecked")
+    private int countEventsInJson(String eventsJson) {
+        if (StrUtil.isBlank(eventsJson)) {
+            return 0;
+        }
+        try {
+            List<?> raw = objectMapper.readValue(eventsJson, List.class);
+            return raw == null ? 0 : raw.size();
+        } catch (JsonProcessingException e) {
+            return 0;
+        }
     }
 
     private static int countPageEvents(ClientTrackPageVisitNodeVo page) {

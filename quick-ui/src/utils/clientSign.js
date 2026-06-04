@@ -4,6 +4,7 @@
  * 使用 crypto-js 而非 Web Crypto {@code subtle}，以便在 HTTP 生产环境（非安全上下文）下可用。
  */
 import CryptoJS from 'crypto-js'
+import { tansParams } from '@/utils/ruoyi'
 
 /**
  * 解析用于签名的 path（不含 query、不含 /dev-api、/prod-api 前缀）。
@@ -87,15 +88,19 @@ async function serializeBodyBytes(config) {
     return new Uint8Array(await data.arrayBuffer())
   }
   const headers = config.headers || {}
-  const ct = headers['Content-Type'] || headers['content-type'] || ''
-  const asJson =
-    !ct ||
-    String(ct).includes('application/json') ||
-    typeof data === 'object'
-  if (asJson && typeof data === 'object') {
-    const json = JSON.stringify(data)
-    config.data = json
-    return new TextEncoder().encode(json)
+  const ct = String(headers['Content-Type'] || headers['content-type'] || '').toLowerCase()
+  if (typeof data === 'object') {
+    // 与 downloadRequest / 表单 POST 的 transformRequest + tansParams 对齐
+    if (ct.includes('application/x-www-form-urlencoded')) {
+      const encoded = tansParams(data)
+      return new TextEncoder().encode(encoded)
+    }
+    const asJson = !ct || ct.includes('application/json')
+    if (asJson) {
+      const json = JSON.stringify(data)
+      config.data = json
+      return new TextEncoder().encode(json)
+    }
   }
   return new Uint8Array(0)
 }

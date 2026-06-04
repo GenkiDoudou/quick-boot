@@ -2,6 +2,8 @@ io.github.genkidoudou.common.cache.QuickbootCacheAutoConfiguration
 io.github.genkidoudou.common.mybatis.QuickbootMybatisAutoConfiguration
 io.github.genkidoudou.common.desensitization.SensitiveJacksonAutoConfiguration
 io.github.genkidoudou.common.file.FileStorageAutoConfiguration
+io.github.genkidoudou.common.importtask.ImportAutoConfiguration
+io.github.genkidoudou.common.exporttask.ExportAutoConfiguration
 io.github.genkidoudou.common.security.firewall.cors.FirewallCorsAutoConfiguration
 io.github.genkidoudou.common.security.firewall.headers.FirewallSecurityHeadersAutoConfiguration
 io.github.genkidoudou.common.security.firewall.idempotent.IdempotentAutoConfiguration
@@ -12,4 +14,5 @@ io.github.genkidoudou.common.security.firewall.sqlinjection.SqlInjectionFirewall
 io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordFirewallAutoConfiguration
 io.github.genkidoudou.common.captcha.TianaiCacheStoreAutoConfiguration
 io.github.genkidoudou.common.monitor.operlog.OperLogCaptureAutoConfiguration
+io.github.genkidoudou.common.monitor.slowsql.SlowSqlCaptureAutoConfiguration
 io.github.genkidoudou.common.tracing.ClientOperationTracingAutoConfiguration

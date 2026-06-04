@@ -20,6 +20,10 @@ import io.github.genkidoudou.web.system.role.dto.SysRoleImportExcelRow;
 import io.github.genkidoudou.web.system.role.dto.SysRoleQueryBo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleUserVo;
 import io.github.genkidoudou.web.system.role.dto.SysRoleVo;
+import io.github.genkidoudou.web.system.importtask.dto.ImportSubmitResultVo;
+import io.github.genkidoudou.web.system.importtask.handler.impl.RoleBizImportHandler;
+import io.github.genkidoudou.web.system.importtask.service.ImportOrchestratorService;
+import io.github.genkidoudou.web.system.importtask.support.ImportSubmitMapper;
 import io.github.genkidoudou.web.system.role.service.SysRoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -53,6 +57,7 @@ import java.util.List;
 public class SysRoleController {
 
     private final SysRoleService service;
+    private final ImportOrchestratorService importOrchestratorService;
 
     @Operation(summary = "角色分页列表")
     @SaCheckPermission("system:role:list")
@@ -169,8 +174,12 @@ public class SysRoleController {
     @SaCheckPermission("system:role:import")
     @PostMapping("/import")
     public R<ExcelImportResult> importData(@RequestPart("file") MultipartFile file,
-                                           @RequestParam(defaultValue = "false") boolean updateSupport) throws IOException {
-        return R.ok(service.importData(file, updateSupport));
+                                           @RequestParam(defaultValue = "false") boolean updateSupport,
+                                           @RequestParam(required = false) String mode,
+                                           @RequestParam(required = false) Integer syncMaxRows) {
+        ImportSubmitResultVo submitted = importOrchestratorService.submit(
+            file, RoleBizImportHandler.BIZ_TYPE, updateSupport, mode, syncMaxRows, null);
+        return R.ok(ImportSubmitMapper.toExcelImportResult(submitted));
     }
 
     @Operation(summary = "下载角色导入模板")

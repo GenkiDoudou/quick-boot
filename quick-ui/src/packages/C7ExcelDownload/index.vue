@@ -286,6 +286,10 @@ async function handleClick() {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revoke)
     else setTimeout(revoke, 0)
   } catch (err) {
+    if (err?.code === 'EXPORT_ASYNC') {
+      emit('success', { mode: 'async', taskId: err.taskId })
+      return
+    }
     const msg = formatRequestError(err)
     pushNotify('error', msg)
     emit('error', err)

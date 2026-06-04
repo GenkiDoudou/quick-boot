@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>全链路监控 · traceChain 原型 v3</title>
+  <!-- v3：Network 调试器风格 — 表格式 + 行内瀑布条 + 展开子资源（oper_log / slow_sql） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --qb-primary: #409eff;
+      --qb-bg: #f5f7fa;
+      --qb-text: #303133;
+      --qb-muted: #909399;
+      --qb-warn: #e6a23c;
+      --qb-error: #f56c6c;
+      --qb-border: #ebeef5;
+      --qb-card: #fff;
+    }
+    body { margin: 0; font-family: "PingFang SC", "Helvetica Neue", system-ui, sans-serif; background: var(--qb-bg); font-size: 13px; color: var(--qb-text); }
+    #app { padding: 16px; max-width: 1400px; margin: 0 auto; }
+    .page-title { font-size: 18px; font-weight: 600; margin: 0 0 4px; color: #0a2463; }
+    .page-sub { font-size: 12px; color: var(--qb-muted); margin: 0 0 12px; }
+    .mb12 { margin-bottom: 12px; }
+
+    .ctx-bar {
+      display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 14px; background: var(--qb-card);
+      border: 1px solid var(--qb-border); border-radius: 6px; margin-bottom: 12px; font-size: 12px;
+    }
+    .ctx-bar dt { color: var(--qb-muted); display: inline; }
+    .ctx-bar dd { display: inline; margin: 0 12px 0 4px; font-weight: 500; }
+
+    .network-toolbar {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      padding: 8px 12px; background: #fafafa; border: 1px solid var(--qb-border); border-bottom: none;
+      border-radius: 6px 6px 0 0;
+    }
+    .network-scale { font-size: 11px; color: var(--qb-muted); display: flex; align-items: center; gap: 8px; }
+    .network-scale-ticks { display: flex; flex: 1; max-width: 280px; justify-content: space-between; border-bottom: 1px solid #dcdfe6; padding-bottom: 2px; margin-left: 8px; }
+
+    .network-table-wrap {
+      background: var(--qb-card); border: 1px solid var(--qb-border); border-radius: 0 0 6px 6px; overflow: hidden;
+    }
+    .network-row {
+      display: grid;
+      grid-template-columns: 28px minmax(200px, 1.4fr) 72px 56px 72px minmax(180px, 1fr) 64px;
+      align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--qb-border);
+      cursor: pointer; min-height: 40px;
+    }
+    .network-row:hover { background: #f5f9ff; }
+    .network-row--selected { background: #ecf5ff; }
+    .network-row--child { background: #fafafa; padding-left: 36px; grid-template-columns: 28px minmax(180px, 1.2fr) 72px 56px 72px minmax(180px, 1fr) 64px; }
+    .network-row--child .network-name { padding-left: 12px; border-left: 2px solid #dcdfe6; }
+    .network-row--ctx { background: #f0f5ff; cursor: default; font-size: 12px; }
+    .network-row--ctx:hover { background: #f0f5ff; }
+    .network-row--jump { background: #f9f0ff; }
+    .network-row--behavior { background: #fff; }
+    .section-label {
+      padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--qb-muted);
+      background: #fafafa; border-bottom: 1px solid var(--qb-border);
+    }
+    .waterfall-bar--nav { background: linear-gradient(90deg, #d3d4d6, #909399); }
+    .waterfall-bar--behavior { background: linear-gradient(90deg, #b3e5fc, #03a9f4); opacity: 0.75; }
+    .jump-mini-table { margin-bottom: 12px; }
+
+    .network-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .network-name-sub { font-weight: 400; color: var(--qb-muted); font-size: 11px; display: block; margin-top: 2px; }
+
+    .waterfall-cell { position: relative; height: 18px; background: #f0f2f5; border-radius: 2px; overflow: hidden; }
+    .waterfall-bar {
+      position: absolute; top: 2px; height: 14px; border-radius: 2px; min-width: 3px;
+    }
+    .waterfall-bar--ok { background: linear-gradient(90deg, #79bbff, #409eff); }
+    .waterfall-bar--warn { background: linear-gradient(90deg, #f3d19e, #e6a23c); }
+    .waterfall-bar--err { background: linear-gradient(90deg, #fab6b6, #f56c6c); }
+    .waterfall-bar--log { background: linear-gradient(90deg, #b3e19d, #67c23a); opacity: 0.85; }
+    .waterfall-bar--sql { background: linear-gradient(90deg, #d3adf7, #9254de); opacity: 0.9; }
+
+    .network-head {
+      display: grid;
+      grid-template-columns: 28px minmax(200px, 1.4fr) 72px 56px 72px minmax(180px, 1fr) 64px;
+      gap: 8px; padding: 8px 12px; background: #fafafa; font-size: 12px; font-weight: 600; color: var(--qb-muted);
+      border-bottom: 1px solid var(--qb-border);
+    }
+
+    .detail-drawer-body { padding: 0 4px; }
+    .detail-dl dt { color: var(--qb-muted); font-size: 12px; margin-top: 12px; }
+    .detail-dl dd { margin: 4px 0 0; word-break: break-all; }
+    .pre-box { background: #fafafa; border: 1px solid var(--qb-border); padding: 8px; border-radius: 4px; font-size: 11px; max-height: 140px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1 class="page-title">全链路监控（traceChain 原型 v3）</h1>
+    <p class="page-sub">Network 表 + 页面跳转区 + 行为明细行（route/click/api_call）+ HTTP 展开 oper/sql</p>
+
+    <el-card shadow="never" class="mb12">
+      <el-form :model="searchForm" inline label-width="96px" @submit.prevent="handleSearch">
+        <el-form-item label="operationId">
+          <el-input v-model="searchForm.operationId" clearable style="width: 200px"></el-input>
+        </el-form-item>
+        <el-form-item label="traceId">
+          <el-input v-model="searchForm.traceId" clearable style="width: 180px"></el-input>
+        </el-form-item>
+        <el-form-item label="筛选">
+          <el-checkbox-group v-model="searchForm.filters">
+            <el-checkbox label="nav">页面跳转</el-checkbox>
+            <el-checkbox label="behavior">行为明细</el-checkbox>
+            <el-checkbox label="xhr">HTTP</el-checkbox>
+            <el-checkbox label="log">操作日志</el-checkbox>
+            <el-checkbox label="sql">慢 SQL</el-checkbox>
+            <el-checkbox label="slow">仅慢路径</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="loading" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <div v-if="summary" class="mb12">
+      <el-alert :title="summary" :type="summaryType" show-icon :closable="false"></el-alert>
+    </div>
+
+    <template v-if="loaded">
+      <dl class="ctx-bar">
+        <dt>用户</dt><dd>{{ meta.userName }}</dd>
+        <dt>页面</dt><dd>{{ meta.pagePath }}</dd>
+        <dt>菜单</dt><dd>{{ meta.menuBreadcrumb }}</dd>
+        <dt>操作</dt><dd>{{ meta.triggerAction }}</dd>
+        <dt>总耗时</dt><dd>{{ meta.totalMs }}ms</dd>
+        <dt>请求数</dt><dd>{{ meta.apiCount }}</dd>
+        <dt>页面跳转</dt><dd>{{ meta.jumpCount }} 步</dd>
+        <dt>行为事件</dt><dd>{{ meta.behaviorCount }} 条</dd>
+      </dl>
+
+      <el-card v-if="searchForm.filters.indexOf('nav') >= 0" shadow="never" class="mb12 jump-mini-table">
+        <template #header><span style="font-size:13px;font-weight:600">页面跳转</span></template>
+        <el-table :data="pageJumps" size="small" border stripe @row-click="onJumpClick">
+          <el-table-column prop="step" label="步" width="48" align="center"></el-table-column>
+          <el-table-column prop="fromLabel" label="来源" min-width="100"></el-table-column>
+          <el-table-column prop="toLabel" label="目标" min-width="100"></el-table-column>
+          <el-table-column prop="jumpLabel" label="说明" min-width="140"></el-table-column>
+          <el-table-column prop="pageVisitId" label="pageVisitId" min-width="110"></el-table-column>
+          <el-table-column prop="atLabel" label="时间" width="80"></el-table-column>
+        </el-table>
+      </el-card>
+
+      <div class="network-toolbar">
+        <span style="font-weight:600">资源时间线（相对 operation 起点）</span>
+        <div class="network-scale">
+          <span>0ms</span>
+          <div class="network-scale-ticks">
+            <span>{{ tick25 }}</span>
+            <span>{{ tick50 }}</span>
+            <span>{{ tick75 }}</span>
+            <span>{{ tick100 }}</span>
+          </div>
+        </div>
+        <el-button size="small" @click="expandAll = !expandAll">{{ expandAll ? '全部折叠' : '全部展开' }}</el-button>
+      </div>
+
+      <div class="network-table-wrap">
+        <div class="network-head">
+          <span></span>
+          <span>名称</span>
+          <span>类型</span>
+          <span>状态</span>
+          <span>耗时</span>
+          <span>瀑布（相对时间轴）</span>
+          <span>操作</span>
+        </div>
+
+        <div v-if="searchForm.filters.indexOf('nav') >= 0 && showSectionNav" class="section-label">页面跳转 / 路由进入</div>
+        <div v-if="searchForm.filters.indexOf('behavior') >= 0 && showSectionBehavior" class="section-label">行为明细（前端采集）</div>
+        <div v-if="showSectionBackend" class="section-label">后端请求与落库</div>
+
+        <template v-for="row in visibleRows" :key="row.key">
+          <div
+            class="network-row"
+            :class="{
+              'network-row--selected': selectedKey === row.key,
+              'network-row--child': row.isChild,
+              'network-row--ctx': row.isCtx,
+              'network-row--jump': row.kind === 'nav',
+              'network-row--behavior': row.kind === 'behavior',
+            }"
+            @click="onRowClick(row)"
+          >
+            <span>
+              <el-icon v-if="row.expandable" style="vertical-align:middle">
+                <component :is="isExpanded(row.parentApiId || row.id) ? 'ArrowDown' : 'ArrowRight'"></component>
+              </el-icon>
+            </span>
+            <div class="network-name">
+              {{ row.name }}
+              <span v-if="row.sub" class="network-name-sub">{{ row.sub }}</span>
+            </div>
+            <span>
+              <el-tag size="small" effect="plain" :type="row.typeTag">{{ row.typeText }}</el-tag>
+            </span>
+            <span>
+              <el-tag v-if="row.statusText" size="small" :type="row.statusTag" effect="light">{{ row.statusText }}</el-tag>
+              <span v-else>—</span>
+            </span>
+            <span style="font-variant-numeric:tabular-nums">{{ row.durationMs }}ms</span>
+            <div class="waterfall-cell">
+              <div
+                v-if="row.waterfall"
+                class="waterfall-bar"
+                :class="'waterfall-bar--' + row.waterfall.kind"
+                :style="{ left: row.waterfall.leftPct + '%', width: row.waterfall.widthPct + '%' }"
+                :title="'+' + row.waterfall.startMs + 'ms 起，长 ' + row.durationMs + 'ms'"
+              ></div>
+            </div>
+            <span>
+              <el-button v-if="!row.isCtx" link type="primary" size="small" @click.stop="openDetail(row)">详情</el-button>
+            </span>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <el-empty v-else-if="!loading" description="查询后展示 Network 视图" style="margin-top:48px"></el-empty>
+
+    <el-drawer v-model="drawerVisible" title="资源详情" size="440px" destroy-on-close>
+      <div v-if="detailRow" class="detail-drawer-body">
+        <el-tag size="small" :type="detailRow.statusTag">{{ detailRow.typeText }}</el-tag>
+        <strong style="display:block;margin:8px 0">{{ detailRow.name }}</strong>
+        <dl class="detail-dl">
+          <template v-for="(it, i) in detailFields" :key="i">
+            <dt>{{ it.label }}</dt>
+            <dd>
+              {{ it.value }}
+              <el-button v-if="it.copy" link type="primary" size="small" @click="copyText(it.value)">复制</el-button>
+            </dd>
+          </template>
+        </dl>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <el-button v-if="detailRow.kind === 'api' || detailRow.kind === 'log'" size="small" @click="showOper = true">操作日志</el-button>
+          <el-button v-if="detailRow.kind === 'api' || detailRow.kind === 'sql'" size="small" @click="showSql = true">慢 SQL</el-button>
+        </div>
+        <pre v-if="detailRow.raw" class="pre-box">{{ detailRow.raw }}</pre>
+      </div>
+    </el-drawer>
+
+    <el-dialog v-model="showOper" title="操作日志" width="760px" append-to-body destroy-on-close>
+      <el-descriptions :column="2" border size="small">
+        <el-descriptions-item label="traceId" :span="2">b2c3d4e5f6789012345678abcdef0123</el-descriptions-item>
+        <el-descriptions-item label="URL" :span="2">POST /system/user/edit</el-descriptions-item>
+        <el-descriptions-item label="耗时">3280 ms</el-descriptions-item>
+        <el-descriptions-item label="状态">正常</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
+
+    <el-dialog v-model="showSql" title="慢 SQL" width="680px" destroy-on-close append-to-body>
+      <pre class="pre-box">SELECT user_id, user_name FROM sys_user WHERE user_id = ?</pre>
+    </el-dialog>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2/dist/index.iife.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed } = Vue;
+
+    const MOCK = {
+      summary: {
+        userName: 'admin', pagePath: '/system/user', menuBreadcrumb: '系统管理 / 用户管理',
+        triggerAction: '修改', operationId: 'op-7f3a9c2e-4b1d-4e9a-8c1d-2e5f6a7b8c9d', status: 'warn',
+        sessionId: 'sess-20260603-admin', browserVisitId: 'bv-8f1e2d3c4b5a6978',
+      },
+      timelineMaxMs: 9000,
+      pageJumps: [
+        { id: 'jump-1', step: 1, fromLabel: '工作台', fromPath: '/index', toLabel: '用户管理', toPath: '/system/user', jumpLabel: '侧栏菜单', pageVisitId: 'pv-index-01', atMs: 0, atLabel: '+0ms' },
+        { id: 'jump-2', step: 2, fromLabel: '用户管理', fromPath: '/system/user', toLabel: '用户管理', toPath: '/system/user', jumpLabel: '搜索（新 pageVisit）', pageVisitId: 'pv-user-02', atMs: 1250, atLabel: '+1250ms' },
+      ],
+      behaviorByPage: [
+        {
+          pageVisitId: 'pv-index-01', pagePath: '/index', menuName: '工作台',
+          events: [
+            { id: 'be-1', type: 'route_enter', label: 'route_enter /index', startMs: 0, endMs: 30, status: 'ok' },
+            { id: 'be-2', type: 'click', label: '点击「用户管理」菜单', startMs: 180, endMs: 220, status: 'ok' },
+          ],
+        },
+        {
+          pageVisitId: 'pv-user-02', pagePath: '/system/user', menuName: '用户管理',
+          events: [
+            { id: 'be-3', type: 'route_enter', label: 'route_enter /system/user', startMs: 1250, endMs: 1290, status: 'ok', pageVisitId: 'pv-user-02' },
+            { id: 'be-4', type: 'click', label: '点击「搜索」', startMs: 1580, endMs: 1620, status: 'ok', passive: true },
+            { id: 'be-5', type: 'api_call', label: 'GET /system/user/list', startMs: 1650, endMs: 1980, status: 'ok', traceId: 'd4e5…3456' },
+            { id: 'be-6', type: 'click', label: '点击「修改」', startMs: 2100, endMs: 2160, status: 'ok', operationId: 'op-7f3a9c2e-4b1d-4e9a-8c1d-2e5f6a7b8c9d' },
+            { id: 'be-7', type: 'click', label: '弹窗「确定」', startMs: 4850, endMs: 4900, status: 'ok' },
+          ],
+        },
+      ],
+      nodes: [
+        { id: 'api-1', type: 'api', label: 'GET /system/user/10001', method: 'GET', startMs: 2180, endMs: 2500, status: 'ok', traceId: 'a1b2…ef01', httpStatus: 200 },
+        { id: 'oper-1', type: 'oper_log', label: '用户管理 · 查询', parentApiId: 'api-1', startMs: 2190, endMs: 2480, status: 'ok', traceId: 'a1b2…ef01' },
+        { id: 'api-2', type: 'api', label: 'POST /system/user/edit', method: 'POST', startMs: 4920, endMs: 8300, status: 'warn', traceId: 'b2c3…0123', httpStatus: 200 },
+        { id: 'oper-2', type: 'oper_log', label: '用户管理 · 修改', parentApiId: 'api-2', startMs: 4940, endMs: 8220, status: 'ok', traceId: 'b2c3…0123' },
+        { id: 'sql-1', type: 'slow_sql', label: 'SELECT sys_user …', parentApiId: 'api-2', startMs: 5620, endMs: 7020, status: 'warn', traceId: 'b2c3…0123' },
+        { id: 'sql-2', type: 'slow_sql', label: 'UPDATE sys_user …', parentApiId: 'api-2', startMs: 7120, endMs: 7920, status: 'warn', traceId: 'b2c3…0123' },
+        { id: 'api-3', type: 'api', label: 'GET /system/user/list', method: 'GET', startMs: 8420, endMs: 8920, status: 'ok', traceId: 'c3d4…2345', httpStatus: 200 },
+        { id: 'oper-3', type: 'oper_log', label: '用户管理 · 列表', parentApiId: 'api-3', startMs: 8440, endMs: 8870, status: 'ok', traceId: 'c3d4…2345' },
+      ],
+    };
+
+    function wf(startMs, endMs, maxMs) {
+      var leftPct = (startMs / maxMs) * 100;
+      var widthPct = Math.max(((endMs - startMs) / maxMs) * 100, 0.8);
+      return { startMs: startMs, leftPct: leftPct, widthPct: Math.min(widthPct, 100 - leftPct) };
+    }
+
+    function mapNode(n, maxMs, extra) {
+      extra = extra || {};
+      var durationMs = Math.max(n.endMs - n.startMs, 0);
+      var wfKind = extra.wfKind || 'ok';
+      var rowKind = extra.rowKind || 'api';
+      if (n.status === 'warn' && rowKind === 'api') wfKind = 'warn';
+      if (n.status === 'error') wfKind = 'err';
+      if (rowKind === 'log') wfKind = 'log';
+      if (rowKind === 'sql') wfKind = 'sql';
+      if (rowKind === 'nav') wfKind = 'nav';
+      if (rowKind === 'behavior') wfKind = 'behavior';
+      var typeTextMap = {
+        page_jump: '跳转', route_enter: '路由', click: '点击', api_call: 'xhr',
+        api: 'xhr', oper_log: 'log', slow_sql: 'sql',
+      };
+      var typeText = typeTextMap[n.type] || n.type;
+      var typeTag = n.type === 'slow_sql' ? 'danger' : n.type === 'page_jump' ? 'info' : n.type === 'click' ? 'primary' : '';
+      var statusText = n.type === 'api' || n.type === 'api_call' ? (n.httpStatus || 'OK') : n.status === 'warn' ? '慢' : n.status === 'error' ? '失败' : 'OK';
+      var statusTag = n.status === 'warn' ? 'warning' : n.status === 'error' ? 'danger' : 'success';
+      return {
+        key: n.id,
+        id: n.id,
+        parentApiId: n.parentApiId,
+        name: extra.namePrefix ? extra.namePrefix + n.label : n.label,
+        sub: n.sub || n.pageVisitId || n.traceId || '',
+        typeText: typeText,
+        typeTag: typeTag,
+        statusText: n.type === 'page_jump' ? '—' : statusText,
+        statusTag: n.type === 'page_jump' ? 'info' : statusTag,
+        durationMs: durationMs || (n.type === 'page_jump' ? 0 : 0),
+        startMs: n.startMs,
+        endMs: n.endMs,
+        kind: rowKind,
+        isChild: !!n.parentApiId,
+        isCtx: false,
+        expandable: n.type === 'api',
+        section: extra.section || '',
+        waterfall: n.type === 'page_jump' ? wf(n.startMs, n.startMs + 30, maxMs) : wf(n.startMs, n.endMs, maxMs),
+        raw: JSON.stringify(n, null, 2),
+        node: n,
+      };
+    }
+
+    function buildAllRows(graph) {
+      var max = graph.timelineMaxMs;
+      var rows = [];
+      (graph.pageJumps || []).forEach(function (j) {
+        rows.push(mapNode(Object.assign({ type: 'page_jump', label: j.fromLabel + ' → ' + j.toLabel, startMs: j.atMs, endMs: j.atMs + 20, status: 'ok' }, j), max, { rowKind: 'nav', wfKind: 'nav', section: 'nav' }));
+      });
+      (graph.behaviorByPage || []).forEach(function (p) {
+        p.events.forEach(function (ev) {
+          rows.push(mapNode(ev, max, { rowKind: 'behavior', wfKind: 'behavior', section: 'behavior', namePrefix: '[' + p.menuName + '] ' }));
+        });
+      });
+      (graph.nodes || []).forEach(function (n) {
+        rows.push(mapNode(n, max, { rowKind: n.type === 'api' ? 'api' : n.type === 'oper_log' ? 'log' : 'sql', section: 'backend' }));
+      });
+      return rows.sort(function (a, b) { return a.startMs - b.startMs; });
+    }
+
+    const app = createApp({
+      setup: function () {
+        var loading = ref(false);
+        var loaded = ref(false);
+        var expandAll = ref(true);
+        var expandedApis = ref({ 'api-1': true, 'api-2': true, 'api-3': true });
+        var selectedKey = ref('');
+        var drawerVisible = ref(false);
+        var detailRow = ref(null);
+        var showOper = ref(false);
+        var showSql = ref(false);
+        var graph = ref(null);
+
+        var searchForm = reactive({
+          operationId: MOCK.summary.operationId,
+          traceId: '',
+          filters: ['nav', 'behavior', 'xhr', 'log', 'sql'],
+        });
+
+        var pageJumps = computed(function () {
+          return graph.value ? graph.value.pageJumps : [];
+        });
+
+        var meta = computed(function () {
+          if (!graph.value) return {};
+          var apis = graph.value.nodes.filter(function (n) { return n.type === 'api'; });
+          var beh = 0;
+          (graph.value.behaviorByPage || []).forEach(function (p) { beh += p.events.length; });
+          return {
+            userName: graph.value.summary.userName,
+            pagePath: graph.value.summary.pagePath,
+            menuBreadcrumb: graph.value.summary.menuBreadcrumb,
+            triggerAction: graph.value.summary.triggerAction,
+            totalMs: graph.value.timelineMaxMs,
+            apiCount: apis.length,
+            jumpCount: (graph.value.pageJumps || []).length,
+            behaviorCount: beh,
+          };
+        });
+
+        var summary = computed(function () {
+          if (!graph.value) return '';
+          return graph.value.summary.userName + ' · ' + graph.value.summary.menuBreadcrumb + ' · operationId: ' + graph.value.summary.operationId;
+        });
+        var summaryType = computed(function () {
+          if (!graph.value) return 'info';
+          return graph.value.summary.status === 'warn' ? 'warning' : 'success';
+        });
+
+        var tick25 = computed(function () { return graph.value ? Math.round(graph.value.timelineMaxMs * 0.25) + 'ms' : ''; });
+        var tick50 = computed(function () { return graph.value ? Math.round(graph.value.timelineMaxMs * 0.5) + 'ms' : ''; });
+        var tick75 = computed(function () { return graph.value ? Math.round(graph.value.timelineMaxMs * 0.75) + 'ms' : ''; });
+        var tick100 = computed(function () { return graph.value ? graph.value.timelineMaxMs + 'ms' : ''; });
+
+        var flatRows = computed(function () {
+          if (!graph.value) return [];
+          var onlySlow = searchForm.filters.indexOf('slow') >= 0;
+          var f = searchForm.filters;
+          return buildAllRows(graph.value).filter(function (row) {
+            if (row.section === 'nav' && f.indexOf('nav') < 0) return false;
+            if (row.section === 'behavior' && f.indexOf('behavior') < 0) return false;
+            if (row.kind === 'api' && f.indexOf('xhr') < 0) return false;
+            if (row.kind === 'log' && f.indexOf('log') < 0) return false;
+            if (row.kind === 'sql' && f.indexOf('sql') < 0) return false;
+            if (onlySlow && row.kind === 'api' && row.node.status !== 'warn') return false;
+            if (onlySlow && row.kind === 'sql' && row.node.status !== 'warn') return false;
+            return true;
+          });
+        });
+
+        var showSectionNav = computed(function () {
+          return flatRows.value.some(function (r) { return r.section === 'nav' || (r.section === 'behavior' && r.node.type === 'route_enter'); });
+        });
+        var showSectionBehavior = computed(function () {
+          return flatRows.value.some(function (r) { return r.section === 'behavior'; });
+        });
+        var showSectionBackend = computed(function () {
+          return flatRows.value.some(function (r) { return r.section === 'backend'; });
+        });
+
+        var visibleRows = computed(function () {
+          var out = [];
+          flatRows.value.forEach(function (row) {
+            if (row.isChild) {
+              var pid = row.parentApiId;
+              if (expandAll.value || expandedApis.value[pid]) out.push(row);
+              return;
+            }
+            out.push(row);
+          });
+          return out;
+        });
+
+        function onJumpClick(row) {
+          ElementPlus.ElMessage.info('定位 pageVisitId: ' + row.pageVisitId);
+        }
+
+        var detailFields = computed(function () {
+          var r = detailRow.value;
+          if (!r) return [];
+          var items = [
+            { label: '类型', value: r.typeText },
+            { label: '耗时', value: r.durationMs + ' ms' },
+            { label: '起始', value: '+' + r.startMs + ' ms（会话时间轴）' },
+          ];
+          if (r.node.pageVisitId) items.push({ label: 'pageVisitId', value: r.node.pageVisitId, copy: true });
+          if (r.node.operationId) items.push({ label: 'operationId', value: r.node.operationId, copy: true });
+          if (r.sub) items.push({ label: 'traceId/关联', value: r.sub, copy: true });
+          return items;
+        });
+
+        function isExpanded(apiId) {
+          return expandAll.value || !!expandedApis.value[apiId];
+        }
+
+        function onRowClick(row) {
+          if (row.isCtx) return;
+          if (row.expandable) {
+            if (expandAll.value) return;
+            expandedApis.value[row.id] = !expandedApis.value[row.id];
+            expandedApis.value = Object.assign({}, expandedApis.value);
+          }
+          selectedKey.value = row.key;
+        }
+
+        function openDetail(row) {
+          detailRow.value = row;
+          drawerVisible.value = true;
+        }
+
+        function handleSearch() {
+          loading.value = true;
+          setTimeout(function () {
+            graph.value = JSON.parse(JSON.stringify(MOCK));
+            loaded.value = true;
+            loading.value = false;
+            ElementPlus.ElMessage.success('Network 视图已加载（mock）');
+          }, 280);
+        }
+
+        function handleReset() {
+          loaded.value = false;
+          graph.value = null;
+          selectedKey.value = '';
+        }
+
+        function copyText(t) {
+          navigator.clipboard.writeText(String(t)).then(function () {
+            ElementPlus.ElMessage.success('已复制');
+          });
+        }
+
+        return {
+          loading, loaded, searchForm, handleSearch, handleReset,
+          summary, summaryType, meta, pageJumps, onJumpClick,
+          expandAll, expandedApis, isExpanded,
+          visibleRows, showSectionNav, showSectionBehavior, showSectionBackend,
+          selectedKey, onRowClick, openDetail,
+          drawerVisible, detailRow, detailFields, showOper, showSql, copyText,
+          tick25, tick50, tick75, tick100,
+          ArrowDown: 'ArrowDown',
+          ArrowRight: 'ArrowRight',
+        };
+      },
+    });
+
+    app.use(ElementPlus);
+    if (typeof ElementPlusIconsVue !== 'undefined') {
+      for (var pair of Object.entries(ElementPlusIconsVue)) {
+        app.component(pair[0], pair[1]);
+      }
+    }
+    app.mount('#app');
+  </script>
+</body>
+</html>

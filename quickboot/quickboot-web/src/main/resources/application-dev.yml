@@ -45,6 +45,9 @@ qc:
   file:
     # @FileUrl 序列化补全：管理端预览走 view 接口（与前端 VITE_APP_BASE_API 一致）
     view-url-base: http://localhost:9992/file/preview
+  monitor:
+    slow-sql:
+      threshold-ms: 50
 
 
 
@@ -74,3 +77,5 @@ spring:
             condition-and-alway-true-allow: true
         stat:
           merge-sql: true
+          log-slow-sql: true
+          slow-sql-millis: 500

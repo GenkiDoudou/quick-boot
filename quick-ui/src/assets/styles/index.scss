@@ -193,3 +193,94 @@ select {
   }
 }
 
+/* 异步导入提交成功：与 Element Plus 原生确认框对齐，避免内容区嵌套大按钮 */
+.qc-import-async-msgbox {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  border-radius: 8px;
+  padding-bottom: 4px;
+
+  .el-message-box__header {
+    padding-top: 18px;
+    padding-bottom: 10px;
+  }
+
+  .el-message-box__title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .el-message-box__status {
+    top: 20px;
+    font-size: 22px !important;
+  }
+
+  .el-message-box__content {
+    padding-top: 4px;
+    padding-bottom: 8px;
+  }
+
+  .el-message-box__message {
+    padding-left: 36px;
+  }
+
+  .el-message-box__btns {
+    padding: 8px 16px 14px;
+
+    .el-button {
+      min-width: 88px;
+    }
+
+    .el-button--primary {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+  }
+
+  .qc-import-async-msgbox__body {
+    text-align: left;
+  }
+
+  .qc-import-async-msgbox__lead {
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--el-text-color-primary);
+  }
+
+  .qc-import-async-msgbox__task {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    background: var(--el-fill-color-light);
+    border-radius: 6px;
+    border: 1px solid var(--el-border-color-lighter);
+  }
+
+  .qc-import-async-msgbox__task-label {
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .qc-import-async-msgbox__task-id {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--el-text-color-regular);
+    font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+    word-break: break-all;
+  }
+
+  .qc-import-async-msgbox__hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--el-text-color-secondary);
+  }
+}
+

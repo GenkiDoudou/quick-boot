@@ -81,6 +81,25 @@ public class SysOperLogServiceImpl implements SysOperLogService {
     }
 
     @Override
+    public long countExportRows(SysOperLogQueryBo query) {
+        Long c = mapper.selectCount(buildWrapper(query));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysOperLogQueryBo query, int maxRows) {
+        int limit = Math.max(1, maxRows);
+        LambdaQueryWrapper<SysOperLog> w = buildWrapper(query);
+        applyOrder(w, query);
+        List<SysOperLog> list = mapper.selectList(w.last("LIMIT " + limit));
+        List<SysOperLogExcelRow> rows = new ArrayList<>(list.size());
+        for (SysOperLog row : list) {
+            rows.add(toExcel(row));
+        }
+        return ExcelUtils.writeBytes("operlog", SysOperLogExcelRow.class, rows);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeBatch(List<Long> operIds) {
         if (operIds == null || operIds.isEmpty()) {

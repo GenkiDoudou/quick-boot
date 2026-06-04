@@ -11,7 +11,8 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="monitor:jobLog"
+      :export-query-normalizer="normalizeParams"
       :show-add-button="false"
       :show-edit-button="false"
       :show-delete-button="true"
@@ -59,8 +60,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { saveAs } from 'file-saver'
-import { cleanJobLog, exportJobLog, getJobLog, listJobLog, removeJobLog } from '@/api/monitor/jobLog'
+import { cleanJobLog, getJobLog, listJobLog, removeJobLog } from '@/api/monitor/jobLog'
 
 /**
  * 调度日志：查询、详情、删除、清空、导出；支持从任务页带入筛选。
@@ -151,22 +151,6 @@ function listFunction(params) {
 
 function batchDeleteFunction(ids) {
   return removeJobLog(ids || [])
-}
-
-function exportFunction(searchParam) {
-  const req = normalizeParams({ ...searchParam })
-  delete req.pageNum
-  delete req.pageSize
-  return exportJobLog(req).then(({ data, headers }) => {
-    const cd = headers['content-disposition'] || headers['Content-Disposition']
-    let filename = 'job-log-export.xlsx'
-    if (cd) {
-      const m = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(cd)
-      const raw = decodeURIComponent(m?.[1] || m?.[2] || '')
-      if (raw) filename = raw
-    }
-    saveAs(data, filename)
-  })
 }
 
 function handleClean(refreshData) {

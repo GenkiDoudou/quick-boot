@@ -5,8 +5,11 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.web.system.config.domain.SysConfig;
 import io.github.genkidoudou.web.system.config.dto.SysConfigBo;
+import io.github.genkidoudou.web.system.config.dto.SysConfigExcelRow;
 import io.github.genkidoudou.web.system.config.dto.SysConfigQueryBo;
 import io.github.genkidoudou.web.system.config.mapper.SysConfigMapper;
 import io.github.genkidoudou.web.system.config.service.SysConfigService;
@@ -17,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,15 +39,38 @@ public class SysConfigServiceImpl implements SysConfigService {
 
     @Override
     public List<SysConfig> list(SysConfigQueryBo query) {
+        return mapper.selectList(buildListWrapper(query).orderByDesc(SysConfig::getCreateTime));
+    }
+
+    @Override
+    public long countExportRows(SysConfigQueryBo query) {
+        Long c = mapper.selectCount(buildListWrapper(query));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysConfigQueryBo query, int maxRows) {
+        int limit = Math.max(1, maxRows);
+        List<SysConfig> rows = mapper.selectList(buildListWrapper(query).orderByDesc(SysConfig::getCreateTime)
+            .last("LIMIT " + limit));
+        List<SysConfigExcelRow> exportRows = new ArrayList<>(rows.size());
+        for (SysConfig row : rows) {
+            SysConfigExcelRow excelRow = BeanUtil.copyProperties(row, SysConfigExcelRow.class);
+            excelRow.setConfigTypeName("1".equals(row.getConfigType()) ? "是" : "否");
+            exportRows.add(excelRow);
+        }
+        return ExcelUtils.writeBytes("sys-config", SysConfigExcelRow.class, exportRows);
+    }
+
+    private LambdaQueryWrapper<SysConfig> buildListWrapper(SysConfigQueryBo query) {
         LocalDateTime beginTime = parseBeginTime(query.getBeginTime());
         LocalDateTime endTime = parseEndTime(query.getEndTime());
-        return mapper.selectList(Wrappers.<SysConfig>lambdaQuery()
+        return Wrappers.<SysConfig>lambdaQuery()
             .like(StrUtil.isNotBlank(query.getConfigName()), SysConfig::getConfigName, query.getConfigName())
             .like(StrUtil.isNotBlank(query.getConfigKey()), SysConfig::getConfigKey, query.getConfigKey())
             .eq(StrUtil.isNotBlank(query.getConfigType()), SysConfig::getConfigType, query.getConfigType())
             .ge(beginTime != null, SysConfig::getCreateTime, beginTime)
-            .le(endTime != null, SysConfig::getCreateTime, endTime)
-            .orderByDesc(SysConfig::getCreateTime));
+            .le(endTime != null, SysConfig::getCreateTime, endTime);
     }
 
     @Override

@@ -10,7 +10,9 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-default-file-name="dict-data-export.xlsx"
+      export-biz-type="system:dict:data"
+      :export-query-normalizer="normalizeExportParams"
       :show-add-button="true"
       :show-edit-button="true"
       :show-delete-button="true"
@@ -18,9 +20,13 @@
       :show-import-button="true"
       :on-add="openAdd"
       :on-edit="openEdit"
-      :import-function="importFunction"
+      import-biz-type="system:dict:data"
+      :import-force-async="true"
+      :import-context-provider="importContextProvider"
       :import-template-function="importTemplateFunction"
       import-template-file-name="dict-data-template.xlsx"
+      import-error-file-name="dict-data-import-error.xlsx"
+      @import-success="onDictImportSuccess"
       :check-delete-success="() => true"
       rows-key="data.records"
       total-key="data.total"
@@ -72,7 +78,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDict, LIST_CLASS_OPTIONS, isPlainDictStyle, resolveListClassTagType } from '@/utils/dict'
 import useDictStore from '@/store/modules/dict'
-import { addData, delData, exportData, importData, importDataTemplate, listData, updateData } from '@/api/system/dict/data'
+import { addData, delData, importDataTemplate, listData, updateData } from '@/api/system/dict/data'
 
 const route = useRoute()
 const { sys_normal_disable } = useDict('sys_normal_disable')
@@ -131,6 +137,13 @@ function invalidateDictCache() {
   }
 }
 
+/** 同步导入成功才刷新 Pinia 字典缓存；异步任务完成后请在导入导出中心确认再手动刷新列表。 */
+function onDictImportSuccess(result) {
+  if (result?.mode !== 'async') {
+    invalidateDictCache()
+  }
+}
+
 function listFunction(params) {
   const req = { ...params, dictType: currentDictType.value }
   return listData(req).then((res) => {
@@ -184,16 +197,17 @@ function batchDeleteFunction(ids) {
   })
 }
 
-function exportFunction(searchParam) {
-  return exportData({ ...searchParam, dictType: currentDictType.value })
+/** 导出 query：强制当前路由 dictType，与列表筛选一致。 */
+function normalizeExportParams(raw) {
+  const p = { ...raw, dictType: currentDictType.value }
+  if (p.status === '' || p.status == null) delete p.status
+  if (p.dictLabel === '') delete p.dictLabel
+  return p
 }
 
-function importFunction(file, strategy) {
-  return importData(file, currentDictType.value, strategy === 'overwrite').then((res) => {
-    invalidateDictCache()
-    tableRef.value?.refreshData()
-    return res?.data || res || { total: 0, successCount: 0, failCount: 0 }
-  })
+/** 字典数据导入须绑定当前路由 dictType。 */
+function importContextProvider() {
+  return { dictType: currentDictType.value }
 }
 
 function importTemplateFunction() {

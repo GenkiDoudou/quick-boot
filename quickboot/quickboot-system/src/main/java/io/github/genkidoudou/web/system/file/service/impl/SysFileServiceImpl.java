@@ -86,6 +86,29 @@ public class SysFileServiceImpl implements SysFileService {
     }
 
     @Override
+    public SysFileUploadVo uploadBytes(byte[] content, String filename, String classify) {
+        if (content == null || content.length == 0) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "上传内容不能为空");
+        }
+        String relativePath = fileTemplate.upload(content, filename, classify);
+        SysFile row = mapper.selectOne(
+            Wrappers.<SysFile>lambdaQuery()
+                .eq(SysFile::getRelativePath, relativePath)
+                .eq(SysFile::getDeleted, 0)
+                .last("LIMIT 1")
+        );
+        if (row == null) {
+            throw new WarningException(ErrorCodes.System.INTERNAL_ERROR, "文件登记记录缺失: " + relativePath);
+        }
+        SysFileUploadVo vo = new SysFileUploadVo();
+        vo.setFileId(row.getFileId());
+        vo.setFileName(filename);
+        vo.setRelativePath(relativePath);
+        vo.setAbsolutePath(fileTemplate.view(relativePath));
+        return vo;
+    }
+
+    @Override
     public DownloadPayload viewStream(String relativePath) {
         SysFile row = getValidRowByRelativePath(relativePath);
         Resource res = fileTemplate.download(row.getRelativePath());

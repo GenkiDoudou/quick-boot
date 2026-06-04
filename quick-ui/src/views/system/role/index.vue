@@ -11,12 +11,14 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="system:role"
+      :export-query-normalizer="normalizeExportParams"
       :show-add-button="true"
       :show-edit-button="true"
       :show-import-button="true"
-      :import-function="importFunction"
+      import-biz-type="system:role"
       :import-template-function="importTemplateFunction"
+      import-error-file-name="role-import-error.xlsx"
       import-template-file-name="role-import-template.xlsx"
       :show-delete-button="true"
       :show-export-button="true"
@@ -201,10 +203,8 @@ import {
 import {
   addRole,
   cancelRoleUser,
-  exportRole,
   getRole,
   grantRoleUsers,
-  importRole,
   importRoleTemplate,
   listRole,
   listRoleAllocatedUsers,
@@ -414,21 +414,15 @@ function batchDeleteFunction(ids) {
   })
 }
 
-function exportFunction(searchParam) {
-  const req = { ...searchParam }
+function normalizeExportParams(raw) {
+  const req = { ...raw }
   const [beginTime, endTime] = req.createTimeRange || []
-  req.beginTime = beginTime
-  req.endTime = endTime
+  if (beginTime && endTime) {
+    req.beginTime = beginTime
+    req.endTime = endTime
+  }
   delete req.createTimeRange
-  return exportRole(req)
-}
-
-function importFunction(file, strategy) {
-  return importRole(file, strategy === 'overwrite').then((res) => {
-    tableRef.value?.refreshData()
-    const payload = res?.data ?? res
-    return payload || { total: 0, successCount: 0, failCount: 0 }
-  })
+  return req
 }
 
 function importTemplateFunction() {

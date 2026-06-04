@@ -26,6 +26,7 @@
 - [x] 4.3 配置主从路由：`/system/dict/type` 与 `/system/dict/data/:dictType`。
 - [x] 4.4 页面核心交互优先使用 `@/packages` 组件（`C7Button`、`C7Dialog`、`C7JsonTable`、`C7DictTag` 等）。
 - [x] 4.5 配置并校验权限点：`system:dict:list/query/add/edit/remove/export/refresh`。
+- [x] 4.6 字典类型/字典数据导入接入平台异步编排（`import-biz-type` + `import-force-async`，走 `ImportOrchestrator`）。
 
 ## 5. 测试与验收
 

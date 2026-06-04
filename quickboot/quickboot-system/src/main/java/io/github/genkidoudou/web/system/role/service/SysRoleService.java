@@ -130,6 +130,14 @@ public interface SysRoleService {
      */
     void export(SysRoleQueryBo query, HttpServletResponse response);
 
+    /** 按筛选条件统计可导出行数。 */
+    @DataPermission(tables = {"sys_role"})
+    long countExportRows(SysRoleQueryBo query);
+
+    /** 生成导出 Excel 字节（最多 {@code maxRows} 行）。 */
+    @DataPermission(tables = {"sys_role"})
+    byte[] exportExcelBytes(SysRoleQueryBo query, int maxRows);
+
     /**
      * 从 Excel 批量导入角色。
      *
@@ -138,4 +146,11 @@ public interface SysRoleService {
      * @return 导入统计与失败明细
      */
     ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException;
+
+    /**
+     * 导入单行角色（供平台导入编排调用）。
+     *
+     * @throws io.github.genkidoudou.common.excel.exception.ExcelDataCheckException 业务校验失败
+     */
+    void importRoleExcelRow(io.github.genkidoudou.web.system.role.dto.SysRoleImportExcelRow row, boolean updateSupport);
 }

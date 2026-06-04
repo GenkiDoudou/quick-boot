@@ -11,15 +11,17 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="system:user"
+      :export-query-normalizer="normalizeExportParams"
       :show-add-button="true"
       :show-edit-button="true"
       :show-delete-button="true"
       :show-export-button="true"
       :show-import-button="true"
-      :import-function="importFunction"
+      import-biz-type="system:user"
       :import-template-function="importTemplateFunction"
       import-template-file-name="user-import-template.xlsx"
+      import-error-file-name="user-import-error.xlsx"
       :on-add="openAdd"
       :on-edit="openEdit"
       :before-delete="beforeBatchDelete"
@@ -87,17 +89,13 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { saveAs } from 'file-saver'
 import AddOrUpdate from './add-or-update.vue'
 import {
   listUser,
   delUser,
   resetUserPwd,
   changeUserStatus,
-  exportUser,
-  importUser,
   importTemplate,
-  importError,
 } from '@/api/system/user'
 import { listTreeDept } from '@/api/system/dept'
 import { useDict } from '@/utils/dict'
@@ -237,63 +235,22 @@ function deleteOne(row) {
   })
 }
 
-function exportFunction(searchParam) {
-  const req = { ...searchParam }
+/** 导出 query 与列表筛选对齐（日期范围、空字段清理）。 */
+function normalizeExportParams(raw) {
+  const req = { ...raw }
   const [beginTime, endTime] = req.createTimeRange || []
   if (beginTime && endTime) {
     req.beginTime = beginTime
     req.endTime = endTime
   }
   delete req.createTimeRange
-  delete req.pageNum
-  delete req.pageSize
-  delete req.orderByColumn
-  delete req.isAsc
   if (req.deptId === '' || req.deptId === null) delete req.deptId
   if (req.status === '' || req.status === null) delete req.status
-  return exportUser(req).then(({ data, headers }) => {
-    const cd = headers['content-disposition'] || headers['Content-Disposition']
-    let filename = 'user-export.xlsx'
-    if (cd) {
-      const m = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(cd)
-      const raw = decodeURIComponent(m?.[1] || m?.[2] || '')
-      if (raw) filename = raw
-    }
-    saveAs(data, filename)
-  })
+  return req
 }
 
 function importTemplateFunction() {
   return importTemplate()
-}
-
-/**
- * 用户导入结果与字典/角色导入字段名不同，在此映射为 C7ExcelUpload 所需结构。
- * @param {File} file
- * @param {string} strategy overwrite | ignore
- */
-function importFunction(file, strategy) {
-  const updateSupport = strategy === 'overwrite'
-  return importUser(file, updateSupport).then((res) => {
-    const r = res?.data ?? res
-    const total = Number(r?.total ?? 0)
-    const successCount = Number(r?.success ?? r?.successCount ?? 0)
-    const failCount = Number(r?.failure ?? r?.failCount ?? 0)
-    const errorKey = r?.errorKey
-    if (failCount > 0 && errorKey) {
-      nextTick(() => {
-        ElMessageBox.confirm('存在失败行，是否下载失败明细？', '提示', { type: 'info' })
-          .then(() =>
-            importError(errorKey).then((blob) => {
-              saveAs(blob, 'user-import-error.xlsx')
-            }),
-          )
-          .catch(() => {})
-      })
-    }
-    tableRef.value?.refreshData()
-    return { total, successCount, failCount, errorFileName: '', errorFileBase64: '' }
-  })
 }
 
 function handleResetPwd(row) {

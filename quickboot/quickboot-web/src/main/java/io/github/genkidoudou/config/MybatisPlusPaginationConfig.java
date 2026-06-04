@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 
+import io.github.genkidoudou.common.monitor.slowsql.SlowSqlMapperIdInnerInterceptor;
 import io.github.genkidoudou.web.system.user.datascope.DataPermissionInnerInterceptor;
 
 import org.springframework.context.annotation.Bean;
@@ -39,13 +40,13 @@ public class MybatisPlusPaginationConfig {
     @Bean
 
     public MybatisPlusInterceptor mybatisPlusInterceptor(
-
-            DataPermissionInnerInterceptor dataPermissionInnerInterceptor) {
+            DataPermissionInnerInterceptor dataPermissionInnerInterceptor,
+            SlowSqlMapperIdInnerInterceptor slowSqlMapperIdInnerInterceptor) {
 
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
         interceptor.addInnerInterceptor(dataPermissionInnerInterceptor);
-
+        interceptor.addInnerInterceptor(slowSqlMapperIdInnerInterceptor);
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
 
         return interceptor;

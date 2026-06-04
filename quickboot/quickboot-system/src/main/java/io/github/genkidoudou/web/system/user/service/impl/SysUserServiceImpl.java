@@ -2,7 +2,6 @@ package io.github.genkidoudou.web.system.user.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -11,10 +10,14 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.file.FileTemplate;
+import io.github.genkidoudou.common.importtask.QcImportProperties;
 import io.github.genkidoudou.common.security.firewall.password.PasswordCodec;
 import io.github.genkidoudou.web.system.dept.DeptSubtreeHelper;
 import io.github.genkidoudou.web.system.dept.domain.SysDept;
 import io.github.genkidoudou.web.system.dept.mapper.SysDeptMapper;
+import io.github.genkidoudou.web.system.file.domain.SysFile;
+import io.github.genkidoudou.web.system.file.mapper.SysFileMapper;
 import io.github.genkidoudou.web.system.menu.domain.SysRole;
 import io.github.genkidoudou.web.system.menu.domain.SysUserRole;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMapper;
@@ -54,7 +57,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -66,26 +68,15 @@ public class SysUserServiceImpl implements SysUserService {
     /** 内置超级管理员用户主键（与 Flyway 种子一致）。 */
     public static final long ADMIN_USER_ID = 1L;
 
-    private static final long IMPORT_ERROR_TTL_MS = 15L * 60L * 1000L;
-
     private final SysUserMapper userMapper;
     private final SysDeptMapper deptMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysRoleMapper roleMapper;
     private final PasswordCodec passwordCodec;
     private final SysUserRoleBindService userRoleBindService;
-
-    private final ConcurrentHashMap<String, CachedExport> importErrorCache = new ConcurrentHashMap<>();
-
-    private static final class CachedExport {
-        private final byte[] bytes;
-        private final long expireAtEpochMs;
-
-        private CachedExport(byte[] bytes, long expireAtEpochMs) {
-            this.bytes = bytes;
-            this.expireAtEpochMs = expireAtEpochMs;
-        }
-    }
+    private final FileTemplate fileTemplate;
+    private final SysFileMapper sysFileMapper;
+    private final QcImportProperties importProperties;
 
     public SysUserServiceImpl(
             SysUserMapper userMapper,
@@ -93,13 +84,19 @@ public class SysUserServiceImpl implements SysUserService {
             SysUserRoleMapper userRoleMapper,
             SysRoleMapper roleMapper,
             PasswordCodec passwordCodec,
-            SysUserRoleBindService userRoleBindService) {
+            SysUserRoleBindService userRoleBindService,
+            FileTemplate fileTemplate,
+            SysFileMapper sysFileMapper,
+            QcImportProperties importProperties) {
         this.userMapper = userMapper;
         this.deptMapper = deptMapper;
         this.userRoleMapper = userRoleMapper;
         this.roleMapper = roleMapper;
         this.passwordCodec = passwordCodec;
         this.userRoleBindService = userRoleBindService;
+        this.fileTemplate = fileTemplate;
+        this.sysFileMapper = sysFileMapper;
+        this.importProperties = importProperties;
     }
 
     @DataPermission(tables = "sys_user")
@@ -364,51 +361,74 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
+    public void importExcelRow(SysUserImportExcelRow row, boolean updateSupport) {
+        assertLoginUserHasDeptForMutatingUser();
+        Map<String, SysRole> roleByKey = loadActiveRolesByKey();
+        processImportRow(row, updateSupport, roleByKey);
+    }
+
+    @Override
+    public Map<String, SysRole> loadActiveRolesByKeyForImport() {
+        return loadActiveRolesByKey();
+    }
+
+    @Override
     public UserImportResultVo importData(MultipartFile file, boolean updateSupport) {
         assertLoginUserHasDeptForMutatingUser();
         if (file == null || file.isEmpty()) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "导入文件不能为空");
         }
-        List<SysUserImportExcelRow> rows;
-        try {
-            rows = ExcelUtils.importExcel(file.getInputStream(), SysUserImportExcelRow.class);
-        } catch (Exception e) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "解析 Excel 失败：" + e.getMessage());
-        }
         UserImportResultVo vo = new UserImportResultVo();
-        vo.setTotal(rows.size());
-        int ok = 0;
+        int[] successHolder = {0};
         List<SysUserImportFailRow> failRows = new ArrayList<>();
         List<String> failMsgs = new ArrayList<>();
         Map<String, SysRole> roleByKey = loadActiveRolesByKey();
-        for (int i = 0; i < rows.size(); i++) {
-            SysUserImportExcelRow row = rows.get(i);
-            int lineNo = i + 2;
-            try {
-                processImportRow(row, updateSupport, roleByKey);
-                ok++;
-            } catch (WarningException ex) {
-                failRows.add(new SysUserImportFailRow(StrUtil.nullToEmpty(row.getUserName()), ex.getMsg()));
-                if (failMsgs.size() < 30) {
-                    failMsgs.add("第" + lineNo + "行：" + ex.getMsg());
+        try {
+            ExcelUtils.importExcel(file.getInputStream(), SysUserImportExcelRow.class, (row, context) -> {
+                int lineNo = context.readRowHolder().getRowIndex() + 1;
+                try {
+                    processImportRow(row, updateSupport, roleByKey);
+                    successHolder[0]++;
+                } catch (WarningException ex) {
+                    recordImportFailure(row, lineNo, ex.getMsg(), failRows, failMsgs);
+                } catch (RuntimeException ex) {
+                    recordImportFailure(row, lineNo, ex.getMessage(), failRows, failMsgs);
                 }
-            } catch (RuntimeException ex) {
-                failRows.add(new SysUserImportFailRow(StrUtil.nullToEmpty(row.getUserName()), ex.getMessage()));
-                if (failMsgs.size() < 30) {
-                    failMsgs.add("第" + lineNo + "行：" + ex.getMessage());
-                }
-            }
+            }, (rows, context) -> {
+            });
+        } catch (Exception e) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "解析 Excel 失败：" + e.getMessage());
         }
-        vo.setSuccess(ok);
-        vo.setFailure(failRows.size());
+        int fail = failRows.size();
+        vo.setTotal(successHolder[0] + fail);
+        vo.setSuccess(successHolder[0]);
+        vo.setFailure(fail);
         vo.setFailureMessages(failMsgs);
         if (!failRows.isEmpty()) {
             byte[] bytes = ExcelUtils.writeBytes("失败明细", SysUserImportFailRow.class, failRows);
-            String key = IdUtil.fastSimpleUUID();
-            importErrorCache.put(key, new CachedExport(bytes, System.currentTimeMillis() + IMPORT_ERROR_TTL_MS));
-            vo.setErrorKey(key);
+            Long fileId = uploadImportErrorFile(bytes);
+            vo.setErrorKey("file:" + fileId);
         }
         return vo;
+    }
+
+    private static void recordImportFailure(SysUserImportExcelRow row, int lineNo, String msg,
+                                            List<SysUserImportFailRow> failRows, List<String> failMsgs) {
+        failRows.add(new SysUserImportFailRow(StrUtil.nullToEmpty(row.getUserName()), msg));
+        if (failMsgs.size() < 30) {
+            failMsgs.add("第" + lineNo + "行：" + msg);
+        }
+    }
+
+    private Long uploadImportErrorFile(byte[] bytes) {
+        String filename = "user-import-error.xlsx";
+        String relativePath = fileTemplate.upload(bytes, filename, importProperties.getErrorClassify());
+        SysFile row = sysFileMapper.selectOne(Wrappers.<SysFile>lambdaQuery()
+            .eq(SysFile::getRelativePath, relativePath).last("LIMIT 1"));
+        if (row == null) {
+            throw new WarningException(ErrorCodes.System.INTERNAL_ERROR, "失败明细文件登记缺失");
+        }
+        return row.getFileId();
     }
 
     private void processImportRow(SysUserImportExcelRow row, boolean updateSupport, Map<String, SysRole> roleByKey) {
@@ -507,25 +527,40 @@ public class SysUserServiceImpl implements SysUserService {
         if (StrUtil.isBlank(errorKey)) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "errorKey 不能为空");
         }
-        CachedExport cached = importErrorCache.remove(errorKey);
-        if (cached == null || System.currentTimeMillis() > cached.expireAtEpochMs) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "失败明细已过期或不存在");
+        if (errorKey.startsWith("file:")) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM,
+                "请使用文件管理下载（errorKey 以 file: 开头时由 Controller 直接输出）");
         }
-        try {
-            ExcelUtils.setAttachmentResponseHeader(response, "user-import-error.xlsx");
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8");
-            response.getOutputStream().write(cached.bytes);
-        } catch (Exception e) {
-            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "输出失败明细异常：" + e.getMessage());
-        }
+        throw new WarningException(ErrorCodes.Common.INVALID_PARAM,
+            "内存失败明细已废弃，请重新导入；失败文件请使用导入结果中的 file: 文件 ID 或导入导出中心下载");
     }
 
     @Override
     public void export(SysUserQueryBo query, HttpServletResponse response) {
+        List<SysUserExcelRow> rows = loadUserExcelRows(query, Integer.MAX_VALUE);
+        ExcelUtils.exportExcel(rows, "sys-user", SysUserExcelRow.class, response);
+    }
+
+    @Override
+    public long countExportRows(SysUserQueryBo query) {
+        LocalDateTime begin = parseBeginTime(query.getBeginTime());
+        LocalDateTime end = parseEndTime(query.getEndTime());
+        Long c = userMapper.selectCount(buildUserQueryWrapper(query, begin, end));
+        return c == null ? 0L : c;
+    }
+
+    @Override
+    public byte[] exportExcelBytes(SysUserQueryBo query, int maxRows) {
+        List<SysUserExcelRow> rows = loadUserExcelRows(query, maxRows);
+        return ExcelUtils.writeBytes("sys-user", SysUserExcelRow.class, rows);
+    }
+
+    private List<SysUserExcelRow> loadUserExcelRows(SysUserQueryBo query, int maxRows) {
         LocalDateTime begin = parseBeginTime(query.getBeginTime());
         LocalDateTime end = parseEndTime(query.getEndTime());
         LambdaQueryWrapper<SysUser> w = buildUserQueryWrapper(query, begin, end).orderByAsc(SysUser::getUserId);
-        List<SysUser> users = userMapper.selectList(w);
+        int limit = Math.max(1, maxRows);
+        List<SysUser> users = userMapper.selectList(w.last("LIMIT " + limit));
         Map<Long, String> roleNamesMap = loadRoleNamesByUserIds(users.stream().map(SysUser::getUserId).toList());
         Set<Long> deptIds = users.stream().map(SysUser::getDeptId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, String> deptNameMap = new HashMap<>();
@@ -552,7 +587,7 @@ public class SysUserServiceImpl implements SysUserService {
             er.setCreateTime(u.getCreateTime());
             out.add(er);
         }
-        ExcelUtils.exportExcel(out, "sys-user", SysUserExcelRow.class, response);
+        return out;
     }
 
     private void assertUserNameUnique(String userName, Long excludeUserId) {

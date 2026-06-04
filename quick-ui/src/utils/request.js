@@ -158,6 +158,11 @@ service.interceptors.response.use(async (res) => {
                     if (code === 401) {
                         return handleUnauthorized(json.msg || '登录状态已过期，请重新登录')
                     }
+                    if (code !== 200) {
+                        const errMsg = errorCode[String(code)] || json.msg || errorCode['default'] || '导出失败'
+                        ElMessage.error(errMsg)
+                        return Promise.reject(new Error(errMsg))
+                    }
                 } catch (e) {
                     // ignore: 保持原有 blob 返回行为
                 }
@@ -264,6 +269,28 @@ export function download(url, params, filename, config) {
         console.error(r)
         ElMessage.error('下载文件出现错误，请联系管理员！')
         downloadLoadingInstance.close();
+    })
+}
+
+/** Excel 导入专用请求（默认 120s，不修改全局 10s）。生产 nginx 建议 proxy_read_timeout ≥ 120s。 */
+const IMPORT_DEFAULT_TIMEOUT_MS = 120000
+
+/**
+ * @param {import('axios').AxiosRequestConfig} config
+ * @returns {Promise<any>}
+ */
+export function importRequest(config) {
+    return service({
+        timeout: IMPORT_DEFAULT_TIMEOUT_MS,
+        ...config
+    })
+}
+
+/** Excel 导出编排请求（默认 120s）。 */
+export function exportRequest(config) {
+    return service({
+        timeout: IMPORT_DEFAULT_TIMEOUT_MS,
+        ...config
     })
 }
 

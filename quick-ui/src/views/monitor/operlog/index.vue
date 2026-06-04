@@ -11,7 +11,8 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="monitor:operlog"
+      :export-query-normalizer="normalizeListParams"
       :show-add-button="false"
       :show-edit-button="false"
       :show-delete-button="true"
@@ -58,7 +59,7 @@
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { cleanOperlog, exportOperlog, getOperlog, listOperlog, removeOperlog } from '@/api/monitor/operlog'
+import { cleanOperlog, getOperlog, listOperlog, removeOperlog } from '@/api/monitor/operlog'
 import OperLogDetailPanel from './OperLogDetailPanel.vue'
 import { formatOperTime } from './operLogFormat'
 
@@ -169,16 +170,6 @@ function listFunction(params) {
 
 function batchDeleteFunction(ids) {
   return removeOperlog(ids || [])
-}
-
-/**
- * 导出由 C7ExcelDownload 根据返回值触发下载，须返回 Blob 或 { data, headers }。
- */
-function exportFunction(searchParam) {
-  const req = normalizeListParams({ ...searchParam })
-  delete req.pageNum
-  delete req.pageSize
-  return exportOperlog(req)
 }
 
 function handleClean(refreshData) {

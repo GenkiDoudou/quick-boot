@@ -3,6 +3,9 @@
     <C7JsonTable
       ref="tableRef"
       row-key="configId"
+      export-default-file-name="config-export.xlsx"
+      export-biz-type="system:config"
+      :export-query-normalizer="normalizeExportParams"
       :show-index="false"
       :show-selection="true"
       :list-function="listFunction"
@@ -10,7 +13,6 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
       :show-add-button="true"
       :add-button-permi="['system:config:add']"
       :show-edit-button="true"
@@ -76,7 +78,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { addConfig, exportConfig, listConfig, refreshConfigCache, removeConfig, updateConfig } from '@/api/system/config'
+import { addConfig, listConfig, refreshConfigCache, removeConfig, updateConfig } from '@/api/system/config'
 
 defineOptions({ name: 'SysConfig' })
 
@@ -203,13 +205,15 @@ function batchDeleteFunction(ids) {
   })
 }
 
-function exportFunction(searchParam) {
-  const req = { ...searchParam }
+function normalizeExportParams(raw) {
+  const req = { ...raw }
   const [beginTime, endTime] = req.createTimeRange || []
-  req.beginTime = beginTime
-  req.endTime = endTime
+  if (beginTime && endTime) {
+    req.beginTime = beginTime
+    req.endTime = endTime
+  }
   delete req.createTimeRange
-  return exportConfig(req)
+  return req
 }
 
 function handleRefreshCache() {

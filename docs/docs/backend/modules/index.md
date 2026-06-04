@@ -42,8 +42,18 @@
 | 操作日志 | `SysOperLogController` | AOP 采集、查询、导出 |
 | 登录日志 | `SysLogininforController` | 登录成功/失败记录 |
 | 在线用户 | `SysUserOnlineController` | 会话列表、强退 |
+| 慢 SQL | `SysSlowSqlController` | JDBC 慢 SQL 采集与查询 |
+| 全链路监控 | `SysTraceChainController` | 前后端链路聚合图 |
 | 定时任务 | `SysJobController` | Quartz 任务 CRUD、启停、立即执行 |
 | 任务日志 | `SysJobLogController` | 执行历史 |
+
+## 文件与导入导出（`web.system`）
+
+| 模块 | Controller | 说明 |
+|------|------------|------|
+| 文件管理 | `SysFileController` | 上传登记、预览、下载 |
+| 导入任务 | `ImportTaskController` | `/import/submit`、任务查询 |
+| 导出任务 | `ExportTaskController` | `/export/submit`、任务查询 |
 
 ## 开发工具（`web.tool`）
 
@@ -88,6 +98,10 @@
 | V19–V22 | sys_job, quartz | 定时任务与 Quartz 修正 |
 | V23–V24 | dict_menu, online_menu | 字典、在线用户菜单 |
 | V25–V31 | oauth2_* | OAuth2 表、菜单、quick-ui 客户端、API 路径授权、签名校验 |
+| V50 | sys_file_management | 文件管理表与菜单 |
+| V51 | sys_slow_sql | 慢 SQL 表与菜单 |
+| V54 | sys_trace_chain_menu | 全链路监控菜单 |
+| V55–V56 | sys_import/export_task | 导入导出任务表与中心菜单 |
 
 脚本路径：`quickboot-web/src/main/resources/db/migration/`。
 
@@ -101,6 +115,10 @@
 | [权限管理](./permission-management) | 菜单、角色、数据权限 |
 | [系统配置](./system-management) | 部门、字典、参数、公告 |
 | [监控审计](./monitor-audit) | 操作/登录日志、在线用户 |
+| [慢 SQL 日志](./slow-sql) | Druid 采集与查询 |
+| [全链路监控](./trace-chain) | 链路聚合 Network 视图 |
+| [文件管理](./file-management) | 上传文件统一登记 |
+| [导入导出中心](./import-export-center) | 异步 Excel 导入/导出 |
 | [定时任务](./job-scheduler) | Quartz |
 | [代码生成](./codegen) | 表导入与 ZIP 生成 |
 | [安全防护](./security-module) | Web 防火墙 |

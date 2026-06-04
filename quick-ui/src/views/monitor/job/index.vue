@@ -11,7 +11,7 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="monitor:job"
       :show-add-button="true"
       :show-edit-button="true"
       :show-delete-button="true"
@@ -54,10 +54,8 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { saveAs } from 'file-saver'
 import {
   changeJobStatus,
-  exportJob,
   listJob,
   removeJob,
   runJob,
@@ -136,22 +134,6 @@ function listFunction(params) {
 
 function batchDeleteFunction(ids) {
   return removeJob(ids || [])
-}
-
-function exportFunction(searchParam) {
-  const req = { ...searchParam }
-  delete req.pageNum
-  delete req.pageSize
-  return exportJob(req).then(({ data, headers }) => {
-    const cd = headers['content-disposition'] || headers['Content-Disposition']
-    let filename = 'job-export.xlsx'
-    if (cd) {
-      const m = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(cd)
-      const raw = decodeURIComponent(m?.[1] || m?.[2] || '')
-      if (raw) filename = raw
-    }
-    saveAs(data, filename)
-  })
 }
 
 function refresh() {

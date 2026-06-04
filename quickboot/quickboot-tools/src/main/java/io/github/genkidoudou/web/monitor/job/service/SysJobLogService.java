@@ -24,4 +24,8 @@ public interface SysJobLogService {
     void cleanAll();
 
     void export(SysJobLogQueryBo query, HttpServletResponse response);
+
+    long countExportRows(SysJobLogQueryBo query);
+
+    byte[] exportExcelBytes(SysJobLogQueryBo query, int maxRows);
 }

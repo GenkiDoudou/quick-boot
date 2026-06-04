@@ -105,6 +105,21 @@ public interface SysUserService {
     UserImportResultVo importData(MultipartFile file, boolean updateSupport);
 
     /**
+     * 导入单行用户（供平台导入编排调用）。
+     *
+     * @param row           Excel 行
+     * @param updateSupport 是否更新已存在用户
+     * @throws io.github.genkidoudou.common.exception.WarningException 校验或落库失败
+     */
+    @DataPermission(tables = {"sys_user"})
+    void importExcelRow(io.github.genkidoudou.web.system.user.dto.SysUserImportExcelRow row, boolean updateSupport);
+
+    /**
+     * 预加载有效角色 Map（roleKey → 角色），供批量导入复用。
+     */
+    java.util.Map<String, io.github.genkidoudou.web.system.menu.domain.SysRole> loadActiveRolesByKeyForImport();
+
+    /**
      * 下载导入模板。
      *
      * @param response HTTP 响应
@@ -127,4 +142,12 @@ public interface SysUserService {
      */
     @DataPermission(tables = {"sys_user"})
     void export(SysUserQueryBo query, HttpServletResponse response);
+
+    /** 按筛选条件统计可导出行数。 */
+    @DataPermission(tables = {"sys_user"})
+    long countExportRows(SysUserQueryBo query);
+
+    /** 生成导出 Excel 字节（最多 {@code maxRows} 行）。 */
+    @DataPermission(tables = {"sys_user"})
+    byte[] exportExcelBytes(SysUserQueryBo query, int maxRows);
 }

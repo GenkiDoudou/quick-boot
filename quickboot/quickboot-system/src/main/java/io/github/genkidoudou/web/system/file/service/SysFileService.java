@@ -25,6 +25,11 @@ public interface SysFileService {
     SysFileUploadVo upload(MultipartFile file, String classify);
 
     /**
+     * 上传字节内容并返回登记记录（用于导入失败明细等程序生成文件）。
+     */
+    SysFileUploadVo uploadBytes(byte[] content, String filename, String classify);
+
+    /**
      * 按相对路径读取文件流（须为已登记且未删除的文件），供浏览器 inline 预览。
      *
      * @param relativePath 存储相对路径

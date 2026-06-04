@@ -16,6 +16,9 @@ spring:
       web-stat-filter:
         enabled: false
       filter:
+        stat:
+          log-slow-sql: true
+          slow-sql-millis: 3000
         wall:
           enabled: true
           config:
@@ -59,6 +62,8 @@ qc:
   monitor:
     operlog:
       print: false
+    slow-sql:
+      threshold-ms: 2
 
 sa-token:
   is-log: false

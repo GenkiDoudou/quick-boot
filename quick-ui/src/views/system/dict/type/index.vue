@@ -3,6 +3,8 @@
     <C7JsonTable
       ref="tableRef"
       row-key="dictId"
+      export-default-file-name="dict-type-export.xlsx"
+      export-biz-type="system:dict:type"
       :show-index="false"
       :show-selection="true"
       :list-function="listFunction"
@@ -10,7 +12,6 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
       :show-add-button="true"
       :show-edit-button="true"
       :show-delete-button="true"
@@ -18,9 +19,11 @@
       :show-import-button="true"
       :on-add="openAdd"
       :on-edit="openEdit"
-      :import-function="importFunction"
+      import-biz-type="system:dict:type"
+      :import-force-async="true"
       :import-template-function="importTemplateFunction"
       import-template-file-name="dict-type-template.xlsx"
+      import-error-file-name="dict-type-import-error.xlsx"
       :check-delete-success="() => true"
       rows-key="data.records"
       total-key="data.total"
@@ -55,7 +58,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { addType, exportType, importType, importTypeTemplate, listType, refreshAllType, removeType, updateType } from '@/api/system/dict/type'
+import { addType, importTypeTemplate, listType, refreshAllType, removeType, updateType } from '@/api/system/dict/type'
 
 defineOptions({ name: 'DictType' })
 
@@ -141,17 +144,6 @@ function removeRow(row) {
 
 function batchDeleteFunction(ids) {
   return Promise.all((ids || []).map((id) => removeType(id)))
-}
-
-function exportFunction(searchParam) {
-  return exportType(searchParam)
-}
-
-function importFunction(file, strategy) {
-  return importType(file, strategy === 'overwrite').then((res) => {
-    tableRef.value?.refreshData()
-    return res?.data || res || { total: 0, successCount: 0, failCount: 0 }
-  })
 }
 
 function importTemplateFunction() {

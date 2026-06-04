@@ -46,7 +46,8 @@ spring:
         stat:
           enabled: true
           merge-sql: true
-          slow-sql-millis: 5000
+          log-slow-sql: true
+          slow-sql-millis: 2000
         wall:
           config:
             multi-statement-allow: true
@@ -162,6 +163,13 @@ qc:
       export-max-rows: 10000
     job:
       export-max-rows: 10000
+    slow-sql:
+      capture-enabled: true
+      threshold-ms: 1000
+      log-enabled: true
+      async-enabled: true
+      export-max-rows: 10000
+      max-sql-length: 4000
   security:
     web:
       # 额外匿名路径（生产保持空；开发见 application-dev.yml）
@@ -290,6 +298,39 @@ qc:
         limit-count: 3
         limit-ext: png,jpg,jpeg,webp
         anonymous:  false
+      - classify: import-source
+        limit-size: 100MB
+        limit-count: 1
+        limit-ext: xls,xlsx
+        anonymous:  false
+      - classify: import-error
+        limit-size: 50MB
+        limit-count: 1
+        limit-ext: xls,xlsx
+        anonymous:  false
+      - classify: export-result
+        limit-size: 100MB
+        limit-count: 1
+        limit-ext: xls,xlsx
+        anonymous:  false
+  import:
+    enabled: true
+    sync-max-rows: 500
+    sync-max-rows-cap: 2000
+    sync-timeout-seconds: 120
+    async-max-concurrent: 3
+    staging-batch-size: 200
+    file-retention-days: 7
+    source-classify: import-source
+    error-classify: import-error
+  export:
+    enabled: true
+    sync-max-rows: 500
+    sync-max-rows-cap: 5000
+    sync-timeout-seconds: 120
+    async-max-concurrent: 3
+    async-max-rows: 50000
+    result-classify: export-result
 
 
 # Actuator 最小暴露

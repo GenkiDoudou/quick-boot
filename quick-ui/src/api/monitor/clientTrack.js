@@ -29,7 +29,7 @@ export function listClientTrack(query) {
 }
 
 /**
- * 管理端：行为轨迹聚合（页面跳转 + 操作树，最多 500 批）。
+ * 管理端：行为轨迹概览（页面跳转链，不含事件明细，最多 500 批）。
  *
  * @param {{ browserVisitId?: string, sessionId?: string, userName?: string, beginDate?: string, endDate?: string }} query
  * @returns {Promise<{ data: Record<string, unknown> }>}
@@ -37,6 +37,20 @@ export function listClientTrack(query) {
 export function getClientTrackTimeline(query) {
   return request({
     url: '/monitor/clientTrack/timeline',
+    method: 'get',
+    params: query
+  })
+}
+
+/**
+ * 管理端：行为轨迹单页明细（操作批与事件，点击页面后懒加载）。
+ *
+ * @param {{ browserVisitId?: string, sessionId?: string, userName?: string, beginDate?: string, endDate?: string, pageVisitId?: string, pagePath?: string }} query
+ * @returns {Promise<{ data: Record<string, unknown> }>}
+ */
+export function getClientTrackTimelinePage(query) {
+  return request({
+    url: '/monitor/clientTrack/timeline/page',
     method: 'get',
     params: query
   })

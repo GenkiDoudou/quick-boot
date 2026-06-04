@@ -15,6 +15,7 @@ import io.github.genkidoudou.web.system.dict.data.service.DictDataService;
 import io.github.genkidoudou.web.system.dict.type.domain.SysDictType;
 import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeBo;
 import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeExcelRow;
+import io.github.genkidoudou.web.system.dict.type.dto.SysDictTypeQueryBo;
 import io.github.genkidoudou.web.system.dict.type.mapper.SysDictTypeMapper;
 import io.github.genkidoudou.web.system.dict.type.service.DictTypeService;
 import org.springframework.stereotype.Service;
@@ -91,6 +92,34 @@ public class DictTypeServiceImpl implements DictTypeService {
   }
 
   @Override
+  public long countExportRows(SysDictTypeQueryBo query) {
+    Long c = mapper.selectCount(buildExportWrapper(query));
+    return c == null ? 0L : c;
+  }
+
+  @Override
+  public byte[] exportExcelBytes(SysDictTypeQueryBo query, int maxRows) {
+    int limit = Math.max(1, maxRows);
+    List<SysDictType> rows = mapper.selectList(buildExportWrapper(query).orderByAsc(SysDictType::getDictId)
+      .last("LIMIT " + limit));
+    List<SysDictTypeExcelRow> exportRows = new ArrayList<>(rows.size());
+    for (SysDictType row : rows) {
+      exportRows.add(BeanUtil.copyProperties(row, SysDictTypeExcelRow.class));
+    }
+    return ExcelUtils.writeBytes("dict-type", SysDictTypeExcelRow.class, exportRows);
+  }
+
+  private LambdaQueryWrapper<SysDictType> buildExportWrapper(SysDictTypeQueryBo query) {
+    String dictName = query == null ? null : query.getDictName();
+    String dictType = query == null ? null : query.getDictType();
+    String status = query == null ? null : query.getStatus();
+    return Wrappers.<SysDictType>lambdaQuery()
+      .like(StrUtil.isNotBlank(dictName), SysDictType::getDictName, dictName)
+      .like(StrUtil.isNotBlank(dictType), SysDictType::getDictType, dictType)
+      .eq(StrUtil.isNotBlank(status), SysDictType::getStatus, status);
+  }
+
+  @Override
   public void refreshAllCache() {
     dictDataService.refreshAllCache();
   }
@@ -101,39 +130,40 @@ public class DictTypeServiceImpl implements DictTypeService {
   }
 
   @Override
-  @Transactional(rollbackFor = Exception.class)
   public ExcelImportResult importData(MultipartFile file, boolean updateSupport) throws IOException {
-
-
     ExcelResult<SysDictTypeExcelRow> readResult = ExcelUtils.importExcel(file.getInputStream(), SysDictTypeExcelRow.class, (row, context) -> {
-      if (isBlankRow(row)) {
-        return;
-      }
-
-      String dictType = StrUtil.trim(row.getDictType());
-      if (StrUtil.isBlank(dictType)) {
-        throw new ExcelDataCheckException("字典类型不能为空");
-      }
-      SysDictType existed = mapper.selectOne(new LambdaQueryWrapper<SysDictType>()
-        .eq(SysDictType::getDictType, dictType), false);
-
-      if (existed != null) {
-        if (!updateSupport) {
-          throw new ExcelDataCheckException("字典类型重复");
-        }
-        BeanUtil.copyProperties(row, existed);
-        existed.setDictType(dictType);
-        existed.setStatus(normalizeStatus(existed.getStatus()));
-        mapper.updateById(existed);
-      } else {
-        SysDictType entity = BeanUtil.copyProperties(row, SysDictType.class);
-        entity.setDictType(dictType);
-        entity.setStatus(normalizeStatus(entity.getStatus()));
-        mapper.insert(entity);
-      }
+      importDictTypeExcelRow(row, updateSupport);
     }, (rows, context) -> {
     });
     return ExcelImportResult.build(readResult);
+  }
+
+  @Override
+  public void importDictTypeExcelRow(SysDictTypeExcelRow row, boolean updateSupport) {
+    if (isBlankRow(row)) {
+      return;
+    }
+    String dictType = StrUtil.trim(row.getDictType());
+    if (StrUtil.isBlank(dictType)) {
+      throw new ExcelDataCheckException("字典类型不能为空");
+    }
+    SysDictType existed = mapper.selectOne(new LambdaQueryWrapper<SysDictType>()
+      .eq(SysDictType::getDictType, dictType), false);
+
+    if (existed != null) {
+      if (!updateSupport) {
+        throw new ExcelDataCheckException("字典类型重复");
+      }
+      BeanUtil.copyProperties(row, existed);
+      existed.setDictType(dictType);
+      existed.setStatus(normalizeStatus(existed.getStatus()));
+      mapper.updateById(existed);
+    } else {
+      SysDictType entity = BeanUtil.copyProperties(row, SysDictType.class);
+      entity.setDictType(dictType);
+      entity.setStatus(normalizeStatus(entity.getStatus()));
+      mapper.insert(entity);
+    }
   }
 
   private void checkUnique(String dictType, Long excludeId) {

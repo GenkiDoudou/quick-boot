@@ -11,7 +11,8 @@
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
       :delete-function="batchDeleteFunction"
-      :export-function="exportFunction"
+      export-biz-type="monitor:logininfor"
+      :export-query-normalizer="normalizeListParams"
       :show-add-button="false"
       :show-edit-button="false"
       :show-delete-button="true"
@@ -50,8 +51,7 @@
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
-import { cleanLogininfor, exportLogininfor, listLogininfor, removeLogininfor, unlockLogininfor } from '@/api/monitor/logininfor'
-import { saveAs } from 'file-saver'
+import { cleanLogininfor, listLogininfor, removeLogininfor, unlockLogininfor } from '@/api/monitor/logininfor'
 
 /**
  * 登录日志：查询、导出、批量删除、清空、按选中用户解锁。
@@ -124,22 +124,6 @@ function listFunction(params) {
 
 function batchDeleteFunction(ids) {
   return removeLogininfor(ids || [])
-}
-
-function exportFunction(searchParam) {
-  const req = normalizeListParams({ ...searchParam })
-  delete req.pageNum
-  delete req.pageSize
-  return exportLogininfor(req).then(({ data, headers }) => {
-    const cd = headers['content-disposition'] || headers['Content-Disposition']
-    let filename = 'logininfor-export.xlsx'
-    if (cd) {
-      const m = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(cd)
-      const raw = decodeURIComponent(m?.[1] || m?.[2] || '')
-      if (raw) filename = raw
-    }
-    saveAs(data, filename)
-  })
 }
 
 function handleClean(refreshData) {

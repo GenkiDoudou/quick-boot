@@ -49,6 +49,7 @@ public class OperLogProperties {
         p.add("/swagger-resources/**");
         p.add("/favicon.ico");
         p.add("/monitor/operlog/**");
+        p.add("/monitor/slowSql/**");
         return p;
     }
 }

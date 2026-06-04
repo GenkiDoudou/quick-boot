@@ -29,6 +29,16 @@ public interface SysLogininforService {
     void export(SysLogininforQueryBo query, HttpServletResponse response);
 
     /**
+     * 按当前筛选条件统计可导出行数（不分页）。
+     */
+    long countExportRows(SysLogininforQueryBo query);
+
+    /**
+     * 生成导出 Excel 字节（最多 {@code maxRows} 行）。
+     */
+    byte[] exportExcelBytes(SysLogininforQueryBo query, int maxRows);
+
+    /**
      * 批量删除。
      *
      * @param infoIds 主键集合

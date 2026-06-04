@@ -149,9 +149,14 @@
           :upload-fn="importUploadFn"
           :template-download-fn="importTemplateFunction"
           :template-file-name="importTemplateFileName"
+          :sync-max-rows="importSyncMaxRows"
+          :sync-max-rows-hint="importSyncMaxRows ?? 500"
+          :force-async="importForceAsync"
+          :error-file-name="importErrorFileName"
           @success="onImportSuccess"
           @error="onImportError"
           @cancel="onImportCancel"
+          @async-submitted="onImportAsyncSubmitted"
       />
     </el-dialog>
 
@@ -221,6 +226,15 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 import {checkPermission} from '@/directive/permission/permissionUtils'
 import useUserStore from '@/store/modules/user'
+import {
+  createBizImportFunction,
+  IMPORT_EXPORT_CENTER_PATH,
+  mapImportPayload,
+  promptAsyncImportSubmitted,
+  promptImportErrorDownload,
+} from '@/utils/excelImport'
+import {runPlatformExport} from '@/utils/excelExport'
+import {useRouter} from 'vue-router'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
@@ -315,10 +329,26 @@ const props = defineProps({
   onAdd: {type: Function, default: undefined},
   onEdit: {type: Function, default: undefined},
   importFunction: {type: Function, default: undefined},
+  /** 平台导入 bizType（如 system:user）；设置后优先于 importFunction */
+  importBizType: {type: String, default: ''},
+  /** 返回 contextJson 对象（如字典数据页提供 dictType） */
+  importContextProvider: {type: Function, default: undefined},
   importDialogTitle: {type: String, default: '导入数据'},
   importMaxSizeMb: {type: Number, default: 10},
   importTemplateFunction: {type: Function, default: undefined},
   importTemplateFileName: {type: String, default: 'import-template.xlsx'},
+  /** 同步导入失败明细默认文件名（fileId / errorKey 下载） */
+  importErrorFileName: {type: String, default: 'import-error.xlsx'},
+  /** 按 errorKey 下载失败明细（如用户模块 /system/user/importError） */
+  importErrorDownloadFn: {type: Function, default: undefined},
+  /** 传给后端的 syncMaxRows（覆盖全局默认） */
+  importSyncMaxRows: {type: Number, default: undefined},
+  /** 强制走异步导入 */
+  importForceAsync: {type: Boolean, default: false},
+  /** 平台导出 bizType（如 monitor:logininfor）；设置后走 /export/submit */
+  exportBizType: {type: String, default: ''},
+  /** 导出前规范化查询参数（如日期范围字段映射） */
+  exportQueryNormalizer: {type: Function, default: undefined},
 })
 
 const emit = defineEmits([
@@ -336,6 +366,7 @@ const emit = defineEmits([
   'search-reset',
   'import-success',
   'import-error',
+  'import-async-submitted',
 ])
 
 const slots = useSlots()
@@ -357,6 +388,7 @@ const searchParam = reactive({})
 const orderByColumn = ref('')
 const isAsc = ref('')
 const columnPopoverVisible = ref(false)
+const router = useRouter()
 const importDialogVisible = ref(false)
 const importDialogKey = ref(0)
 const importUploadRef = ref(null)
@@ -399,13 +431,24 @@ const showDeleteButtonResolved = computed(() => {
 })
 const showExportButtonResolved = computed(() => {
   void userStore.permissions
-  const enabled = props.showExportButton === undefined ? !!props.exportFunction : !!props.showExportButton
-  return resolveToolbarButtonVisible(enabled, props.exportButtonPermi)
+  const hasExport = typeof props.exportFunction === 'function' || !!(props.exportBizType || '').trim()
+  const enabled = props.showExportButton === undefined ? hasExport : !!props.showExportButton
+  return resolveToolbarButtonVisible(enabled && hasExport, props.exportButtonPermi)
 })
 const showImportButtonResolved = computed(() => {
   void userStore.permissions
-  const enabled = !!props.showImportButton && typeof props.importFunction === 'function'
+  const hasImport = !!(props.importBizType || '').trim() || typeof props.importFunction === 'function'
+  const enabled = !!props.showImportButton && hasImport
   return resolveToolbarButtonVisible(enabled, props.importButtonPermi)
+})
+
+/** 解析后的导入上传函数（bizType 优先）。 */
+const resolvedImportFunction = computed(() => {
+  const biz = (props.importBizType || '').trim()
+  if (biz) {
+    return createBizImportFunction(biz, props.importContextProvider)
+  }
+  return props.importFunction
 })
 
 function warnDev(msg) {
@@ -674,8 +717,20 @@ function resetColumnSettings() {
 function exportDownloadFn() {
   const snapshot = cloneDeep(searchParam)
   const run = async () => {
+    const bizType = (props.exportBizType || '').trim()
+    if (bizType) {
+      let query = snapshot
+      if (typeof props.exportQueryNormalizer === 'function') {
+        query = props.exportQueryNormalizer(cloneDeep(snapshot))
+      }
+      delete query.pageNum
+      delete query.pageSize
+      delete query.orderByColumn
+      delete query.isAsc
+      return runPlatformExport(bizType, query, props.exportDefaultFileName)
+    }
     if (typeof props.exportFunction !== 'function') {
-      throw new Error('缺少 exportFunction')
+      throw new Error('缺少 exportFunction 或 exportBizType')
     }
     return props.exportFunction(snapshot)
   }
@@ -709,16 +764,54 @@ function openImportDialog() {
   importDialogVisible.value = true
 }
 
-function importUploadFn(file, strategy) {
-  if (typeof props.importFunction !== 'function') {
-    return Promise.reject(new Error('缺少 importFunction'))
+/**
+ * 调用页面 importFunction 并统一映射编排结果（同步统计 / 异步 taskId / 失败 fileId）。
+ * @param {File} file
+ * @param {string} strategy overwrite | ignore
+ * @param {{ syncMaxRows?: number, forceAsync?: boolean }} [uploadOpts]
+ */
+function importUploadFn(file, strategy, uploadOpts = {}) {
+  const fn = resolvedImportFunction.value
+  if (typeof fn !== 'function') {
+    return Promise.reject(new Error('缺少 importBizType 或 importFunction'))
   }
-  return props.importFunction(file, strategy)
+  const mergedOpts = {
+    ...uploadOpts,
+    syncMaxRows: uploadOpts.syncMaxRows ?? props.importSyncMaxRows,
+    forceAsync: uploadOpts.forceAsync ?? props.importForceAsync,
+  }
+  return fn(file, strategy, mergedOpts).then((res) => {
+    const mapped = mapImportPayload(res)
+    if (mapped.mode !== 'async') {
+      promptImportErrorDownload(mapped, {
+        errorFileName: props.importErrorFileName,
+        downloadByErrorKey: props.importErrorDownloadFn,
+      })
+    }
+    return mapped
+  })
+}
+
+/** 关闭导入弹窗并重置上传组件。 */
+function closeImportDialog() {
+  importDialogVisible.value = false
+  importUploadRef.value?.reset?.()
+}
+
+async function onImportAsyncSubmitted(payload) {
+  emit('import-async-submitted', payload)
+  closeImportDialog()
+  const action = await promptAsyncImportSubmitted(payload)
+  if (action === 'center') {
+    router.push({ path: IMPORT_EXPORT_CENTER_PATH })
+  }
 }
 
 function onImportSuccess(result) {
   emit('import-success', result)
-  refreshData()
+  if (result?.mode !== 'async') {
+    refreshData()
+  }
 }
 
 function onImportError(err) {

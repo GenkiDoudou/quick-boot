@@ -26,6 +26,11 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.github.genkidoudou.web</groupId>
+      <artifactId>quickboot-system</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>io.github.genkidoudou.report</groupId>
       <artifactId>quickboot-report</artifactId>
       <version>${project.version}</version>
