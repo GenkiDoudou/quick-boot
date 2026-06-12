@@ -1,3 +1,10 @@
+/**
+ * TagsView 多页签 Store。
+ *
+ * - visitedViews：已打开页签列表（含 title、path、meta），用于 TagsView 展示
+ * - cachedViews：keep-alive 缓存的 route.name 列表；meta.noCache=true 不加入
+ * - iframeViews：内嵌 iframe 外链页签，关闭时需单独 delIframeView
+ */
 import { defineStore } from 'pinia'
 
 const useTagsViewStore = defineStore(

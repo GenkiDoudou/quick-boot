@@ -15,7 +15,19 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
- * MVC 拦截：按 {@link Idempotent} 与 {@link IdempotentProperties#getInterceptMethods()} 决定是否对「非空幂等头」占位。
+ * MVC 幂等拦截器：对携带幂等头的写请求做「占位」，重复提交抛 {@link IdempotentException}。
+ * <p>
+ * <b>触发条件（满足其一才拦截）：</b>
+ * <ol>
+ *   <li>目标方法标注 {@link Idempotent}</li>
+ *   <li>HTTP 方法在 {@link IdempotentProperties#getInterceptMethods()} 中</li>
+ * </ol>
+ * 默认 {@code interceptMethods} 为空列表，且生产代码暂无 {@code @Idempotent}，
+ * 故 {@code qc.security.firewall.idempotent.enabled=true} 时若未配置方法列表则<b>实际不拦截</b>。
+ * </p>
+ * <p>
+ * 请求头名见 {@link IdempotentProperties#getTokenHeader()}；无头则直接放行。
+ * </p>
  */
 public class IdempotentInterceptor implements HandlerInterceptor {
 

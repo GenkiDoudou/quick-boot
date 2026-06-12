@@ -1,8 +1,14 @@
+/**
+ * 页签操作插件（$tab）：供 TagsView 右键菜单与关闭按钮调用。
+ *
+ * refreshPage 机制：先 delCachedView 移除 keep-alive 缓存，
+ * 再 router.replace('/redirect' + path) 触发 redirect 页重挂载组件。
+ */
 import useTagsViewStore from '@/store/modules/tagsView'
 import router from '@/router'
 
 export default {
-  // 刷新当前tab页签
+  /** 刷新当前 tab：清缓存 + redirect 重进 */
   refreshPage(obj) {
     const { path, query, matched } = router.currentRoute.value
     if (obj === undefined) {

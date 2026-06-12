@@ -1,9 +1,12 @@
 <template>
   <div :class="classObj" class="app-wrapper" :style="{ '--current-color': theme }">
     <div v-if="device === 'mobile' && sidebar.opened" class="drawer-bg" @click="handleClickOutside" />
-    <sidebar v-if="!sidebar.hide && navType !== 3" class="sidebar-container" />
-    <div :class="{ hasTagsView: needTagsView, sidebarHide: sidebar.hide }" class="main-container">
-      <div :class="{ 'fixed-header': fixedHeader }">
+    <sidebar v-if="!isFullScreen && !sidebar.hide && navType !== 3" class="sidebar-container" />
+    <div
+      :class="{ hasTagsView: needTagsView && !isFullScreen, sidebarHide: sidebar.hide || isFullScreen, 'full-screen-mode': isFullScreen }"
+      class="main-container"
+    >
+      <div v-if="!isFullScreen" :class="{ 'fixed-header': fixedHeader }">
         <navbar @setLayout="setLayout" />
         <tags-view v-if="needTagsView" />
       </div>
@@ -32,6 +35,7 @@ const sidebar = computed(() => appStore.sidebar)
 const device = computed(() => appStore.device)
 const needTagsView = computed(() => settingsStore.tagsView)
 const fixedHeader = computed(() => settingsStore.fixedHeader)
+const isFullScreen = computed(() => !!route.meta?.fullScreen)
 
 const classObj = computed(() => ({
   hideSidebar: !sidebar.value.opened,
@@ -122,5 +126,10 @@ function setLayout() {
 
 .mobile .fixed-header {
   width: 100%;
+}
+
+.full-screen-mode {
+  margin-left: 0 !important;
+  width: 100% !important;
 }
 </style>

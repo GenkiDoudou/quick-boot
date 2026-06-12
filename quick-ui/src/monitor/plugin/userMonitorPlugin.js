@@ -1,5 +1,17 @@
 /**
  * 用户行为监控 Vue 插件工厂：组装 core + collectors，对外暴露统一实例。
+ *
+ * ## Collectors 注册顺序（install 内）
+ * 1. clickCollector — 主/次操作点击，openBatch 开操作批
+ * 2. errorCollector — window.onerror / unhandledrejection
+ * 3. routeCollector — 路由切换，openPageVisit 开页面批（需传入 router）
+ * 4. lifecycleCollector — 定时 flush、visibilitychange、beforeunload
+ *
+ * ## Flush 策略
+ * - batchSession idle/page_leave → registerBatchFlushHook
+ * - lifecycle 定时 intervalMs（默认 10s）
+ * - 查询类点击 scheduleQueryFlush 1.5s 后 flush（无 openBatch 时）
+ * - error 事件 urgent flush
  */
 import {
   configureBatchSession,

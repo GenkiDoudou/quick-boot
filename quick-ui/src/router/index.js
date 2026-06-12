@@ -151,6 +151,24 @@ export const constantRoutes = [
         meta: { title: '编辑生成配置', activeMenu: '/tool/gen' }
       }
     ]
+  },
+  {
+    path: '/workflow',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'design/:id',
+        component: () => import('@/views/workflow/design/index.vue'),
+        name: 'WfWorkflowDesignStatic',
+        meta: { title: '工作流设计', activeMenu: '/workflow/list', fullScreen: true }
+      }
+    ]
+  },
+  {
+    path: '/knowledge/mcp',
+    redirect: '/ai/mcp',
+    hidden: true
   }
 
 ]

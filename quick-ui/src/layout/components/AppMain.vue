@@ -1,5 +1,5 @@
 <template>
-  <section class="app-main">
+  <section class="app-main" :class="{ 'app-main--fullscreen': route.meta?.fullScreen }">
     <router-view v-slot="{ Component, route }">
       <transition name="fade-transform" mode="out-in">
         <keep-alive :include="tagsViewStore.cachedViews">
@@ -41,6 +41,12 @@ watch(
 
 .fixed-header + .app-main {
   padding-top: 50px;
+}
+
+.app-main--fullscreen {
+  min-height: 100vh;
+  padding-top: 0 !important;
+  overflow: hidden;
 }
 
 .hasTagsView {

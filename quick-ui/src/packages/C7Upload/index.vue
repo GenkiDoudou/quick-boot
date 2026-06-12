@@ -207,7 +207,12 @@ function clearFiles() {
   results.value = []
 }
 
-defineExpose({ submit, clearFiles, reloadRule: () => loadRule(classifyKey.value) })
+/** 返回已选本地文件项（含 raw），供 autoUpload=false 时父组件校验与提交 */
+function getFiles() {
+  return fileList.value.filter((f) => f.raw)
+}
+
+defineExpose({ submit, clearFiles, getFiles, reloadRule: () => loadRule(classifyKey.value) })
 </script>
 
 <style scoped>

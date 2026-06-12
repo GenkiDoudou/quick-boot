@@ -15,6 +15,9 @@
         <module>quickboot-report</module>
         <module>quickboot-system</module>
         <module>quickboot-tools</module>
+        <module>quickboot-knowledge</module>
+        <module>quickboot-ai</module>
+        <module>quickboot-workflow</module>
         <module>quickboot-web</module>
     </modules>
 
@@ -58,6 +61,14 @@
         <jimubi.version>2.3.2</jimubi.version>
         <jimureport-echarts.version>2.3.0</jimureport-echarts.version>
 
+        <!-- Spring AI 1.0.x（支持 Spring Boot 3.4.x / 3.5.x） -->
+        <spring-ai.version>1.0.0</spring-ai.version>
+
+        <!-- Tika 3.x 需要 ≥2.13（UnsynchronizedByteArrayInputStream.builder）；EasyExcel 传递 2.11 须统一抬升 -->
+        <commons-io.version>2.18.0</commons-io.version>
+        <!-- Tika 3.1 需要 1.27.x（ZipArchiveInputStream.getNextEntry）；EasyExcel/POI 传递 1.19 须统一抬升 -->
+        <commons-compress.version>1.27.1</commons-compress.version>
+
     </properties>
 
 
@@ -74,6 +85,14 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -120,6 +139,18 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>easyexcel</artifactId>
                 <version>${easyexcel.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
             </dependency>
 
             <!-- MySQL 驱动 -->

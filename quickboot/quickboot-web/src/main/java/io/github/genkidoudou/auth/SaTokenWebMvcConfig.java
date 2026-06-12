@@ -67,12 +67,14 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
 
         List<String> paths = new ArrayList<>();
 
+        // --- 登录与会话（无需 Bearer） ---
         paths.add("/login");
 
         paths.add("/login/captcha-config");
 
         paths.add("/logout");
 
+        // 预留：手机/短信/扫码登录（当前无 Controller 实现）
         paths.add("/phoneLogin");
 
         paths.add("/sendSms");
@@ -83,12 +85,14 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
 
         paths.add("/qrcodeImage");
 
+        // --- OAuth2 授权服务器 / 开放 API / 第三方登录入口 ---
         paths.add("/oauth2/**");
 
         paths.add("/open-api/**");
 
         paths.add("/oauth/login/providers");
 
+        // --- 框架与文档 ---
         paths.add("/error");
 
         paths.add("/swagger-ui.html");
@@ -102,6 +106,7 @@ public class SaTokenWebMvcConfig implements WebMvcConfigurer {
             paths.addAll(jimu.getSecurity().getExcludeSaTokenPaths());
         }
 
+        // --- 环境配置额外匿名路径（application-*.yml → qc.web.security.anonymous-paths） ---
         if (!CollectionUtils.isEmpty(webSecurityProperties.getAnonymousPaths())) {
 
             paths.addAll(webSecurityProperties.getAnonymousPaths());

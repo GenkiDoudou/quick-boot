@@ -147,6 +147,7 @@ qc:
     # 生产多实例 / JimuBI WebSocket 协同可开 Redis；本地 dev 无 Redis 也可解析数据集 SQL
     redis:
       enabled: false
+
     primary-datasource:
       sync-on-startup: true
       name: QuickBoot主库
@@ -313,6 +314,16 @@ qc:
         limit-count: 1
         limit-ext: xls,xlsx
         anonymous:  false
+      - classify: knowledge
+        limit-size: 50MB
+        limit-count: 1
+        limit-ext: pdf,doc,docx,md,txt
+        anonymous:  false
+      - classify: knowledge-library
+        limit-size: 50MB
+        limit-count: 1
+        limit-ext: pdf,doc,docx,txt,md,html
+        anonymous:  false
   import:
     enabled: true
     sync-max-rows: 500
@@ -331,6 +342,64 @@ qc:
     async-max-concurrent: 3
     async-max-rows: 50000
     result-classify: export-result
+  knowledge:
+    enabled: false
+    ollama-required: false
+    vector-dimensions: 768
+    vector-datasource:
+      url: jdbc:postgresql://127.0.0.1:5433/quickboot_vector
+      username: vector
+      password: vector
+      driver-class-name: org.postgresql.Driver
+    ingest:
+      async-max-concurrent: 2
+      default-chunk-size: 800
+      default-chunk-overlap: 120
+    rag:
+      top-k: 8
+      similarity-threshold: 0.5
+    web-fetch:
+      enabled: true
+      timeout-ms: 15000
+      max-bytes: 5242880
+      user-agent: QuickBoot-KnowledgeBot/1.0
+      max-redirects: 3
+    library:
+      max-file-size-mb: 50
+      allowed-extensions: pdf,doc,docx,txt,md,html
+    mcp:
+      enabled: true
+      max-stdio-processes: 10
+      client-cache-ttl-seconds: 300
+      test-timeout-ms: 20000
+      export:
+        include-secrets: false
+      stdio:
+        allowed-commands: npx,node,cmd.exe,docker
+  ai:
+    enabled: false
+    vector-dimensions: 768
+    registry:
+      fallback-to-yaml: true
+      client-cache-ttl-seconds: 300
+      test-timeout-ms: 20000
+    export:
+      include-secrets: false
+  workflow:
+    enabled: false
+    external-api:
+      enabled: false
+    sync-debug-timeout-ms: 60000
+    async-timeout-ms: 600000
+    max-concurrent-runs-per-user: 3
+    stream:
+      heartbeat-interval-ms: 15000
+    http-request:
+      enabled: true
+      timeout-ms: 15000
+      max-bytes: 5242880
+      max-redirects: 3
+      user-agent: QuickBoot-WorkflowBot/1.0
 
 
 # Actuator 最小暴露
@@ -417,3 +486,11 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+jeecg:
+  jmreport:
+    ai:
+      base-url: https://api.deepseek.com   # 端点 base 地址（不含 /v1/... 路径）
+      api-key: sk-9b1dead04d84410184841df956c91552                  # 厂商控制台申请的 API Key（请替换为自己的）
+      model: deepseek-v4-pro               # 模型名称，其他厂商见 1.2
+      temperature:                          # 可选，留空用模型默认
+      max-tokens:                           # 可选，留空不限制

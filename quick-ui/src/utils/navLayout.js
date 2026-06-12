@@ -1,3 +1,12 @@
+/**
+ * 导航布局工具：navType 1/2/3 与侧栏、顶栏联动。
+ *
+ * | navType | 模式       | 侧栏来源              |
+ * |---------|------------|-----------------------|
+ * | 1       | 左侧菜单   | defaultRoutes         |
+ * | 2       | 混合菜单   | 顶栏选中项的子菜单    |
+ * | 3       | 顶部菜单   | defaultRoutes，侧栏隐藏 |
+ */
 import { constantRoutes } from '@/router'
 import { isHttp } from '@/utils/validate'
 
@@ -102,10 +111,12 @@ export function applyMixSidebar({ activeTopPath, permissionStore, appStore, rout
 
 /**
  * 按导航模式同步侧栏与顶栏布局。
+ * @param {{ navType: number, permissionStore: object, appStore: object, route?: object }} opts
  */
 export function applyNavLayout({ navType, permissionStore, appStore, route }) {
   const type = normalizeNavType(navType)
   if (type === 1) {
+    // 经典左侧树
     appStore.sidebar.opened = true
     appStore.toggleSideBarHide(false)
     if (permissionStore.defaultRoutes?.length) {
@@ -114,6 +125,7 @@ export function applyNavLayout({ navType, permissionStore, appStore, route }) {
     return
   }
   if (type === 2) {
+    // 混合：顶栏一级 + 侧栏二级
     appStore.sidebar.opened = true
     appStore.toggleSideBarHide(false)
     if (route && permissionStore.topbarRouters?.length) {
@@ -126,6 +138,7 @@ export function applyNavLayout({ navType, permissionStore, appStore, route }) {
     }
     return
   }
+  // navType=3：纯顶栏，隐藏侧栏
   appStore.sidebar.opened = false
   appStore.toggleSideBarHide(true)
   if (permissionStore.defaultRoutes?.length) {

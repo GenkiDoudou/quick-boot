@@ -26,7 +26,15 @@ import java.util.Base64;
 import java.util.Locale;
 
 /**
- * Client HMAC 签名校验：method、path、bodyHash、timestamp、nonce、clientId。
+ * OAuth2 Client HMAC 签名校验服务。
+ * <p>
+ * 与前端 {@code quick-ui/src/utils/clientSign.js} 对齐：
+ * 请求头 X-Client-Id / X-Client-Timestamp / X-Client-Nonce / X-Client-Signature，
+ * canonical 串经 HMAC-SHA256 + Base64 后与签名比对。
+ * </p>
+ * <p>
+ * multipart 上传与前端 FormData 约定一致：body 参与哈希时使用空字节数组。
+ * </p>
  */
 @Service
 @RequiredArgsConstructor
@@ -149,6 +157,23 @@ public class ClientSignService {
 
     /**
      * 构建规范化串（与前端 clientSign.js 一致）。
+     * <p>
+     * 格式（字段以 {@code \\n} 分隔）：
+     * {@code METHOD\\nPATH\\nSHA256(bodyHex)\\nTIMESTAMP\\nNONCE\\nCLIENT_ID}
+     * </p>
+     * <ul>
+     *   <li>METHOD：大写 HTTP 方法</li>
+     *   <li>PATH：servletPath（不含 context-path）</li>
+     *   <li>bodyHex：body 的 SHA-256 十六进制；multipart 为空 body</li>
+     * </ul>
+     *
+     * @param method    HTTP 方法
+     * @param path      servlet 路径
+     * @param body      原始 body 字节
+     * @param timestamp 秒级时间戳（与请求头一致）
+     * @param nonce     随机串
+     * @param clientId  客户端 ID
+     * @return 待 HMAC 的 canonical 字符串
      */
     public static String buildCanonical(String method, String path, byte[] body,
                                         String timestamp, String nonce, String clientId) {
@@ -176,6 +201,9 @@ public class ClientSignService {
         }
     }
 
+    /**
+     * HMAC-SHA256 签名并 Base64 编码（与前端 crypto-js 输出一致）。
+     */
     private static String hmacSha256Base64(String secret, String canonical) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -187,6 +215,7 @@ public class ClientSignService {
         }
     }
 
+    /** 恒定时间比较，降低时序攻击风险。 */
     private static boolean constantTimeEquals(String a, String b) {
         if (a == null || b == null) {
             return false;

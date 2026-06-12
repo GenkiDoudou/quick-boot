@@ -1,5 +1,18 @@
 /**
  * 隐式操作批次：页面访问批 + 按钮操作批，配合 sessionId/pageVisitId 串联链路。
+ *
+ * ## 状态机
+ *
+ * ```
+ * [路由进入] → openPageVisit → batchKind='page_visit', operationId=pageVisitId
+ * [主按钮点击] → openBatch → flush 页面批 → batchKind='action', 新 operationId
+ * [idleMs 无操作且无 overlay] → tryIdleFlush → onFlushHook('idle') → closeBatch
+ * [弹窗/抽屉 overlay 存在] → 延迟 idle flush，每 400ms 轮询直至 overlay 关闭
+ * [路由离开] → flushBatchSync('page_leave')
+ * ```
+ *
+ * - pageVisitId：同页内多批操作共用，标识一次页面访问
+ * - batchOperationId：当前批次 ID，写入监控事件的 operationId
  */
 import { formatTrackLabel } from './display/labelFormat'
 
@@ -130,9 +143,11 @@ function scheduleIdleFlush() {
   }
   clearIdleTimer()
   clearOverlayPoll()
+  // 操作批：idleMs 后尝试 flush；若 overlay 阻塞则延后
   idleTimer = setTimeout(tryIdleFlush, idleMs)
 }
 
+/** idle 定时到达：overlay 未关闭则 400ms 后再试，否则触发 flush */
 function tryIdleFlush() {
   idleTimer = null
   if (batchKind !== 'action') {

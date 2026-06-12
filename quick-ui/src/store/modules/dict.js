@@ -1,3 +1,10 @@
+/**
+ * 字典内存缓存 Store。
+ *
+ * 结构：dict = [{ key: dictType, value: options[] }]
+ * 与 composable useDict（utils/dict.js）配合：useDict 请求 API 后调用 setDict 写入。
+ * 页面级缓存，无过期策略；切换用户后建议 removeDict 或刷新页面。
+ */
 import { defineStore } from 'pinia'
 
 const useDictStore = defineStore(

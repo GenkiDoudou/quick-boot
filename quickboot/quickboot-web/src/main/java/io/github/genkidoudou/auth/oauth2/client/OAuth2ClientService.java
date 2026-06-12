@@ -26,7 +26,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * OAuth2 Client 角色：外部 IdP 授权码换本地会话。
+ * OAuth2 Client 角色：作为 RP 跳转外部 IdP 授权码登录，换取本地 Sa-Token 会话。
+ * <p>
+ * 流程：buildAuthorizeUrl → IdP 授权 → handleCallback(code, state) → StpUtil.login → 重定向前端带 token。
+ * state 缓存 10 分钟，防 CSRF。
+ * </p>
  */
 @Service
 @RequiredArgsConstructor
@@ -59,7 +63,13 @@ public class OAuth2ClientService {
     }
 
     /**
-     * 处理回调并返回带 token 的前端地址。
+     * 处理 IdP 授权回调：校验 state → 换 token → 查绑定 → 生成本地会话。
+     * <p>
+     * 未绑定用户：若 provider.autoRegister=1 当前仍抛「未开启自动注册」（自动注册待实现）；
+     * autoRegister=0 时提示联系管理员绑定。
+     * </p>
+     *
+     * @return 前端重定向 URL，query 带 access_token
      */
     public String handleCallback(String providerCode, String code, String state) {
         if (StrUtil.isBlank(code) || StrUtil.isBlank(state)) {
@@ -105,6 +115,9 @@ public class OAuth2ClientService {
         return provider;
     }
 
+    /**
+     * 授权码换 access_token（authorization_code grant）。
+     */
     private JSONObject exchangeCode(SysOauthProvider provider, String code, String secret) {
         HttpResponse resp = HttpRequest.post(provider.getTokenUrl())
                 .form("grant_type", "authorization_code")
@@ -120,6 +133,9 @@ public class OAuth2ClientService {
         return JSONUtil.parseObj(resp.body());
     }
 
+    /**
+     * 从 IdP userinfo 端点解析外部用户标识（优先 sub，其次 id）。
+     */
     private String fetchSubject(SysOauthProvider provider, String accessToken) {
         if (StrUtil.isBlank(provider.getUserinfoUrl())) {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "未配置 userinfo_url");

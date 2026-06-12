@@ -28,6 +28,20 @@ public final class ErrorCodes {
         public static final int IDEMPOTENT_REPEAT = HttpCodes.IDEMPOTENT_REPEAT;
         /** 文件存储：后缀/大小/路径非法或读写失败等 */
         public static final int FILE_STORAGE = 20024;
+        /** 知识库：AI 运行时不可用（Ollama/PGVector 等） */
+        public static final int KNOWLEDGE_AI_UNAVAILABLE = 20025;
+        /** 知识库：入库/索引状态不允许当前操作 */
+        public static final int KNOWLEDGE_STATE_NOT_ALLOWED = 20026;
+        /** 工作流：图结构或节点配置校验失败 */
+        public static final int WORKFLOW_GRAPH_INVALID = 20027;
+        /** 工作流：定义不存在或已删除 */
+        public static final int WORKFLOW_NOT_FOUND = 20028;
+        /** 工作流：运行执行失败 */
+        public static final int WORKFLOW_RUN_FAILED = 20029;
+        /** 工作流：AI 运行时不可用 */
+        public static final int WORKFLOW_AI_UNAVAILABLE = 20030;
+        /** 工作流：用户并发运行数超限 */
+        public static final int WORKFLOW_CONCURRENT_LIMIT = 20031;
 
         private Biz() {
         }

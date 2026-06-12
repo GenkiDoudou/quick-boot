@@ -1,3 +1,11 @@
+/**
+ * 用户会话 Store：token、基本信息、角色与权限字符。
+ *
+ * - login：调用 /login，写入 Cookie token（见 utils/auth.js）
+ * - getInfo：/getInfo 映射 userId/userName/avatar；roles 为空时兜底 ROLE_DEFAULT
+ * - avatar：空则默认头像；否则拼接 VITE_APP_BASE_API + 相对路径
+ * - permissions：供 v-hasPermi、$auth 校验；超级权限 *:*:*
+ */
 import { login, logout, getInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { clearSessionId } from '@/monitor/sessionContext'
@@ -15,6 +23,10 @@ const useUserStore = defineStore(
       permissions: []
     }),
     actions: {
+      /**
+       * 登录并持久化 token。
+       * @param {{ username: string, password: string, captchaId?: string }} userInfo
+       */
       login(userInfo) {
         const username = userInfo.username.trim()
         const password = userInfo.password
@@ -29,6 +41,10 @@ const useUserStore = defineStore(
           })
         })
       },
+      /**
+       * 拉取当前用户信息与权限；路由守卫在 roles 为空时调用。
+       * @returns {Promise} 原始 /getInfo 响应
+       */
       getInfo() {
         return new Promise((resolve, reject) => {
           getInfo().then(res => {

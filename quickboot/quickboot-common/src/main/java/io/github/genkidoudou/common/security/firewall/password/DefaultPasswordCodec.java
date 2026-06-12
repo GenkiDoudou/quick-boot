@@ -19,6 +19,11 @@ import java.util.regex.Pattern;
 /**
  * 基于 Hutool 的 {@link PasswordCodec} 默认实现：bcrypt 与 SM4（Hutool 默认 ECB，密文负载为十六进制）。
  * <p>
+ * 存储格式：
+ * <ul>
+ *   <li>bcrypt：{@code {bcrypt}$2a$...}，不可逆</li>
+ *   <li>SM4：{@code {sm4:keyId}<hexCipher>}，keyId 对应配置 sm4.keys.{keyId}</li>
+ * </ul>
  * 使用 {@code new SM4(key)} 保证 encrypt / decrypt / matches 闭环；请勿手工构造十六进制负载。
  * </p>
  */

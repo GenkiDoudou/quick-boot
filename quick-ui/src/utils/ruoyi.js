@@ -1,4 +1,13 @@
-// 转换字符串，undefined,null等转化为""
+/**
+ * 若依遗留工具函数集合。
+ * 新代码优先使用具名 export 并补 JSDoc；全局挂载见 main.js（parseTime、handleTree 等）。
+ */
+
+/**
+ * 将 undefined/null 字符串字面量转为空串。
+ * @param {string} str
+ * @returns {string}
+ */
 export function parseStrEmpty(str) {
   if (!str || str === 'undefined' || str === 'null') {
     return ''
@@ -6,7 +15,11 @@ export function parseStrEmpty(str) {
   return str
 }
 
-// 返回项目路径
+/**
+ * 规范化路由 path：去除重复斜杠、去掉末尾斜杠。
+ * @param {string} p
+ * @returns {string}
+ */
 export function getNormalPath(p) {
   if (!p || p.length === 0 || p === 'undefined') {
     return p
@@ -18,6 +31,11 @@ export function getNormalPath(p) {
   return res
 }
 
+/**
+ * 将对象序列化为 URL 查询字符串（支持一层嵌套对象）。
+ * @param {Record<string, unknown>} params
+ * @returns {string} 末尾带 & 的拼接结果，如 `name=a&age=1&`
+ */
 export function tansParams(params) {
   let result = ''
   for (const propName of Object.keys(params)) {
@@ -38,10 +56,22 @@ export function tansParams(params) {
   return result
 }
 
+/**
+ * 判断 Blob 响应是否为文件（非 JSON 错误体）。
+ * @param {Blob} data
+ * @returns {boolean} true 表示可当作文件下载
+ */
 export function blobValidate(data) {
   return data.type !== 'application/json'
 }
 
+/**
+ * 格式化日期时间。
+ * @param {Date|string|number} time 支持 Date、时间戳（10/13 位）、日期字符串
+ * @param {string} [pattern='{y}-{m}-{d} {h}:{i}:{s}'] 占位符 y/m/d/h/i/s/a（a=星期）
+ * @returns {string|null} 无效输入返回 null
+ * @example parseTime(1609459200000) // '2021-01-01 00:00:00'
+ */
 export function parseTime(time, pattern) {
   if (!time || time === '') {
     return null
@@ -79,12 +109,24 @@ export function parseTime(time, pattern) {
   return time_str
 }
 
+/**
+ * 重置 Element Plus 表单（需在 Options API 组件内通过 this 调用）。
+ * @param {string} refName 表单 ref 名
+ */
 export function resetForm(refName) {
   if (this.$refs[refName]) {
     this.$refs[refName].resetFields();
   }
 }
 
+/**
+ * 扁平数组转树形结构（DFS 挂载 children）。
+ * @param {Array<Record<string, unknown>>} data 扁平节点列表
+ * @param {string} [id='id'] 主键字段名
+ * @param {string} [parentId='parentId'] 父键字段名
+ * @param {string} [children='children'] 子节点字段名
+ * @returns {Array} 根节点数组
+ */
 export function handleTree(data, id, parentId, children) {
   let config = {
     id: id || 'id',
@@ -119,6 +161,7 @@ export function handleTree(data, id, parentId, children) {
   return tree;
 }
 
+/** @private handleTree 内部 DFS */
 export function dfs(node, childrenMap, config) {
   if (childrenMap[node[config.id]] != null) {
     node[config.children] = childrenMap[node[config.id]];
@@ -128,6 +171,12 @@ export function dfs(node, childrenMap, config) {
   }
 }
 
+/**
+ * 字典值转单个标签。
+ * @param {Array<{value: string, label: string}>|Record<string, {value, label}>} datas
+ * @param {string|number} value
+ * @returns {string}
+ */
 export function selectDictLabel(datas, value) {
   var actions = [];
   Object.keys(datas).some((key) => {
@@ -139,6 +188,12 @@ export function selectDictLabel(datas, value) {
   return actions.join('');
 }
 
+/**
+ * 逗号分隔的多字典值转标签串。
+ * @param {Array|Record} datas
+ * @param {string} value 逗号分隔，如 "1,2,3"
+ * @returns {string}
+ */
 export function selectDictLabels(datas, value) {
   var actions = [];
   Object.keys(value.split(',')).forEach((key) => {
@@ -152,6 +207,13 @@ export function selectDictLabels(datas, value) {
   return actions.join(',');
 }
 
+/**
+ * 为查询参数附加日期范围（beginXxx / endXxx）。
+ * @param {Record<string, unknown>} params 原查询对象，会被写入 params.begin/end
+ * @param {[string, string]|null} dateRange 起止日期
+ * @param {string} [propName='Time'] 后缀名，如 Time → beginTime/endTime
+ * @returns {Record<string, unknown>}
+ */
 export function addDateRange(params, dateRange, propName) {
   var search = params;
   search.params = {};

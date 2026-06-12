@@ -34,3 +34,4 @@ node_modules
 *.trace.db
 *.lock.db
 /docs/.vitepress/dist/
+/docs/.vitepress/dist/
