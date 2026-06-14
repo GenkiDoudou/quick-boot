@@ -1,1 +1,2 @@
 io.github.genkidoudou.web.ai.config.AiAutoConfiguration
+io.github.genkidoudou.web.ai.prompt.config.AiPromptAutoConfiguration

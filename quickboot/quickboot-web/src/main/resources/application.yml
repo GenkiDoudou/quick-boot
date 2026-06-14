@@ -231,6 +231,11 @@ qc:
           - /drag/**
           - /jimubi/**
           - /jimureport/**
+          # 工作流 DSL 含大量用户自定义提示词/模板，不宜走敏感词拦截（已鉴权 workflow:edit）
+          - /workflow/saveGraph
+          - /workflow/validateGraph
+          - /workflow/publish
+          - /workflow/run/**
 
         # REPLACE | THROW（推荐大写；小写 throw 在部分环境下亦可绑定）
         strategy: THROW
@@ -259,6 +264,7 @@ qc:
         forbidden-message: 您的请求包含非法字符，请检查！
         ignoreUrls:
           - /monitor/clientTrack/report
+          - /workflow/saveGraph
           - /jmreport/**
           - /drag/**
           - /jimubi/**

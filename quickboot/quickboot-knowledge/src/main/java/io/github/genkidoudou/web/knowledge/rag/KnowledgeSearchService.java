@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -42,6 +43,8 @@ import java.util.stream.Collectors;
 public class KnowledgeSearchService {
 
     private static final Pattern TERM_SPLIT = Pattern.compile("[\\s\\p{Punct}]+");
+    /** 章节标题起始，如「1. 项目介绍」「1.1.1 Springboot框架」。 */
+    private static final Pattern SECTION_HEADING = Pattern.compile("^\\d+(?:\\.\\d+)*\\s+\\S+");
 
     private final VectorStore vectorStore;
     private final KnowledgeProperties properties;
@@ -86,6 +89,7 @@ public class KnowledgeSearchService {
         if (shouldSaveHistory(req.getSaveHistory())) {
             saveRetrievalLog(req, searchMode, topK, threshold, hits.size());
         }
+        rerankHits(hits, req.getQuery());
         return hits;
     }
 
@@ -217,7 +221,36 @@ public class KnowledgeSearchService {
 
         fused.sort(Comparator.comparing(ChunkHitVo::getScore, Comparator.nullsLast(Comparator.reverseOrder())));
 
-        return fused.stream().limit(topK).collect(Collectors.toList());
+        // 融合排序后按向量相似度阈值过滤，避免纯关键词弱匹配片段排在语义相关片段之前
+        List<ChunkHitVo> filtered = new ArrayList<>();
+        for (ChunkHitVo hit : fused) {
+            double vectorScore = hit.getVectorScore() != null ? hit.getVectorScore() : 0.0;
+            double keywordScore = hit.getKeywordScore() != null ? hit.getKeywordScore() : 0.0;
+            if (vectorScore > 0) {
+                if (vectorScore >= threshold) {
+                    hit.setScore(vectorScore);
+                    filtered.add(hit);
+                }
+            } else if (keywordScore >= 0.5) {
+                hit.setScore(keywordScore);
+                filtered.add(hit);
+            }
+            if (filtered.size() >= topK) {
+                break;
+            }
+        }
+        if (filtered.isEmpty()) {
+            for (ChunkHitVo hit : fused) {
+                if (hit.getVectorScore() != null && hit.getVectorScore() > 0) {
+                    hit.setScore(hit.getVectorScore());
+                    filtered.add(hit);
+                    if (filtered.size() >= topK) {
+                        break;
+                    }
+                }
+            }
+        }
+        return filtered;
     }
 
     private List<ChunkHitVo> keywordSearch(Long kbId, String query, int limit, Set<Long> disabledIds) {
@@ -436,5 +469,90 @@ public class KnowledgeSearchService {
     }
 
     private record ScoredChunk(KbDocumentChunk chunk, double score, String text) {
+    }
+
+    /**
+     * 二次排序：提升章节起始片段排名，压制 PDF 切块断句碎片；同分时优先文档前部块。
+     */
+    private void rerankHits(List<ChunkHitVo> hits, String query) {
+        if (hits == null || hits.isEmpty()) {
+            return;
+        }
+        Map<Long, Integer> chunkIndexMap = loadChunkIndexMap(hits);
+        List<String> queryTerms = extractTerms(query);
+        for (ChunkHitVo hit : hits) {
+            double base = hit.getScore() != null ? hit.getScore() : 0.0;
+            double adjusted = base
+                + structureBoost(hit.getContent())
+                + queryCoverageBoost(hit.getContent(), queryTerms);
+            hit.setScore(adjusted);
+        }
+        hits.sort((a, b) -> {
+            int byScore = Double.compare(
+                b.getScore() != null ? b.getScore() : 0.0,
+                a.getScore() != null ? a.getScore() : 0.0);
+            if (byScore != 0) {
+                return byScore;
+            }
+            Integer indexA = chunkIndexMap.get(a.getChunkId());
+            Integer indexB = chunkIndexMap.get(b.getChunkId());
+            if (indexA != null && indexB != null) {
+                return Integer.compare(indexA, indexB);
+            }
+            return 0;
+        });
+    }
+
+    private double structureBoost(String content) {
+        if (StrUtil.isBlank(content)) {
+            return 0.0;
+        }
+        String text = content.stripLeading();
+        if (SECTION_HEADING.matcher(text).lookingAt()) {
+            return 0.15;
+        }
+        // PDF 自动切块常见断句：片段从句子中间开始，语义完整度差
+        if (text.length() > 30
+            && !Character.isDigit(text.charAt(0))
+            && !text.startsWith("#")
+            && !text.startsWith("【")) {
+            return -0.08;
+        }
+        return 0.0;
+    }
+
+    private double queryCoverageBoost(String content, List<String> queryTerms) {
+        if (StrUtil.isBlank(content) || queryTerms.isEmpty()) {
+            return 0.0;
+        }
+        String lower = content.toLowerCase(Locale.ROOT);
+        String head = lower.substring(0, Math.min(lower.length(), 200));
+        int matched = 0;
+        for (String term : queryTerms) {
+            if (head.contains(term)) {
+                matched++;
+            }
+        }
+        return matched * 0.03;
+    }
+
+    private Map<Long, Integer> loadChunkIndexMap(List<ChunkHitVo> hits) {
+        List<Long> chunkIds = hits.stream()
+            .map(ChunkHitVo::getChunkId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        if (chunkIds.isEmpty()) {
+            return Map.of();
+        }
+        return chunkMapper.selectList(
+            Wrappers.<KbDocumentChunk>lambdaQuery()
+                .in(KbDocumentChunk::getChunkId, chunkIds)
+                .select(KbDocumentChunk::getChunkId, KbDocumentChunk::getChunkIndex)
+        ).stream().collect(Collectors.toMap(
+            KbDocumentChunk::getChunkId,
+            row -> row.getChunkIndex() != null ? row.getChunkIndex() : Integer.MAX_VALUE,
+            (a, b) -> a
+        ));
     }
 }

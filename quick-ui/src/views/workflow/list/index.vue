@@ -49,6 +49,19 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" maxlength="512" show-word-limit />
         </el-form-item>
+        <el-form-item v-if="!form.workflowId" label="内置模板">
+          <el-select v-model="form.templateCode" clearable placeholder="留空则仅含开始/结束节点" style="width: 100%">
+            <el-option
+              v-for="item in templateOptions"
+              :key="item.code"
+              :label="item.name"
+              :value="item.code"
+            >
+              <div>{{ item.name }}</div>
+              <div style="font-size: 12px; color: #909399">{{ item.description }}</div>
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="Chat 模型">
           <el-select v-model="form.chatModelId" filterable clearable placeholder="留空则使用全局默认" style="width: 100%">
             <el-option
@@ -65,11 +78,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listModelOptions } from '@/api/ai/model'
-import { addWorkflow, getWorkflow, listWorkflow, publishWorkflow, removeWorkflow, updateWorkflow } from '@/api/workflow'
+import { addWorkflow, getWorkflow, listTemplates, listWorkflow, publishWorkflow, removeWorkflow, updateWorkflow } from '@/api/workflow'
 
 defineOptions({ name: 'WfWorkflowList' })
 
@@ -82,10 +95,12 @@ const form = ref({
   workflowId: null,
   name: '',
   description: '',
-  chatModelId: null
+  chatModelId: null,
+  templateCode: ''
 })
 
 const chatModelOptions = ref([])
+const templateOptions = ref([])
 
 const defaultSearchParam = {
   name: '',
@@ -137,12 +152,21 @@ function listFunction(params) {
 }
 
 function openAdd() {
-  form.value = { workflowId: null, name: '', description: '', chatModelId: null }
+  form.value = {
+    workflowId: null,
+    name: '',
+    description: '',
+    chatModelId: null,
+    templateCode: ''
+  }
+  if (!templateOptions.value.length) loadTemplateOptions()
+  if (!chatModelOptions.value.length) loadChatModelOptions()
   visible.value = true
 }
 
 function openEdit(row) {
   if (!row) return
+  if (!chatModelOptions.value.length) loadChatModelOptions()
   getWorkflow(row.workflowId).then((res) => {
     const d = res?.data || row
     form.value = {
@@ -209,5 +233,15 @@ function loadChatModelOptions() {
     })
 }
 
-onMounted(loadChatModelOptions)
+function loadTemplateOptions() {
+  listTemplates()
+    .then((res) => {
+      templateOptions.value = res?.data || []
+    })
+    .catch(() => {
+      templateOptions.value = []
+    })
+}
+
+// 弹窗打开时再拉取下拉数据，避免列表页首屏多余请求
 </script>

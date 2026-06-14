@@ -88,7 +88,7 @@ export function listTemplates() {
  * @returns {Promise<{ data: object }>}
  */
 export function runDebug(data) {
-  return request({ url: '/workflow/run/debug', method: 'post', data })
+  return request({ url: '/workflow/run/debug', method: 'post', data, timeout: 120000 })
 }
 
 /**

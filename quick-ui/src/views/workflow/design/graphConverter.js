@@ -1,4 +1,7 @@
 import { NODE_META_MAP } from './nodeMeta'
+import { ensureFixedWorkflowNodes } from './utils/workflowNodePolicy'
+import { ensureLoopGraphStructure } from './utils/loopUtils'
+import { ensureBatchGraphStructure } from './utils/batchUtils'
 
 const GRAPH_VERSION = 1
 
@@ -9,12 +12,16 @@ const GRAPH_VERSION = 1
  */
 export function graphToVueFlow(graph) {
   if (!graph?.nodes?.length) {
-    return { nodes: [], edges: [] }
+    const nodes = ensureFixedWorkflowNodes([], (type, position, existing) =>
+      createVueFlowNode(type, position, existing)
+    )
+    return { nodes, edges: [] }
   }
 
   const nodes = graph.nodes.map((node) => {
     const nodeData = { ...(node.data || {}) }
-    if (node.type === 'answer') {
+    const parentId = node.parentId || nodeData.parentId
+    if (node.type === 'answer' || node.type === 'end') {
       if (!nodeData.outputMode) {
         nodeData.outputMode = Array.isArray(nodeData.outputVariables) && nodeData.outputVariables.length
           ? 'variables'
@@ -31,10 +38,21 @@ export function graphToVueFlow(graph) {
         x: Number(node.position?.x ?? 0),
         y: Number(node.position?.y ?? 0)
       },
+      ...(parentId ? { parentNode: parentId, extent: 'parent' } : {}),
+      ...(node.type === 'loop-body' || node.type === 'batch-body'
+        ? {
+            style: {
+              width: `${node.data?.width || 380}px`,
+              height: `${node.data?.height || 260}px`,
+              zIndex: -1
+            }
+          }
+        : {}),
       data: {
         wfType: node.type,
         label: NODE_META_MAP[node.type]?.label || node.type,
         _icon: NODE_META_MAP[node.type]?.icon,
+        ...(parentId ? { parentId } : {}),
         ...nodeData
       }
     }
@@ -45,12 +63,20 @@ export function graphToVueFlow(graph) {
     source: edge.source,
     target: edge.target,
     sourceHandle: edge.sourceHandle || undefined,
+    targetHandle: edge.targetHandle || undefined,
     type: 'workflow',
     animated: true,
     style: { stroke: '#94b8ff' }
   }))
 
-  return { nodes, edges }
+  const ensuredNodes = ensureFixedWorkflowNodes(nodes, (type, position, existing) =>
+    createVueFlowNode(type, position, existing)
+  )
+
+  const loopEnsured = ensureLoopGraphStructure(ensuredNodes, edges)
+  const batchEnsured = ensureBatchGraphStructure(loopEnsured.nodes, loopEnsured.edges)
+
+  return { nodes: batchEnsured.nodes, edges: batchEnsured.edges }
 }
 
 /**
@@ -63,9 +89,12 @@ export function vueFlowToGraph(nodes, edges) {
   return {
     version: GRAPH_VERSION,
     nodes: (nodes || []).map((node) => {
-      const { wfType, label, ...rest } = node.data || {}
+      const { wfType, label, parentId: _pid, ...rest } = node.data || {}
       const data = { label, ...rest }
-      return {
+      if (node.parentNode) {
+        data.parentId = node.parentNode
+      }
+      const graphNode = {
         id: node.id,
         type: wfType || node.type,
         position: {
@@ -74,12 +103,23 @@ export function vueFlowToGraph(nodes, edges) {
         },
         data
       }
+      if (node.parentNode) {
+        graphNode.parentId = node.parentNode
+      }
+      if ((wfType === 'loop-body' || wfType === 'batch-body') && node.style) {
+        const w = parseInt(String(node.style.width || '380'), 10)
+        const h = parseInt(String(node.style.height || '260'), 10)
+        graphNode.data.width = Number.isFinite(w) ? w : 380
+        graphNode.data.height = Number.isFinite(h) ? h : 260
+      }
+      return graphNode
     }),
     edges: (edges || []).map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      sourceHandle: edge.sourceHandle || null
+      sourceHandle: edge.sourceHandle || null,
+      targetHandle: edge.targetHandle || null
     }))
   }
 }

@@ -53,6 +53,40 @@ class WorkflowGraphValidatorTest {
         assertTrue(ex.getMessage().contains("if-else"));
     }
 
+    @Test
+    void validate_loopBodyContainerEdges_notTreatedAsCycle() {
+        WorkflowGraphDto graph = new WorkflowGraphDto();
+        graph.setVersion(WorkflowConstants.GRAPH_VERSION);
+        GraphNodeDto start = node("start_1", WfNodeType.START);
+        GraphNodeDto loop = node("loop_1", WfNodeType.LOOP);
+        loop.getData().put("bodyId", "loop_body_1");
+        GraphNodeDto loopBody = node("loop_body_1", WfNodeType.LOOP_BODY);
+        GraphNodeDto tmpl = node("tmpl_1", WfNodeType.TEMPLATE_TRANSFORM);
+        tmpl.setParentId("loop_body_1");
+        GraphNodeDto assign = node("assign_1", WfNodeType.LOOP_SET_VARIABLE);
+        assign.setParentId("loop_body_1");
+        GraphNodeDto answerIn = node("answer_in_1", WfNodeType.ANSWER);
+        answerIn.setParentId("loop_body_1");
+        GraphNodeDto answerMain = node("answer_main", WfNodeType.ANSWER);
+        GraphNodeDto end = node("end_1", WfNodeType.END);
+        graph.setNodes(new ArrayList<>(List.of(start, loop, loopBody, tmpl, assign, answerIn, answerMain, end)));
+        graph.setEdges(new ArrayList<>(List.of(
+            edge("e1", "start_1", "loop_1", null),
+            bodyEdge("e_body", "loop_1", "loop_body_1", WorkflowConstants.LOOP_HANDLE_BODY),
+            bodyEdge("e_entry", "loop_body_1", "tmpl_1", WorkflowConstants.LOOP_BODY_HANDLE_ENTRY),
+            edge("e2", "tmpl_1", "assign_1", null),
+            edge("e3", "assign_1", "answer_in_1", null),
+            bodyEdge("e_exit", "answer_in_1", "loop_body_1", null),
+            edge("e4", "loop_1", "answer_main", WorkflowConstants.LOOP_HANDLE_FLOW_OUT),
+            edge("e5", "answer_main", "end_1", null)
+        )));
+        assertDoesNotThrow(() -> validator.validate(graph));
+    }
+
+    private GraphEdgeDto bodyEdge(String id, String source, String target, String sourceHandle) {
+        return edge(id, source, target, sourceHandle);
+    }
+
     private WorkflowGraphDto linearRagGraph() {
         WorkflowGraphDto graph = new WorkflowGraphDto();
         graph.setVersion(WorkflowConstants.GRAPH_VERSION);

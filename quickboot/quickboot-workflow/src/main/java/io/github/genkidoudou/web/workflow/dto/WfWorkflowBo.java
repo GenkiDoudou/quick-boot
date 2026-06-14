@@ -30,4 +30,7 @@ public class WfWorkflowBo {
 
     @Schema(description = "可选 Chat 模型 ID")
     private Long chatModelId;
+
+    @Schema(description = "创建时使用的内置模板编码（loop-count-test / default-rag），留空则空白画布")
+    private String templateCode;
 }

@@ -162,6 +162,12 @@ export const constantRoutes = [
         component: () => import('@/views/workflow/design/index.vue'),
         name: 'WfWorkflowDesignStatic',
         meta: { title: '工作流设计', activeMenu: '/workflow/list', fullScreen: true }
+      },
+      {
+        path: 'design/template/:templateId',
+        component: () => import('@/views/workflow/design/index.vue'),
+        name: 'WfTemplateDesign',
+        meta: { title: '模板设计', templateMode: true, activeMenu: '/workflow/template', fullScreen: true }
       }
     ]
   },

@@ -1,6 +1,6 @@
 <template>
   <div class="output-form">
-    <p class="output-form__desc">工作流的最终节点，用于返回工作流运行后的结果信息</p>
+    <p class="output-form__desc">{{ descText }}</p>
 
     <div class="output-form__mode">
       <button
@@ -21,12 +21,17 @@
       </button>
     </div>
 
-    <!-- 返回变量：结构化 JSON 输出 -->
-    <div v-if="outputMode === 'variables'" class="output-form__section">
+    <!-- 输出变量：两种模式共用 -->
+    <div class="output-form__section">
       <div class="output-form__section-header">
         <div class="output-form__section-title-wrap">
           <span class="output-form__section-title">输出变量</span>
-          <el-tooltip content="将上游变量映射为结构化输出字段" placement="top">
+          <el-tooltip
+            :content="outputMode === 'text'
+              ? '返回文本时也可配置变量映射；值支持纯文本或 {{节点.字段}} 引用上游'
+              : '将上游变量或文本映射为结构化 JSON 输出；值支持 {{节点.字段}}'"
+            placement="top"
+          >
             <el-icon class="output-form__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </div>
@@ -54,13 +59,20 @@
             class="output-form__col output-form__col--name"
             @change="sync"
           />
-          <VariableSelectField
+          <ConditionValueField
             v-model="row.value"
             :variable-tree="variableTree"
+            placeholder="输入或引用变量"
             class="output-form__col output-form__col--value"
             @update:model-value="sync"
           />
-          <el-button link type="danger" class="output-form__col output-form__col--actions" title="删除" @click="removeRow(idx)">
+          <el-button
+            link
+            type="danger"
+            class="output-form__col output-form__col--actions"
+            title="删除"
+            @click.stop="removeRow(idx)"
+          >
             <el-icon :size="16"><Minus /></el-icon>
           </el-button>
         </div>
@@ -68,13 +80,13 @@
       <div v-else class="output-form__empty">暂无输出变量，点击右上角 + 添加</div>
     </div>
 
-    <!-- 返回文本：模板渲染为一段话 -->
+    <!-- 返回文本：模板 + 流式 -->
     <div v-if="outputMode === 'text'" class="output-form__section">
       <div class="output-form__section-header">
         <div class="output-form__section-title-wrap">
           <span class="output-form__section-title">回答内容</span>
           <el-tooltip
-            content="可使用 {{变量名}}、{{变量名.子变量名}}、{{变量名[0]}} 引用上游变量"
+            content="Dify 式：用 {{节点ID.字段}} 引用上游变量，如 {{llm_1.output}}、{{start_1.input}}"
             placement="top"
           >
             <el-icon class="output-form__info"><InfoFilled /></el-icon>
@@ -82,9 +94,6 @@
         </div>
         <div class="output-form__stream">
           <span class="output-form__stream-label">流式输出</span>
-          <el-tooltip content="开启后，运行调试时以流式方式展示回答文本" placement="top">
-            <el-icon class="output-form__info"><InfoFilled /></el-icon>
-          </el-tooltip>
           <el-switch v-model="streaming" size="small" @change="sync" />
         </div>
       </div>
@@ -93,7 +102,8 @@
         v-model="answerContent"
         :variable-tree="variableTree"
         :rows="5"
-        placeholder="可以使用{{变量名}}、{{变量名.子变量名}}、{{变量名[数组索引]}}的方式引用输出参数中的变量"
+        :hint="DIFY_TEMPLATE_HINT"
+        placeholder="例如：# {{llm_1.output}}\n\n> {{kb_1.contextText}}"
         :class="{ 'output-form__answer--error': errors.output }"
         @update:model-value="onAnswerChange"
       />
@@ -103,18 +113,29 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { InfoFilled, Plus, Minus } from '@element-plus/icons-vue'
-import VariableSelectField from './VariableSelectField.vue'
+import ConditionValueField from './ConditionValueField.vue'
 import TemplateField from './TemplateField.vue'
 
 defineOptions({ name: 'OutputForm' })
 
+const DIFY_TEMPLATE_HINT =
+  'Dify 式：在文本中插入 {{节点ID.字段}} 引用上游输出，如 {{llm_1.output}}、{{变量名.子字段}}。'
+
 const props = defineProps({
   modelValue: { type: Object, required: true },
   variableTree: { type: Array, default: () => [] },
-  errors: { type: Object, default: () => ({}) }
+  errors: { type: Object, default: () => ({}) },
+  /** answer：中间输出节点；end：固定结束节点 */
+  variant: { type: String, default: 'answer' }
 })
+
+const descText = computed(() =>
+  props.variant === 'end'
+    ? '工作流固定出口，在此配置 API 最终返回的变量或文本'
+    : '中间输出节点，可将上游结果映射为变量或文本（可添加多个）'
+)
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -123,10 +144,12 @@ const answerContent = ref('')
 const streaming = ref(false)
 const rows = ref([])
 let rowSeq = 0
+let syncing = false
 
 watch(
   () => props.modelValue,
   (val) => {
+    if (syncing) return
     outputMode.value = val?.outputMode === 'text' ? 'text' : 'variables'
     answerContent.value = val?.output ?? ''
     streaming.value = !!val?.streaming
@@ -148,16 +171,8 @@ watch(
   { immediate: true, deep: true }
 )
 
-/**
- * 兼容旧版仅 output 模板配置（无 outputVariables 时）。
- * @param {object} data
- * @returns {Array<{ key: string, value: string }>}
- */
 function normalizeLegacyOutputVariables(data) {
   const vars = []
-  if (data?.output && !data?.outputVariables) {
-    return vars
-  }
   if (data?.citations) {
     vars.push({ key: 'citations', value: data.citations })
   }
@@ -175,6 +190,7 @@ function onAnswerChange(val) {
 }
 
 function sync() {
+  syncing = true
   const outputVariables = rows.value.map((row) => ({
     key: (row.key || '').trim(),
     value: (row.value || '').trim()
@@ -186,6 +202,9 @@ function sync() {
     outputVariables,
     output: answerContent.value,
     streaming: outputMode.value === 'text' ? streaming.value : false
+  })
+  queueMicrotask(() => {
+    syncing = false
   })
 }
 
@@ -276,7 +295,7 @@ function removeRow(idx) {
 .output-form__stream {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
 }
 

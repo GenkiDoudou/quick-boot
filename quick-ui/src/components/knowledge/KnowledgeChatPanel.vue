@@ -2,7 +2,7 @@
   <div class="kb-chat-panel">
     <div class="kb-chat-panel__intro">
       <h3 class="kb-chat-panel__title">对话测试</h3>
-      <p class="kb-chat-panel__desc">基于当前知识库 Hybrid 检索 + 本地 LLM，验证 RAG 问答效果。</p>
+      <p class="kb-chat-panel__desc">基于当前知识库向量检索 + 本地 LLM，与工作流知识库检索节点共用同一检索链路。</p>
     </div>
 
     <div class="kb-chat-panel__form">

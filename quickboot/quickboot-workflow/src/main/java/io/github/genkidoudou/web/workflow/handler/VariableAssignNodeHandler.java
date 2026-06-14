@@ -2,6 +2,7 @@ package io.github.genkidoudou.web.workflow.handler;
 
 import io.github.genkidoudou.web.workflow.constants.WfNodeType;
 import io.github.genkidoudou.web.workflow.dto.GraphNodeDto;
+import io.github.genkidoudou.web.workflow.engine.LoopExecutionScope;
 import io.github.genkidoudou.web.workflow.engine.NodeHandler;
 import io.github.genkidoudou.web.workflow.engine.NodeResult;
 import io.github.genkidoudou.web.workflow.engine.TemplateRenderer;
@@ -37,14 +38,24 @@ public class VariableAssignNodeHandler implements NodeHandler {
             ? (List<Map<String, Object>>) list : List.of();
         Map<String, Object> outputs = new HashMap<>();
         for (Map<String, Object> assignment : assignments) {
-            Object key = assignment.get("key");
+            Object keyObj = assignment.get("target");
+            if (keyObj == null) {
+                keyObj = assignment.get("key");
+            }
             Object valueTemplate = assignment.get("value");
-            if (key == null) {
+            if (keyObj == null) {
                 continue;
             }
+            String key = String.valueOf(keyObj).trim();
             String rendered = valueTemplate == null ? ""
                 : templateRenderer.render(String.valueOf(valueTemplate), context);
-            outputs.put(String.valueOf(key), rendered);
+
+            LoopExecutionScope scope = context.getCurrentLoopScope();
+            if (scope != null && scope.getIntermediateKeys().contains(key)) {
+                scope.getIntermediateVars().put(key, rendered);
+                context.putNodeOutput(scope.getLoopNodeId(), key, rendered);
+            }
+            outputs.put(key, rendered);
         }
         return NodeResult.success(outputs);
     }

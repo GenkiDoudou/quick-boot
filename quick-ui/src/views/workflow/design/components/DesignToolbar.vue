@@ -3,19 +3,34 @@
     <div class="wf-toolbar__left">
       <el-button link class="wf-toolbar__back" @click="$emit('back')">
         <el-icon><ArrowLeft /></el-icon>
-        返回工作流列表
+        {{ backLabel }}
       </el-button>
-      <span class="wf-toolbar__name">{{ name || '工作流设计' }}</span>
+      <span class="wf-toolbar__name">{{ name || (templateMode ? '模板设计' : '工作流设计') }}</span>
       <span class="wf-toolbar__status" :class="`wf-toolbar__status--${saveStatus}`">
         <span v-if="saveStatus === 'dirty'" class="wf-toolbar__dot" />
         {{ saveStatusLabel }}
       </span>
     </div>
     <div class="wf-toolbar__right">
-      <el-button :loading="validating" @click="$emit('validate')" v-hasPermi="['workflow:edit']">
+      <el-button
+        v-if="!templateMode"
+        @click="$emit('export-template')"
+        v-hasPermi="['workflow:template:add']"
+      >
+        导出为模板
+      </el-button>
+      <el-button :type="showMinimap ? 'primary' : 'default'" plain @click="$emit('toggle-minimap')">
+        小地图
+      </el-button>
+      <el-button @click="$emit('optimize-layout')" v-hasPermi="[templateMode ? 'workflow:template:edit' : 'workflow:edit']">
+        <el-icon><Rank /></el-icon>
+        优化布局
+      </el-button>
+      <el-button :loading="validating" @click="$emit('validate')" v-hasPermi="[templateMode ? 'workflow:template:edit' : 'workflow:edit']">
         校验
       </el-button>
       <el-button
+        v-if="!templateMode"
         type="primary"
         :loading="running"
         @click="$emit('test-run')"
@@ -25,6 +40,7 @@
         测试运行
       </el-button>
       <el-button
+        v-if="!templateMode"
         type="success"
         :loading="publishing"
         @click="$emit('publish')"
@@ -38,7 +54,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ArrowLeft, VideoPlay } from '@element-plus/icons-vue'
+import { ArrowLeft, VideoPlay, Rank } from '@element-plus/icons-vue'
 
 defineOptions({ name: 'DesignToolbar' })
 
@@ -47,10 +63,13 @@ const props = defineProps({
   saveStatus: { type: String, default: 'saved' },
   validating: { type: Boolean, default: false },
   running: { type: Boolean, default: false },
-  publishing: { type: Boolean, default: false }
+  publishing: { type: Boolean, default: false },
+  templateMode: { type: Boolean, default: false },
+  backLabel: { type: String, default: '返回工作流列表' },
+  showMinimap: { type: Boolean, default: false }
 })
 
-defineEmits(['back', 'validate', 'test-run', 'publish'])
+defineEmits(['back', 'validate', 'test-run', 'publish', 'optimize-layout', 'export-template', 'toggle-minimap'])
 
 const saveStatusLabel = computed(() => {
   const map = { saved: '已保存', saving: '保存中…', dirty: '未保存' }

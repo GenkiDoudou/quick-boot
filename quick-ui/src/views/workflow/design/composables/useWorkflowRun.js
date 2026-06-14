@@ -13,10 +13,12 @@ import { formatRunDisplayOutputs } from '../utils/runOutputUtils'
 export function extractRunOutputText(detail) {
   if (!detail) return ''
 
-  const answerStep = (detail.steps || []).find(
-    (step) => step.nodeType === 'answer' && step.status === 'SUCCESS'
-  )
-  const outputs = answerStep?.outputs || detail.outputs || {}
+  const steps = detail.steps || []
+  const endSteps = steps.filter((step) => step.nodeType === 'end' && step.status === 'SUCCESS')
+  const answerSteps = steps.filter((step) => step.nodeType === 'answer' && step.status === 'SUCCESS')
+  const endStep = endSteps.length ? endSteps[endSteps.length - 1] : null
+  const answerStep = answerSteps.length ? answerSteps[answerSteps.length - 1] : null
+  const outputs = endStep?.outputs || answerStep?.outputs || detail.outputs || {}
   return formatRunDisplayOutputs(outputs)
 }
 
@@ -240,10 +242,15 @@ export function useWorkflowRun({ workflowId, nodes, focusNode, getGraph }) {
 
           lastRunStep.value = step
 
-          if (data.nodeType === 'answer' && data.outputs) {
+          if ((data.nodeType === 'answer' || data.nodeType === 'end') && data.outputs) {
             streamText.value = extractRunOutputText({ outputs: data.outputs, steps: traceSteps.value })
           }
 
+        } else if (event === 'loop_iteration') {
+          if (data.phase === 'end' && data.roundResult != null && String(data.roundResult) !== '') {
+            const line = String(data.roundResult)
+            streamText.value = streamText.value ? `${streamText.value}\n${line}` : line
+          }
         } else if (event === 'done') {
 
           if (data.outputs) {

@@ -10,17 +10,23 @@ export function pickRunDisplayOutputs(outputs) {
   if (!outputs || typeof outputs !== 'object') return {}
 
   const keys = Object.keys(outputs).filter(
-    (k) => outputs[k] !== undefined && outputs[k] !== null && outputs[k] !== ''
+    (k) => outputs[k] !== undefined && outputs[k] !== null
   )
   if (!keys.length) return {}
 
-  const structuredKeys = keys.filter((k) => k !== 'text' && k !== 'output' && k !== 'citations')
+  const structuredKeys = keys.filter(
+    (k) => k !== 'text' && k !== 'output' && k !== 'citations'
+  )
 
   if (structuredKeys.length > 0) {
-    return structuredKeys.reduce((acc, k) => {
-      acc[k] = outputs[k]
-      return acc
+    const acc = structuredKeys.reduce((a, k) => {
+      a[k] = outputs[k]
+      return a
     }, {})
+    if (keys.includes('text')) acc.text = outputs.text
+    if (keys.includes('output')) acc.output = outputs.output
+    if (keys.includes('citations')) acc.citations = outputs.citations
+    return acc
   }
 
   if (keys.includes('text')) {

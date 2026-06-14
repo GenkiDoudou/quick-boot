@@ -37,10 +37,11 @@
         <el-icon><Delete /></el-icon>
         <span>删除节点</span>
       </button>
-      <div v-if="!copyable || !deletable" class="wf-node-menu__tip">
-        <template v-if="!copyable && !deletable">输入节点不可复制或删除</template>
-        <template v-else-if="!copyable">输入节点不可复制</template>
-        <template v-else>输入节点不可删除</template>
+      <div v-if="fixedTip" class="wf-node-menu__tip">{{ fixedTip }}</div>
+      <div v-else-if="!copyable || !deletable" class="wf-node-menu__tip">
+        <template v-if="!copyable && !deletable">该节点不可复制或删除</template>
+        <template v-else-if="!copyable">该节点不可复制</template>
+        <template v-else>该节点不可删除</template>
       </div>
     </div>
   </Teleport>
@@ -56,7 +57,8 @@ defineProps({
   x: { type: Number, default: 0 },
   y: { type: Number, default: 0 },
   copyable: { type: Boolean, default: true },
-  deletable: { type: Boolean, default: true }
+  deletable: { type: Boolean, default: true },
+  fixedTip: { type: String, default: '' }
 })
 
 const emit = defineEmits(['close', 'rename', 'copy', 'delete'])

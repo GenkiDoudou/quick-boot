@@ -62,14 +62,38 @@ public class WorkflowStreamEmitter {
     }
 
     /**
+     * 推送循环单轮迭代事件（流式调试）。
+     *
+     * @param runId      运行 ID
+     * @param loopNodeId 循环节点 ID
+     * @param iteration  轮次索引（从 0 开始）
+     * @param phase      start / end
+     * @param payload    附加数据
+     */
+    public void emitLoopIteration(Long runId, String loopNodeId, int iteration, String phase,
+                                    Map<String, Object> payload) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("runId", runId);
+        data.put("loopNodeId", loopNodeId);
+        data.put("iteration", iteration);
+        data.put("phase", phase == null ? "end" : phase);
+        if (payload != null) {
+            data.putAll(payload);
+        }
+        publish(runId, "loop_iteration", data);
+    }
+
+    /**
      * 推送步骤结束事件。
      */
-    public void emitStepEnd(Long runId, String nodeId, String status, long durationMs, Map<String, Object> outputsSummary) {
+    public void emitStepEnd(Long runId, String nodeId, String status, long durationMs,
+                            Map<String, Object> inputsSummary, Map<String, Object> outputsSummary) {
         publish(runId, "step_end", Map.of(
             "runId", runId,
             "nodeId", nodeId,
             "status", status,
             "durationMs", durationMs,
+            "inputs", inputsSummary == null ? Map.of() : inputsSummary,
             "outputs", outputsSummary == null ? Map.of() : outputsSummary
         ));
     }

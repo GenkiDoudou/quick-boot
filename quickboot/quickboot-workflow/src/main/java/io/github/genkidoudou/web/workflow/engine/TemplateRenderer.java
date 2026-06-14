@@ -52,7 +52,18 @@ public class TemplateRenderer {
         if (StrUtil.isBlank(expr)) {
             return null;
         }
-        return resolve(expr.trim(), context);
+        return resolve(normalizeExpression(expr), context);
+    }
+
+    /**
+     * 去掉 {@code {{...}}} 包裹，兼容变量选择器写入的引用格式。
+     */
+    private String normalizeExpression(String expr) {
+        String trimmed = expr.trim();
+        if (trimmed.startsWith("{{") && trimmed.endsWith("}}") && trimmed.length() > 4) {
+            return trimmed.substring(2, trimmed.length() - 2).trim();
+        }
+        return trimmed;
     }
 
     private Object resolve(String expr, WorkflowContext context) {

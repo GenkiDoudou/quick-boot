@@ -69,7 +69,12 @@ const labelText = computed(() => {
   if (!handle) return ''
   const wfType = props.sourceNode?.data?.wfType
   if (wfType === 'if-else') {
-    return handle === 'true' ? 'IF' : handle === 'false' ? 'ELSE' : handle
+    if (handle === 'false') return '否则'
+    const branches = props.sourceNode?.data?.branches || []
+    const branch = branches.find((b) => b.id === handle)
+    if (branch?.name) return branch.name
+    if (handle === 'true') return '如果'
+    return handle
   }
   if (wfType === 'question-classifier') {
     const classes = props.sourceNode?.data?.classes || []
@@ -101,7 +106,7 @@ function onDelete() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .wf-edge-label {
   padding: 2px 8px;
   font-size: 11px;

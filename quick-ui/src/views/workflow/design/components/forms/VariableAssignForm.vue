@@ -1,26 +1,54 @@
 <template>
-  <div class="wf-form">
-    <div v-for="(row, idx) in assignments" :key="idx" class="wf-form__row">
-      <el-form-item label="目标变量" :error="errors[`assignments.${idx}.target`]">
-        <el-input v-model="row.target" placeholder="var1" @change="sync" />
-      </el-form-item>
-      <el-form-item label="值">
-        <TemplateField
+  <div class="variable-assign-form">
+    <WfVariableTableSection
+      title="变量赋值"
+      tooltip="赋值内容可直接输入文本，或通过 (x) 按钮插入 {{变量}} 引用"
+      :columns="columns"
+      :has-rows="rows.length > 0"
+      empty-text="暂无赋值项，点击右上角 + 添加"
+      add-title="添加赋值"
+      @add="addRow"
+    >
+      <div
+        v-for="(row, idx) in rows"
+        :key="row._id"
+        class="wf-vt-section__row"
+        :class="{ 'wf-vt-section__row--error': errors[`assignments.${idx}.target`] }"
+      >
+        <el-input
+          v-model="row.target"
+          size="small"
+          placeholder="目标变量名"
+          class="wf-vt-section__col wf-vt-section__col--name"
+          @change="sync"
+        />
+        <ConditionValueField
           v-model="row.value"
           :variable-tree="variableTree"
-          :rows="2"
+          placeholder="输入或引用变量"
+          class="wf-vt-section__col wf-vt-section__col--value"
           @update:model-value="sync"
         />
-      </el-form-item>
-      <el-button link type="danger" @click="removeRow(idx)">删除</el-button>
-    </div>
-    <el-button size="small" @click="addRow">+ 添加赋值</el-button>
+        <el-button
+          link
+          type="danger"
+          class="wf-vt-section__col wf-vt-section__col--actions"
+          title="删除"
+          @click.stop="removeRow(idx)"
+        >
+          <el-icon :size="16"><Minus /></el-icon>
+        </el-button>
+      </div>
+    </WfVariableTableSection>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import TemplateField from './TemplateField.vue'
+import { toRef } from 'vue'
+import { Minus } from '@element-plus/icons-vue'
+import ConditionValueField from './ConditionValueField.vue'
+import WfVariableTableSection from './shared/WfVariableTableSection.vue'
+import { useWfFormRows } from './shared/useWfFormRows'
 
 defineOptions({ name: 'VariableAssignForm' })
 
@@ -32,39 +60,25 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const assignments = ref([])
+const columns = [
+  { key: 'name', label: '目标变量', class: 'wf-vt-section__col--name' },
+  { key: 'value', label: '赋值内容', class: 'wf-vt-section__col--flex' }
+]
 
-watch(
-  () => props.modelValue?.assignments,
-  (val) => {
-    assignments.value = JSON.parse(JSON.stringify(val || []))
-    if (!assignments.value.length) {
-      assignments.value = [{ target: '', value: '' }]
-    }
-  },
-  { immediate: true, deep: true }
-)
-
-function sync() {
-  emit('update:modelValue', { ...props.modelValue, assignments: [...assignments.value] })
-}
-
-function addRow() {
-  assignments.value.push({ target: '', value: '' })
-  sync()
-}
-
-function removeRow(idx) {
-  assignments.value.splice(idx, 1)
-  sync()
-}
+const { rows, sync, addRow, removeRow } = useWfFormRows({
+  getSource: () => props.modelValue?.assignments,
+  toRow: (item, idx, prevRows, id) => ({
+    target: item?.target || '',
+    value: item?.value || '',
+    _id: prevRows[idx]?._id || id('assign')
+  }),
+  fromRows: (list) =>
+    list.map(({ _id, ...rest }) => ({
+      target: (rest.target || '').trim(),
+      value: rest.value || ''
+    })),
+  emitModel: (assignments) => emit('update:modelValue', { ...props.modelValue, assignments }),
+  createRow: (id) => ({ _id: id('assign'), target: '', value: '' }),
+  allowEmpty: true
+})
 </script>
-
-<style scoped>
-.wf-form__row {
-  padding: 8px;
-  margin-bottom: 8px;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-}
-</style>

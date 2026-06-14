@@ -7,7 +7,6 @@ import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
 import io.github.genkidoudou.web.workflow.dto.WfPublishBo;
 import io.github.genkidoudou.web.workflow.dto.WfSaveGraphBo;
-import io.github.genkidoudou.web.workflow.dto.WfTemplateVo;
 import io.github.genkidoudou.web.workflow.dto.WfValidateGraphBo;
 import io.github.genkidoudou.web.workflow.dto.WfWorkflowBo;
 import io.github.genkidoudou.web.workflow.dto.WfWorkflowDetailVo;
@@ -104,10 +103,4 @@ public class WfWorkflowController {
         return R.ok();
     }
 
-    @Operation(summary = "内置模板列表")
-    @SaCheckPermission("workflow:query")
-    @GetMapping("/template/list")
-    public R<List<WfTemplateVo>> templateList() {
-        return R.ok(definitionService.listTemplates());
-    }
 }

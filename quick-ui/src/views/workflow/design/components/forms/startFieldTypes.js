@@ -218,8 +218,14 @@ export function deepParseJsonStringValues(value) {
  * @returns {unknown}
  */
 function deepParseJsonStringValue(value) {
+  if (value === null || value === undefined) {
+    return value
+  }
   if (typeof value !== 'string') {
-    return deepParseJsonStringValues(value)
+    if (Array.isArray(value) || typeof value === 'object') {
+      return deepParseJsonStringValues(value)
+    }
+    return value
   }
   const parsed = tryParseJson(value)
   if (parsed !== null) {

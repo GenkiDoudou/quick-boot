@@ -2,16 +2,22 @@
   <div class="wf-run" :class="{ 'wf-run--open': visible }">
     <div class="wf-run__bar" @click="toggle">
       <span class="wf-run__bar-title">运行调试</span>
+      <span v-if="running" class="wf-run__bar-status wf-run__bar-status--running">运行中…</span>
+      <span v-else-if="traceSteps.length && !running" class="wf-run__bar-status">
+        {{ traceSteps.length }} 步 · {{ successCount }}/{{ traceSteps.length }} 成功
+      </span>
       <el-icon class="wf-run__bar-icon">
         <component :is="visible ? ArrowDown : ArrowUp" />
       </el-icon>
     </div>
+
     <div v-show="visible" class="wf-run__body">
+      <!-- 左侧：运行入参 -->
       <div class="wf-run__col wf-run__col--input">
-        <div class="wf-run__section-title">输入</div>
+        <div class="wf-run__section-title">运行输入</div>
         <el-form label-position="top" size="small" class="wf-run__form">
-          <p v-if="!startInputs.length" class="wf-run__no-inputs">
-            请先在输入节点添加字段后再运行
+          <p v-if="!startInputs.length" class="wf-run__hint">
+            请先在开始节点添加字段后再运行
           </p>
           <el-form-item
             v-for="field in visibleStartInputs"
@@ -58,59 +64,124 @@
             />
             <el-input v-else v-model="localInputs[field.key]" />
           </el-form-item>
-          <el-form-item label="知识库 ID（可选）">
-            <el-input v-model="localInputs.kbId" placeholder="注入 sys.kbId" />
-          </el-form-item>
           <el-form-item>
             <el-checkbox v-model="localStream">流式输出（async + SSE）</el-checkbox>
           </el-form-item>
-          <el-button type="primary" :loading="running" @click="emitRun">
+          <el-button type="primary" :loading="running" class="wf-run__start-btn" @click="emitRun">
             <el-icon><VideoPlay /></el-icon>
             开始运行
           </el-button>
         </el-form>
       </div>
 
+      <!-- 中间：步骤 Trace（可展开查看每步 I/O） -->
       <div class="wf-run__col wf-run__col--trace">
-        <div class="wf-run__section-title">步骤 Trace</div>
-        <el-timeline v-if="traceSteps.length">
-          <el-timeline-item
-            v-for="(step, idx) in traceSteps"
-            :key="step.nodeId + idx"
-            :type="step.status === 'FAILED' ? 'danger' : step.status === 'SUCCESS' ? 'success' : 'primary'"
+        <div class="wf-run__section-header">
+          <div class="wf-run__section-title">执行步骤</div>
+          <el-button
+            v-if="traceSteps.length"
+            link
+            size="small"
+            type="primary"
+            @click="toggleExpandAll"
           >
-            <div class="wf-run__trace-item" @click="$emit('focus-step', step)">
-              <strong>{{ step.nodeId }}</strong>
-              <el-tag size="small">{{ step.nodeType }}</el-tag>
-              <el-tag size="small" :type="step.status === 'FAILED' ? 'danger' : 'success'">
-                {{ step.status }}
+            {{ allExpanded ? '全部收起' : '全部展开' }}
+          </el-button>
+        </div>
+
+        <div v-if="traceSteps.length" class="wf-run__steps">
+          <div
+            v-for="(step, idx) in traceSteps"
+            :key="traceStepKey(step, idx)"
+            class="wf-run__step"
+            :class="{
+              'wf-run__step--failed': step.status === 'FAILED',
+              'wf-run__step--running': step.status === 'RUNNING',
+              'wf-run__step--expanded': isExpanded(step, idx)
+            }"
+          >
+            <div
+              class="wf-run__step-head"
+              @click="toggleStep(step, idx)"
+            >
+              <el-icon class="wf-run__step-caret">
+                <ArrowRight />
+              </el-icon>
+              <span class="wf-run__step-order">{{ idx + 1 }}</span>
+              <span class="wf-run__step-type">{{ nodeTypeLabel(step.nodeType) }}</span>
+              <code class="wf-run__step-id">{{ step.nodeId }}</code>
+              <el-tag v-if="loopIterationBadge(step)" size="small" type="info" effect="plain">
+                {{ loopIterationBadge(step) }}
               </el-tag>
-              <span v-if="step.durationMs != null" class="wf-run__trace-dur">{{ step.durationMs }} ms</span>
+              <el-tag
+                size="small"
+                :type="statusTagType(step.status)"
+                class="wf-run__step-tag"
+              >
+                {{ statusLabel(step.status) }}
+              </el-tag>
+              <span v-if="step.durationMs != null" class="wf-run__step-dur">
+                {{ step.durationMs }} ms
+              </span>
+              <el-button
+                link
+                size="small"
+                class="wf-run__step-focus"
+                title="定位到画布节点"
+                @click.stop="$emit('focus-step', step)"
+              >
+                定位
+              </el-button>
             </div>
-          </el-timeline-item>
-        </el-timeline>
-        <el-empty v-else description="运行后将展示步骤 Trace" :image-size="56" />
+
+            <div v-show="isExpanded(step, idx)" class="wf-run__step-body">
+              <div class="wf-run__step-io">
+                <div class="wf-run__step-io-label">输入</div>
+                <pre class="wf-run__step-io-pre">{{ formatStepIo(step.inputs) }}</pre>
+              </div>
+              <div class="wf-run__step-io">
+                <div class="wf-run__step-io-label">输出</div>
+                <pre
+                  v-if="step.outputs != null"
+                  class="wf-run__step-io-pre"
+                >{{ formatStepIo(step.outputs) }}</pre>
+                <p v-else-if="step.status === 'RUNNING'" class="wf-run__step-io-pending">
+                  执行中…
+                </p>
+                <p v-else class="wf-run__step-io-pending">无输出</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="点击「开始运行」后，此处展示每一步的输入与输出" :image-size="56" />
       </div>
 
-      <div class="wf-run__col wf-run__col--stream">
-        <div class="wf-run__section-title">运行输出</div>
-        <pre v-if="streamText" class="wf-run__plain-output">{{ streamText }}</pre>
+      <!-- 右侧：最终输出 -->
+      <div class="wf-run__col wf-run__col--output">
+        <div class="wf-run__section-title">最终输出</div>
+        <div v-if="running && localStream && !streamText" class="wf-run__streaming">
+          <span class="wf-run__streaming-dot" />
+          流式生成中…
+        </div>
+        <pre v-else-if="streamText" class="wf-run__plain-output">{{ streamText }}</pre>
         <el-empty
           v-else-if="!running && traceSteps.length"
           description="运行完成，但输出节点结果为空（请检查连线、输出变量与入参）"
           :image-size="56"
         />
-        <el-empty v-else description="运行后将在此展示输出节点结果" :image-size="56" />
+        <el-empty v-else description="运行完成后在此展示输出节点结果" :image-size="56" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowDown, ArrowUp, VideoPlay } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, ArrowRight, VideoPlay } from '@element-plus/icons-vue'
 import { migrateFieldType, parseRunInputValue } from './forms/startFieldTypes'
+import { getNodeLabel } from '../nodeMeta'
+import { formatLoopIterationBadge, formatStepIo, traceStepKey } from '../utils/runTraceUtils'
 
 defineOptions({ name: 'RunPanel' })
 
@@ -125,22 +196,28 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'update:streamEnabled', 'run', 'focus-step'])
 
-const localInputs = reactive({ kbId: '' })
+const localInputs = reactive({})
+/** @type {import('vue').Ref<Set<string>>} */
+const expandedKeys = ref(new Set())
+const allExpanded = ref(false)
 
 const localStream = computed({
   get: () => props.streamEnabled,
   set: (v) => emit('update:streamEnabled', v)
 })
 
-/** 运行面板展示的非隐藏 Start 字段 */
 const visibleStartInputs = computed(() =>
   (props.startInputs || []).filter((f) => f.key && !f.hidden)
+)
+
+const successCount = computed(() =>
+  props.traceSteps.filter((s) => s.status === 'SUCCESS').length
 )
 
 watch(
   () => props.startInputs,
   (fields) => {
-    const validKeys = new Set(['kbId'])
+    const validKeys = new Set()
     ;(fields || []).forEach((f) => {
       if (!f.key) return
       validKeys.add(f.key)
@@ -163,8 +240,88 @@ watch(
   { immediate: true, deep: true }
 )
 
+/** 新步骤到达时自动展开最新一步 */
+watch(
+  () => props.traceSteps.length,
+  (len, prev) => {
+    if (len > (prev || 0) && len > 0) {
+      const last = props.traceSteps[len - 1]
+      const key = traceStepKey(last, len - 1)
+      expandedKeys.value = new Set([...expandedKeys.value, key])
+    }
+  }
+)
+
+/** 运行结束后默认展开全部步骤 */
+watch(
+  () => props.running,
+  (isRunning, wasRunning) => {
+    if (wasRunning && !isRunning && props.traceSteps.length) {
+      expandAllSteps()
+    }
+    if (isRunning) {
+      expandedKeys.value = new Set()
+      allExpanded.value = false
+    }
+  }
+)
+
 function toggle() {
   emit('update:visible', !props.visible)
+}
+
+function nodeTypeLabel(type) {
+  return getNodeLabel(type) || type || '节点'
+}
+
+function statusLabel(status) {
+  if (status === 'FAILED') return '失败'
+  if (status === 'SUCCESS') return '成功'
+  if (status === 'RUNNING') return '运行中'
+  return status || '—'
+}
+
+function statusTagType(status) {
+  if (status === 'FAILED') return 'danger'
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'RUNNING') return 'warning'
+  return 'info'
+}
+
+function loopIterationBadge(step) {
+  return formatLoopIterationBadge(step)
+}
+
+function isExpanded(step, idx) {
+  return expandedKeys.value.has(traceStepKey(step, idx))
+}
+
+function toggleStep(step, idx) {
+  const key = traceStepKey(step, idx)
+  const next = new Set(expandedKeys.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  expandedKeys.value = next
+  allExpanded.value = next.size === props.traceSteps.length
+}
+
+function expandAllSteps() {
+  expandedKeys.value = new Set(
+    props.traceSteps.map((step, idx) => traceStepKey(step, idx))
+  )
+  allExpanded.value = true
+}
+
+function toggleExpandAll() {
+  if (allExpanded.value) {
+    expandedKeys.value = new Set()
+    allExpanded.value = false
+  } else {
+    expandAllSteps()
+  }
 }
 
 /** @param {object} field */
@@ -174,7 +331,7 @@ function resolveRunFieldType(field) {
 
 function emitRun() {
   if (!props.startInputs?.length) {
-    ElMessage.warning('请先在输入节点添加至少一个输入字段')
+    ElMessage.warning('请先在开始节点添加至少一个输入字段')
     return
   }
   for (const field of props.startInputs || []) {
@@ -188,7 +345,7 @@ function emitRun() {
     }
   }
 
-  const inputs = { kbId: localInputs.kbId || undefined }
+  const inputs = {}
   for (const f of props.startInputs || []) {
     if (!f.key) continue
     const raw = f.hidden ? f.defaultValue ?? '' : localInputs[f.key]
@@ -237,13 +394,22 @@ function emitRun() {
   color: #0a2463;
 }
 
+.wf-run__bar-status {
+  font-size: 12px;
+  color: #909399;
+
+  &--running {
+    color: #e6a23c;
+  }
+}
+
 .wf-run--open .wf-run__body {
-  height: 40vh;
+  height: 44vh;
 }
 
 .wf-run__body {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 260px 1fr 1fr;
   gap: 0;
   height: 0;
   overflow: hidden;
@@ -252,13 +418,33 @@ function emitRun() {
 }
 
 .wf-run__col {
-  padding: 12px 16px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: hidden;
   border-right: 1px solid #ebeef5;
 
   &:last-child {
     border-right: none;
   }
+
+  &--input {
+    overflow-y: auto;
+  }
+
+  &--trace,
+  &--output {
+    overflow-y: auto;
+  }
+}
+
+.wf-run__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .wf-run__section-title {
@@ -268,34 +454,189 @@ function emitRun() {
   margin-bottom: 10px;
 }
 
-.wf-run__no-inputs {
+.wf-run__section-header .wf-run__section-title {
+  margin-bottom: 0;
+}
+
+.wf-run__hint {
   margin: 0 0 12px;
   font-size: 12px;
   color: #909399;
   line-height: 1.5;
 }
 
-.wf-run__trace-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+.wf-run__start-btn {
+  width: 100%;
+}
 
-  &:hover {
-    background: #ecf5ff;
+.wf-run__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wf-run__step {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  transition: border-color 0.15s;
+
+  &--failed {
+    border-color: #fab6b6;
+    background: #fef0f0;
+  }
+
+  &--running {
+    border-color: #f3d19e;
+    background: #fdf6ec;
+  }
+
+  &--expanded .wf-run__step-caret {
+    transform: rotate(90deg);
   }
 }
 
-.wf-run__trace-dur {
+.wf-run__step-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  flex-wrap: wrap;
+
+  &:hover {
+    background: rgba(64, 158, 255, 0.06);
+  }
+}
+
+.wf-run__step-caret {
+  flex-shrink: 0;
   font-size: 12px;
   color: #909399;
+  transition: transform 0.15s;
+}
+
+.wf-run__step-order {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 50%;
+  background: #ecf5ff;
+  color: #409eff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wf-run__step-type {
+  font-weight: 600;
+  color: #303133;
+}
+
+.wf-run__step-id {
+  font-size: 11px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.wf-run__step-tag {
+  flex-shrink: 0;
+}
+
+.wf-run__step-dur {
+  font-size: 11px;
+  color: #909399;
+  margin-left: auto;
+}
+
+.wf-run__step-focus {
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.wf-run__step-body {
+  border-top: 1px solid #ebeef5;
+  padding: 8px 10px 10px;
+  background: #fafafa;
+}
+
+.wf-run__step-io {
+  margin-bottom: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.wf-run__step-io-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 4px;
+}
+
+.wf-run__step-io-pre {
+  margin: 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  user-select: text;
+}
+
+.wf-run__step-io-pending {
+  margin: 0;
+  font-size: 12px;
+  color: #909399;
+  padding: 8px;
+  background: #fff;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+}
+
+.wf-run__streaming {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.wf-run__streaming-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #409eff;
+  animation: wf-run-pulse 1s ease-in-out infinite;
+}
+
+@keyframes wf-run-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .wf-run__plain-output {
   margin: 0;
+  flex: 1;
+  min-height: 80px;
   padding: 12px;
   background: #f5f7fa;
   border-radius: 6px;
@@ -303,33 +644,10 @@ function emitRun() {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: calc(40vh - 48px);
   overflow-y: auto;
   font-family: Consolas, Monaco, 'Courier New', monospace;
   user-select: text;
-  -webkit-user-select: text;
   cursor: text;
   border: none;
-}
-
-.wf-run__markdown {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.6;
-  max-height: calc(40vh - 48px);
-  overflow-y: auto;
-
-  :deep(pre) {
-    background: #e8ecf1;
-    padding: 8px;
-    border-radius: 4px;
-    overflow-x: auto;
-  }
-
-  :deep(code) {
-    font-family: Consolas, Monaco, monospace;
-  }
 }
 </style>

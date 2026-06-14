@@ -87,8 +87,25 @@ public class AiModelResolver {
      * @return ChatModel
      */
     public ChatModel resolveWorkflowChat(Long workflowId) {
+        return resolveWorkflowChat(workflowId, null);
+    }
+
+    /**
+     * 解析工作流 Chat 模型，支持节点级 override。
+     * <p>
+     * 优先级：overrideModelId → wf.chat_model_id → WORKFLOW_CHAT 默认 → CHAT 默认 → YAML Bean。
+     *
+     * @param workflowId      工作流 ID
+     * @param overrideModelId 节点指定模型 ID，可为 null
+     * @return ChatModel
+     */
+    public ChatModel resolveWorkflowChat(Long workflowId, Long overrideModelId) {
+        ChatModel model = resolveChatByModelId(overrideModelId);
+        if (model != null) {
+            return model;
+        }
         Long modelId = workflowId == null ? null : modelMapper.selectChatModelIdByWorkflowId(workflowId);
-        ChatModel model = resolveChatByModelId(modelId);
+        model = resolveChatByModelId(modelId);
         if (model != null) {
             return model;
         }

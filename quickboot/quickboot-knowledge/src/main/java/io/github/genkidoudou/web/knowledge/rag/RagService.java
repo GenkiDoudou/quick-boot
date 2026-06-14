@@ -14,10 +14,7 @@ import io.github.genkidoudou.web.knowledge.mcp.runtime.McpTrackingToolCallbacks;
 import io.github.genkidoudou.web.knowledge.service.KbKnowledgeBaseMcpService;
 import io.github.genkidoudou.web.knowledge.support.KnowledgeAiGuard;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.tool.ToolCallback;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +38,6 @@ public class RagService {
         若已提供外部 MCP 工具且与问题相关，可调用工具获取实时数据；不得捏造引用或工具结果。
         """;
 
-    private final VectorStore vectorStore;
     private final KnowledgeProperties properties;
     private final KnowledgeAiGuard aiGuard;
     private final KnowledgeSearchService searchService;
@@ -49,14 +45,12 @@ public class RagService {
     private final ObjectProvider<McpToolCallbackProvider> mcpToolCallbackProvider;
     private final ObjectProvider<McpToolUsageTracker> mcpToolUsageTracker;
 
-    public RagService(VectorStore vectorStore,
-                      KnowledgeProperties properties,
+    public RagService(KnowledgeProperties properties,
                       KnowledgeAiGuard aiGuard,
                       KnowledgeSearchService searchService,
                       KbKnowledgeBaseMcpService mcpBindingService,
                       ObjectProvider<McpToolCallbackProvider> mcpToolCallbackProvider,
                       ObjectProvider<McpToolUsageTracker> mcpToolUsageTracker) {
-        this.vectorStore = vectorStore;
         this.properties = properties;
         this.aiGuard = aiGuard;
         this.searchService = searchService;
@@ -66,7 +60,7 @@ public class RagService {
     }
 
     /**
-     * 基于 QuestionAnswerAdvisor 的 RAG 问答，并组装 citations。
+     * 基于 {@link KnowledgeSearchService} 向量检索 + 本地 LLM 生成回答，与工作流知识库检索节点共用同一检索链路。
      *
      * @param req 问答请求
      * @return 回答与引用列表
@@ -79,15 +73,19 @@ public class RagService {
             ? req.getSimilarityThreshold()
             : properties.getRag().getSimilarityThreshold();
 
-        SearchRequest searchRequest = SearchRequest.builder()
-            .topK(topK)
-            .similarityThreshold(threshold)
-            .filterExpression("kbId == '" + req.getKbId() + "'")
-            .build();
+        KnowledgeSearchBo searchBo = new KnowledgeSearchBo();
+        searchBo.setKbId(req.getKbId());
+        searchBo.setQuery(req.getQuestion());
+        searchBo.setTopK(topK);
+        searchBo.setSimilarityThreshold(threshold);
+        searchBo.setSearchMode(KbSearchMode.VECTOR);
+        searchBo.setSaveHistory(false);
+        List<ChunkHitVo> hits = searchService.search(searchBo);
 
-        QuestionAnswerAdvisor advisor = QuestionAnswerAdvisor.builder(vectorStore)
-            .searchRequest(searchRequest)
-            .build();
+        String context = hits.stream()
+            .map(ChunkHitVo::getContent)
+            .filter(StrUtil::isNotBlank)
+            .collect(Collectors.joining("\n\n"));
 
         boolean useMcpTools = req.getUseMcpTools() == null || req.getUseMcpTools();
         McpToolUsageTracker tracker = mcpToolUsageTracker.getIfAvailable();
@@ -96,8 +94,7 @@ public class RagService {
         }
 
         String systemPrompt = SYSTEM_PROMPT;
-        ChatClient.Builder clientBuilder = ChatClient.builder(aiGuard.requireChatModelInstance(req.getKbId()))
-            .defaultAdvisors(advisor);
+        ChatClient.Builder clientBuilder = ChatClient.builder(aiGuard.requireChatModelInstance(req.getKbId()));
 
         if (useMcpTools && properties.getMcp().isEnabled()) {
             McpToolCallbackProvider toolProvider = mcpToolCallbackProvider.getIfAvailable();
@@ -114,19 +111,15 @@ public class RagService {
 
         ChatClient chatClient = clientBuilder.defaultSystem(systemPrompt).build();
 
+        String userPrompt = StrUtil.isNotBlank(context)
+            ? "参考以下检索上下文回答用户问题。若上下文不足以回答，请明确说明「未在知识库中找到相关内容」。\n\n"
+            + "【检索上下文】\n" + context + "\n\n【用户问题】\n" + req.getQuestion()
+            : req.getQuestion();
+
         String answer = chatClient.prompt()
-            .user(req.getQuestion())
+            .user(userPrompt)
             .call()
             .content();
-
-        KnowledgeSearchBo searchBo = new KnowledgeSearchBo();
-        searchBo.setKbId(req.getKbId());
-        searchBo.setQuery(req.getQuestion());
-        searchBo.setTopK(topK);
-        searchBo.setSimilarityThreshold(threshold);
-        searchBo.setSearchMode(KbSearchMode.HYBRID);
-        searchBo.setSaveHistory(false);
-        List<ChunkHitVo> hits = searchService.search(searchBo);
 
         KnowledgeChatVo vo = new KnowledgeChatVo();
         vo.setAnswer(StrUtil.blankToDefault(answer, "未生成有效回答"));

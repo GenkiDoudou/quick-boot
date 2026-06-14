@@ -2,7 +2,7 @@
   <div class="start-form">
     <div class="start-form__header">
       <div class="start-form__title-wrap">
-        <span class="start-form__title">输入</span>
+        <span class="start-form__title">开始</span>
         <el-tooltip content="定义工作流运行时可传入的变量；引用路径为 节点ID.变量名" placement="top">
           <el-icon class="start-form__info"><InfoFilled /></el-icon>
         </el-tooltip>
@@ -192,7 +192,9 @@ watch(
  * @returns {Array}
  */
 function normalizeInputs(inputs) {
-  return JSON.parse(JSON.stringify(inputs || [])).map((field) => {
+  return JSON.parse(JSON.stringify(inputs || []))
+    .filter((field) => field?.key !== 'kbId')
+    .map((field) => {
     const fieldType = inferFieldTypeFromLegacy(field)
     const meta = START_FIELD_TYPE_MAP[fieldType]
     return {
@@ -264,7 +266,9 @@ function onKeyChange(field, idx) {
 }
 
 function sync() {
-  const inputs = localInputs.value.map(({ _id, ...rest }) => ({
+  const inputs = localInputs.value
+    .filter((field) => field.key !== 'kbId')
+    .map(({ _id, ...rest }) => ({
     ...rest,
     key: rest.key?.trim() || '',
     label: rest.label?.trim() || rest.key?.trim() || '',

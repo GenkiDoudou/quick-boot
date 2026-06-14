@@ -24,4 +24,8 @@ public class GraphNodeDto {
 
     @Schema(description = "节点配置数据")
     private Map<String, Object> data = new HashMap<>();
+
+    /** 循环体等子画布容器 ID；为空表示主画布节点。 */
+    @Schema(description = "父容器节点 ID（如 loop-body）")
+    private String parentId;
 }

@@ -1,5 +1,6 @@
 package io.github.genkidoudou.web.workflow.engine;
 
+import io.github.genkidoudou.web.workflow.dto.WorkflowGraphDto;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,6 +29,21 @@ public class WorkflowContext {
     /** 是否启用 SSE 流式输出。 */
     @Setter
     private boolean streamEnabled;
+
+    /** 当前执行的完整图 DSL（循环体子图调度需要）。 */
+    @Setter
+    private WorkflowGraphDto executionGraph;
+
+    /** 当前循环迭代作用域；非循环体执行时为 null。 */
+    @Setter
+    private LoopExecutionScope currentLoopScope;
+
+    /** 当前批处理项作用域；非批处理体执行时为 null。 */
+    @Setter
+    private BatchExecutionScope currentBatchScope;
+
+    /** 全局步骤顺序号（主图 + 子图共用）。 */
+    private int stepOrder;
 
     public WorkflowContext(Long runId, String startNodeId) {
         this.runId = runId;
@@ -66,5 +82,31 @@ public class WorkflowContext {
      */
     public Map<String, Object> getNodeOutputMap(String nodeId) {
         return nodeOutputs.getOrDefault(nodeId, Map.of());
+    }
+
+    /**
+     * 获取并递增全局步骤顺序号。
+     *
+     * @return 新顺序号（从 1 开始）
+     */
+    public int nextStepOrder() {
+        return ++stepOrder;
+    }
+
+    /**
+     * 复制当前上下文供批处理并行迭代使用（共享上游输出，隔离本轮写入）。
+     *
+     * @return 可独立写入的上下文副本
+     */
+    public WorkflowContext forkSnapshot() {
+        WorkflowContext fork = new WorkflowContext(runId, startNodeId);
+        fork.getRunInputs().putAll(runInputs);
+        fork.getSysVariables().putAll(sysVariables);
+        for (Map.Entry<String, Map<String, Object>> entry : nodeOutputs.entrySet()) {
+            fork.putNodeOutputs(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
+        fork.setExecutionGraph(executionGraph);
+        fork.setStreamEnabled(false);
+        return fork;
     }
 }

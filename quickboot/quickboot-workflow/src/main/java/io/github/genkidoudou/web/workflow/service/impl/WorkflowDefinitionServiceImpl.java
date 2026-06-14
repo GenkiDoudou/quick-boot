@@ -28,7 +28,11 @@ import io.github.genkidoudou.web.workflow.engine.WorkflowGraphValidator;
 import io.github.genkidoudou.web.workflow.mapper.WfWorkflowMapper;
 import io.github.genkidoudou.web.workflow.mapper.WfWorkflowVersionMapper;
 import io.github.genkidoudou.web.workflow.service.WorkflowDefinitionService;
+import io.github.genkidoudou.web.workflow.service.WorkflowTemplateService;
+import io.github.genkidoudou.web.workflow.template.BatchTestWorkflowTemplate;
 import io.github.genkidoudou.web.workflow.template.DefaultRagWorkflowTemplate;
+import io.github.genkidoudou.web.workflow.template.LoopTestWorkflowTemplate;
+import io.github.genkidoudou.web.workflow.template.WorkflowGraphDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,16 +48,25 @@ public class WorkflowDefinitionServiceImpl implements WorkflowDefinitionService 
     private final WfWorkflowMapper workflowMapper;
     private final WfWorkflowVersionMapper versionMapper;
     private final WorkflowGraphValidator graphValidator;
+    private final WorkflowTemplateService templateService;
     private final DefaultRagWorkflowTemplate defaultRagTemplate;
+    private final LoopTestWorkflowTemplate loopTestTemplate;
+    private final BatchTestWorkflowTemplate batchTestTemplate;
 
     public WorkflowDefinitionServiceImpl(WfWorkflowMapper workflowMapper,
                                            WfWorkflowVersionMapper versionMapper,
                                            WorkflowGraphValidator graphValidator,
-                                           DefaultRagWorkflowTemplate defaultRagTemplate) {
+                                           WorkflowTemplateService templateService,
+                                           DefaultRagWorkflowTemplate defaultRagTemplate,
+                                           LoopTestWorkflowTemplate loopTestTemplate,
+                                           BatchTestWorkflowTemplate batchTestTemplate) {
         this.workflowMapper = workflowMapper;
         this.versionMapper = versionMapper;
         this.graphValidator = graphValidator;
+        this.templateService = templateService;
         this.defaultRagTemplate = defaultRagTemplate;
+        this.loopTestTemplate = loopTestTemplate;
+        this.batchTestTemplate = batchTestTemplate;
     }
 
     @Override
@@ -108,7 +121,8 @@ public class WorkflowDefinitionServiceImpl implements WorkflowDefinitionService 
         row.setExternalApiEnabled(0);
         workflowMapper.insert(row);
 
-        WfWorkflowVersion draft = newVersion(row.getWorkflowId(), 1, defaultRagTemplate.build().getGraph(), true);
+        WorkflowGraphDto initialGraph = resolveTemplateGraph(req.getTemplateCode());
+        WfWorkflowVersion draft = newVersion(row.getWorkflowId(), 1, initialGraph, true);
         versionMapper.insert(draft);
     }
 
@@ -185,7 +199,31 @@ public class WorkflowDefinitionServiceImpl implements WorkflowDefinitionService 
 
     @Override
     public List<WfTemplateVo> listTemplates() {
-        return List.of(defaultRagTemplate.build());
+        List<WfTemplateVo> options = templateService.listOptions();
+        if (!options.isEmpty()) {
+            return options;
+        }
+        return List.of(defaultRagTemplate.build(), loopTestTemplate.build(), batchTestTemplate.build());
+    }
+
+    private WorkflowGraphDto resolveTemplateGraph(String templateCode) {
+        if (StrUtil.isBlank(templateCode)) {
+            return WorkflowGraphDefaults.minimal();
+        }
+        WorkflowGraphDto graph = templateService.resolveGraphByCode(templateCode);
+        if (graph != null) {
+            return graph;
+        }
+        if (WorkflowConstants.TEMPLATE_DEFAULT_RAG.equals(templateCode)) {
+            return defaultRagTemplate.build().getGraph();
+        }
+        if (WorkflowConstants.TEMPLATE_LOOP_COUNT_TEST.equals(templateCode)) {
+            return loopTestTemplate.build().getGraph();
+        }
+        if (WorkflowConstants.TEMPLATE_BATCH_ARRAY_TEST.equals(templateCode)) {
+            return batchTestTemplate.build().getGraph();
+        }
+        throw new WarningException(ErrorCodes.Biz.WORKFLOW_GRAPH_INVALID, "未知模板编码: " + templateCode);
     }
 
     /**

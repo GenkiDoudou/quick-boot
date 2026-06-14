@@ -1,38 +1,47 @@
 package io.github.genkidoudou.web.workflow.handler;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import io.github.genkidoudou.web.workflow.constants.WfNodeType;
 import io.github.genkidoudou.web.workflow.dto.GraphNodeDto;
+import io.github.genkidoudou.web.workflow.engine.InputParameterTemplateRenderer;
 import io.github.genkidoudou.web.workflow.engine.NodeHandler;
 import io.github.genkidoudou.web.workflow.engine.NodeResult;
-import io.github.genkidoudou.web.workflow.engine.TemplateRenderer;
 import io.github.genkidoudou.web.workflow.engine.WorkflowContext;
 import io.github.genkidoudou.web.workflow.stream.WorkflowStreamEmitter;
 import io.github.genkidoudou.web.workflow.support.WorkflowAiGuard;
+import io.github.genkidoudou.web.workflow.util.JsonDeepParseUtil;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * LLM 节点：调用 Spring AI ChatModel；{@code streaming=true} 时向 SSE 推送 delta。
+ * 大模型节点：支持模型选择、输入参数、系统/用户提示词与输出格式（text / markdown / json）。
+ * <p>
+ * json 模式：将模型回复解析为 JSON 并按 outputVariables 展开字段；text/markdown 模式：作为纯文本写入 output/text。
  */
 @Component
 public class LlmNodeHandler implements NodeHandler {
 
+    private static final Pattern JSON_FENCE = Pattern.compile("^```(?:json)?\\s*([\\s\\S]*?)\\s*```$", Pattern.CASE_INSENSITIVE);
+
     private final WorkflowAiGuard aiGuard;
-    private final TemplateRenderer templateRenderer;
+    private final InputParameterTemplateRenderer inputParameterRenderer;
     private final WorkflowStreamEmitter streamEmitter;
 
     public LlmNodeHandler(WorkflowAiGuard aiGuard,
-                          TemplateRenderer templateRenderer,
+                          InputParameterTemplateRenderer inputParameterRenderer,
                           WorkflowStreamEmitter streamEmitter) {
         this.aiGuard = aiGuard;
-        this.templateRenderer = templateRenderer;
+        this.inputParameterRenderer = inputParameterRenderer;
         this.streamEmitter = streamEmitter;
     }
 
@@ -42,48 +51,215 @@ public class LlmNodeHandler implements NodeHandler {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public NodeResult execute(GraphNodeDto node, WorkflowContext context) {
-        ChatModel chatModel = aiGuard.requireChatModelInstance(workflowId(context));
         Map<String, Object> data = node.getData() == null ? Map.of() : node.getData();
-        String systemPrompt = render(data.get("systemPrompt"), context);
-        String userPrompt = render(data.get("userPrompt"), context);
+        Long nodeModelId = parseLong(data.get("chatModelId"));
+        ChatModel chatModel = aiGuard.requireChatModelInstance(workflowId(context), nodeModelId);
+
+        String outputFormat = String.valueOf(data.getOrDefault("outputFormat", "text"));
+        Map<String, Object> inputLocals = inputParameterRenderer.resolveInputVariables(data.get("inputVariables"), context);
+        String systemPrompt = augmentSystemPrompt(
+            inputParameterRenderer.render(renderRaw(data.get("systemPrompt")), inputLocals),
+            outputFormat,
+            data.get("outputVariables")
+        );
+        String userPrompt = inputParameterRenderer.render(renderRaw(data.get("userPrompt")), inputLocals);
+
+        if (StrUtil.isBlank(userPrompt)) {
+            return NodeResult.failed("用户提示词为空，请配置提示词并在输入参数中声明所引用的 {{参数名}}");
+        }
+
+        double temperature = parseTemperature(data.get("temperature"));
         boolean streaming = Boolean.TRUE.equals(data.get("streaming")) && context.isStreamEnabled();
 
         try {
-            if (streaming) {
-                return executeStreaming(node.getId(), context, chatModel, systemPrompt, userPrompt);
-            }
             ChatClient client = ChatClient.builder(chatModel).defaultSystem(systemPrompt).build();
-            String text = client.prompt().user(userPrompt).call().content();
-            Map<String, Object> outputs = new HashMap<>();
-            outputs.put("text", text);
-            return NodeResult.success(outputs);
+            String text;
+            if (streaming) {
+                text = executeStreaming(node.getId(), context, client, userPrompt, temperature);
+            } else {
+                text = client.prompt()
+                    .options(buildChatOptions(temperature))
+                    .user(userPrompt)
+                    .call()
+                    .content();
+            }
+            if (text == null) {
+                text = "";
+            }
+            return NodeResult.success(buildOutputs(text, data));
         } catch (Exception ex) {
-            return NodeResult.failed("LLM 调用失败: " + ex.getMessage());
+            return NodeResult.failed("大模型调用失败: " + ex.getMessage());
         }
     }
 
-    private NodeResult executeStreaming(String nodeId, WorkflowContext context, ChatModel chatModel,
-                                        String systemPrompt, String userPrompt) {
-        Prompt prompt = new Prompt(userPrompt);
-        Flux<ChatResponse> flux = chatModel.stream(prompt);
+    private String executeStreaming(String nodeId, WorkflowContext context, ChatClient client,
+                                    String userPrompt, double temperature) {
         StringBuilder accumulated = new StringBuilder();
-        flux.doOnNext(response -> {
-            if (response.getResult() != null && response.getResult().getOutput() != null) {
-                String delta = response.getResult().getOutput().getText();
+        client.prompt()
+            .options(buildChatOptions(temperature))
+            .user(userPrompt)
+            .stream()
+            .content()
+            .doOnNext(delta -> {
                 if (delta != null && !delta.isEmpty()) {
                     accumulated.append(delta);
                     streamEmitter.emitLlmDelta(context.getRunId(), nodeId, delta, accumulated.toString());
                 }
-            }
-        }).blockLast();
-        Map<String, Object> outputs = new HashMap<>();
-        outputs.put("text", accumulated.toString());
-        return NodeResult.success(outputs);
+            })
+            .blockLast();
+        return accumulated.toString();
     }
 
-    private String render(Object template, WorkflowContext context) {
-        return template == null ? "" : templateRenderer.render(String.valueOf(template), context);
+    private String renderRaw(Object template) {
+        return template == null ? "" : String.valueOf(template);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String augmentSystemPrompt(String systemPrompt, String outputFormat, Object outputVariablesObj) {
+        String base = systemPrompt == null ? "" : systemPrompt;
+        if ("json".equals(outputFormat)) {
+            StringBuilder sb = new StringBuilder(base);
+            sb.append("\n\n你必须仅输出合法 JSON，不要包含 Markdown 代码块或其它说明文字。");
+            if (outputVariablesObj instanceof List<?> list && !list.isEmpty()) {
+                sb.append("\nJSON 对象须包含以下字段：");
+                for (Object item : list) {
+                    if (!(item instanceof Map<?, ?> row)) {
+                        continue;
+                    }
+                    String key = row.get("key") == null ? "" : String.valueOf(row.get("key")).trim();
+                    if (StrUtil.isNotBlank(key)) {
+                        sb.append("\n- ").append(key);
+                        Object desc = row.get("description");
+                        if (desc != null && StrUtil.isNotBlank(String.valueOf(desc))) {
+                            sb.append("（").append(desc).append('）');
+                        }
+                    }
+                }
+            }
+            return sb.toString();
+        }
+        if ("markdown".equals(outputFormat)) {
+            return base + "\n\n请使用 Markdown 格式组织回答。";
+        }
+        return base;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildOutputs(String text, Map<String, Object> data) {
+        Map<String, Object> outputs = new HashMap<>();
+        String outputFormat = String.valueOf(data.getOrDefault("outputFormat", "text"));
+        outputs.put("text", text);
+
+        if ("json".equals(outputFormat)) {
+            Object parsed = parseLlmJson(text);
+            if (parsed instanceof Map<?, ?> map) {
+                Map<String, Object> jsonMap = new LinkedHashMap<>();
+                map.forEach((k, v) -> jsonMap.put(String.valueOf(k), JsonDeepParseUtil.deepParse(v)));
+                outputs.put("json", jsonMap);
+                applyConfiguredOutputVariables(outputs, jsonMap, data.get("outputVariables"));
+            } else if (parsed instanceof List<?> list) {
+                outputs.put("json", list);
+            }
+            return outputs;
+        }
+
+        String primaryKey = resolvePrimaryOutputKey(data.get("outputVariables"), "output");
+        outputs.put(primaryKey, text);
+        return outputs;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyConfiguredOutputVariables(Map<String, Object> outputs, Map<String, Object> parsed,
+                                              Object outputVariablesObj) {
+        if (!(outputVariablesObj instanceof List<?> list) || list.isEmpty()) {
+            parsed.forEach((k, v) -> {
+                if (!outputs.containsKey(k)) {
+                    outputs.put(k, v);
+                }
+            });
+            return;
+        }
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> row)) {
+                continue;
+            }
+            String key = row.get("key") == null ? "" : String.valueOf(row.get("key")).trim();
+            if (StrUtil.isBlank(key)) {
+                continue;
+            }
+            if (parsed.containsKey(key)) {
+                outputs.put(key, parsed.get(key));
+            }
+        }
+    }
+
+    private String resolvePrimaryOutputKey(Object outputVariablesObj, String defaultKey) {
+        if (outputVariablesObj instanceof List<?> list && !list.isEmpty()) {
+            Object first = list.get(0);
+            if (first instanceof Map<?, ?> row && row.get("key") != null) {
+                String key = String.valueOf(row.get("key")).trim();
+                if (StrUtil.isNotBlank(key)) {
+                    return key;
+                }
+            }
+        }
+        return defaultKey;
+    }
+
+    private Object parseLlmJson(String text) {
+        if (StrUtil.isBlank(text)) {
+            return null;
+        }
+        String candidate = stripJsonFence(text.trim());
+        if (JSONUtil.isTypeJSONObject(candidate)) {
+            return JSONUtil.parseObj(candidate);
+        }
+        if (JSONUtil.isTypeJSONArray(candidate)) {
+            return JSONUtil.parseArray(candidate);
+        }
+        return null;
+    }
+
+    private String stripJsonFence(String text) {
+        Matcher matcher = JSON_FENCE.matcher(text);
+        if (matcher.matches()) {
+            return matcher.group(1).trim();
+        }
+        return text;
+    }
+
+    private ChatOptions buildChatOptions(double temperature) {
+        return ChatOptions.builder().temperature(temperature).build();
+    }
+
+    private double parseTemperature(Object raw) {
+        if (raw instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (raw != null) {
+            try {
+                return Double.parseDouble(String.valueOf(raw));
+            } catch (NumberFormatException ignored) {
+                // 使用默认温度
+            }
+        }
+        return 0.3;
+    }
+
+    private Long parseLong(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(raw));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private Long workflowId(WorkflowContext context) {

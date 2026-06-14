@@ -62,6 +62,15 @@ class TemplateRendererTest {
     }
 
     @Test
+    void resolveObject_withBraces_resolvesNodeField() {
+        Map<String, Object> startOut = new HashMap<>();
+        startOut.put("items", java.util.List.of(12, 34, 56));
+        context.putNodeOutputs("start_1", startOut);
+        Object value = renderer.resolveObject("{{start_1.items}}", context);
+        assertEquals(java.util.List.of(12, 34, 56), value);
+    }
+
+    @Test
     void render_unknownPlaceholder_replacedWithEmpty() {
         String result = renderer.render("x={{unknown.field}}", context);
         assertEquals("x=", result);

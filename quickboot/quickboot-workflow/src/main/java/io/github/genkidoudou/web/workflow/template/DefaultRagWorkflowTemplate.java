@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 内置「默认 RAG 工作流」模板：start → knowledge-retrieval → llm → answer。
+ * 内置「默认 RAG 工作流」模板：start → knowledge-retrieval → llm → answer → end。
  */
 @Component
 public class DefaultRagWorkflowTemplate {
@@ -45,30 +45,45 @@ public class DefaultRagWorkflowTemplate {
             ))
         ));
         GraphNodeDto kb = node("kb_1", "knowledge-retrieval", 320, 200, Map.of(
-            "kbId", "{{sys.kbId}}",
+            "kbId", "",
             "query", "{{start_1.question}}",
-            "topK", 5,
-            "similarityThreshold", 0.65
+            "searchMode", "VECTOR",
+            "topK", 8,
+            "similarityThreshold", 0.5,
+            "saveHistory", false
         ));
         GraphNodeDto llm = node("llm_1", "llm", 560, 200, Map.of(
             "systemPrompt", "你是企业助手，仅依据上下文回答。",
-            "userPrompt", "问题：{{start_1.question}}\n\n上下文：{{kb_1.contextText}}",
+            "userPrompt", "问题：{{question}}\n\n上下文：{{context}}",
             "temperature", 0.3,
-            "streaming", true
+            "streaming", false,
+            "outputFormat", "text",
+            "outputVariables", List.of(Map.of("key", "output", "type", "string", "description", "")),
+            "inputVariables", List.of(
+                Map.of("key", "question", "value", "{{start_1.question}}"),
+                Map.of("key", "context", "value", "{{kb_1.contextText}}")
+            )
         ));
         GraphNodeDto answer = node("answer_1", "answer", 800, 200, Map.of(
             "outputMode", "text",
-            "output", "{{llm_1.text}}",
+            "output", "{{llm_1.output}}",
             "outputVariables", List.of(),
             "streaming", false,
             "citations", "{{kb_1.citations}}"
         ));
+        GraphNodeDto end = node("end_1", "end", 960, 200, Map.of(
+            "outputMode", "variables",
+            "outputVariables", List.of(Map.of("key", "text", "value", "{{answer_1.text}}")),
+            "output", "",
+            "streaming", false
+        ));
 
-        graph.setNodes(List.of(start, kb, llm, answer));
+        graph.setNodes(List.of(start, kb, llm, answer, end));
         graph.setEdges(List.of(
             edge("e1", "start_1", "kb_1", null),
             edge("e2", "kb_1", "llm_1", null),
-            edge("e3", "llm_1", "answer_1", null)
+            edge("e3", "llm_1", "answer_1", null),
+            edge("e4", "answer_1", "end_1", null)
         ));
         return graph;
     }

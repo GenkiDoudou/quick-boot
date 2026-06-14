@@ -37,9 +37,20 @@ public class WorkflowAiGuard {
      * @return ChatModel
      */
     public ChatModel requireChatModelInstance(Long workflowId) {
+        return requireChatModelInstance(workflowId, null);
+    }
+
+    /**
+     * 获取工作流 ChatModel，支持节点级模型覆盖。
+     *
+     * @param workflowId   工作流 ID，可为 null
+     * @param nodeModelId  节点指定模型 ID，可为 null
+     * @return ChatModel
+     */
+    public ChatModel requireChatModelInstance(Long workflowId, Long nodeModelId) {
         AiModelResolver resolver = aiModelResolver.getIfAvailable();
         if (resolver != null) {
-            return resolver.resolveWorkflowChat(workflowId);
+            return resolver.resolveWorkflowChat(workflowId, nodeModelId);
         }
         if (chatModelProvider.getIfAvailable() == null) {
             throw new WarningException(ErrorCodes.Biz.WORKFLOW_AI_UNAVAILABLE,
