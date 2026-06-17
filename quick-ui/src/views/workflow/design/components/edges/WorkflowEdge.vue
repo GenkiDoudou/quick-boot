@@ -23,6 +23,7 @@
 import { computed, inject } from 'vue'
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core'
 import { Close } from '@element-plus/icons-vue'
+import { INTENT_FALLBACK_HANDLE, resolveIntentList } from '../../utils/intentUtils'
 
 defineOptions({ name: 'WorkflowEdge' })
 
@@ -77,9 +78,13 @@ const labelText = computed(() => {
     return handle
   }
   if (wfType === 'question-classifier') {
-    const classes = props.sourceNode?.data?.classes || []
-    const cls = classes.find((c) => c.id === handle)
-    return cls?.name || handle
+    if (handle === INTENT_FALLBACK_HANDLE) return '其他'
+    const intents = resolveIntentList(props.sourceNode?.data)
+    const idx = parseInt(handle, 10)
+    if (!Number.isNaN(idx) && idx >= 1 && idx <= intents.length) {
+      return intents[idx - 1]?.name || handle
+    }
+    return handle
   }
   return handle
 })

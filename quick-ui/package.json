@@ -22,6 +22,8 @@
     "@vue-flow/minimap": "^1.5.4",
     "@vueuse/core": "10.11.0",
     "axios": "^1.7.9",
+    "@guolao/vue-monaco-editor": "^1.5.4",
+    "monaco-editor": "^0.52.2",
     "crypto-js": "^4.2.0",
     "echarts": "^6.1.0",
     "element-plus": "^2.10.0",

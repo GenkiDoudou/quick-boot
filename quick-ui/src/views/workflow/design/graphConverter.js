@@ -2,6 +2,7 @@ import { NODE_META_MAP } from './nodeMeta'
 import { ensureFixedWorkflowNodes } from './utils/workflowNodePolicy'
 import { ensureLoopGraphStructure } from './utils/loopUtils'
 import { ensureBatchGraphStructure } from './utils/batchUtils'
+import { migrateIntentRecognitionGraph } from './utils/intentUtils'
 
 const GRAPH_VERSION = 1
 
@@ -18,7 +19,9 @@ export function graphToVueFlow(graph) {
     return { nodes, edges: [] }
   }
 
-  const nodes = graph.nodes.map((node) => {
+  const migrated = migrateIntentRecognitionGraph(graph.nodes, graph.edges || [])
+
+  const nodes = migrated.nodes.map((node) => {
     const nodeData = { ...(node.data || {}) }
     const parentId = node.parentId || nodeData.parentId
     if (node.type === 'answer' || node.type === 'end') {
@@ -58,7 +61,7 @@ export function graphToVueFlow(graph) {
     }
   })
 
-  const edges = (graph.edges || []).map((edge) => ({
+  const edges = migrated.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,

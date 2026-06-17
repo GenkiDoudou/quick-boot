@@ -30,6 +30,54 @@ class WorkflowGraphValidatorTest {
     }
 
     @Test
+    void validate_jsonSerializeMissingInput_throws() {
+        WorkflowGraphDto graph = linearRagGraph();
+        GraphNodeDto jsonNode = node("json_1", WfNodeType.JSON_SERIALIZE);
+        jsonNode.setData(Map.of("inputVariables", List.of(Map.of("key", "input", "value", ""))));
+        graph.getNodes().add(jsonNode);
+        graph.getEdges().removeIf(e -> "e3".equals(e.getId()));
+        graph.getEdges().add(edge("e3a", "llm_1", "json_1", null));
+        graph.getEdges().add(edge("e3b", "json_1", "answer_1", null));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> validator.validate(graph));
+        assertTrue(ex.getMessage().contains("JSON 序列化"));
+    }
+
+    @Test
+    void validate_jsonDeserializeMissingInput_throws() {
+        WorkflowGraphDto graph = linearRagGraph();
+        GraphNodeDto jsonNode = node("json_deser_1", WfNodeType.JSON_DESERIALIZE);
+        jsonNode.setData(Map.of("inputVariables", List.of(Map.of("key", "input", "value", ""))));
+        graph.getNodes().add(jsonNode);
+        graph.getEdges().removeIf(e -> "e3".equals(e.getId()));
+        graph.getEdges().add(edge("e3a", "llm_1", "json_deser_1", null));
+        graph.getEdges().add(edge("e3b", "json_deser_1", "answer_1", null));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> validator.validate(graph));
+        assertTrue(ex.getMessage().contains("JSON 反序列化"));
+    }
+
+    @Test
+    void validate_jsonDeserializeDuplicateOutputKey_throws() {
+        WorkflowGraphDto graph = linearRagGraph();
+        GraphNodeDto jsonNode = node("json_deser_1", WfNodeType.JSON_DESERIALIZE);
+        jsonNode.setData(Map.of(
+            "inputVariables", List.of(Map.of("key", "input", "value", "{{http_1.body}}")),
+            "outputFields", List.of(
+                Map.of("key", "name", "path", "a", "type", "string"),
+                Map.of("key", "name", "path", "b", "type", "string")
+            )
+        ));
+        graph.getNodes().add(jsonNode);
+        graph.getEdges().removeIf(e -> "e3".equals(e.getId()));
+        graph.getEdges().add(edge("e3a", "llm_1", "json_deser_1", null));
+        graph.getEdges().add(edge("e3b", "json_deser_1", "answer_1", null));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> validator.validate(graph));
+        assertTrue(ex.getMessage().contains("重复"));
+    }
+
+    @Test
     void validate_linearRagGraph_success() {
         WorkflowGraphDto graph = linearRagGraph();
         assertDoesNotThrow(() -> validator.validate(graph));
@@ -94,12 +142,14 @@ class WorkflowGraphValidatorTest {
             node("start_1", WfNodeType.START),
             node("kb_1", WfNodeType.KNOWLEDGE_RETRIEVAL),
             node("llm_1", WfNodeType.LLM),
-            node("answer_1", WfNodeType.ANSWER)
+            node("answer_1", WfNodeType.ANSWER),
+            node("end_1", WfNodeType.END)
         )));
         graph.setEdges(new ArrayList<>(List.of(
             edge("e1", "start_1", "kb_1", null),
             edge("e2", "kb_1", "llm_1", null),
-            edge("e3", "llm_1", "answer_1", null)
+            edge("e3", "llm_1", "answer_1", null),
+            edge("e4", "answer_1", "end_1", null)
         )));
         return graph;
     }

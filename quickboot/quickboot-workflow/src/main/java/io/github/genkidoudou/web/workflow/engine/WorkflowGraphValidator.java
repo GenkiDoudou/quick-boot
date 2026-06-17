@@ -101,6 +101,27 @@ public class WorkflowGraphValidator {
         validateBatchNodes(nodeMap);
         validateLoopBodyOnlyNodes(nodeMap);
         validateLoopBodyAnchorNodes(nodeMap);
+        validateNodeData(nodeMap);
+    }
+
+    /**
+     * 校验各节点 data 业务规则（意图数量、必填项等）。
+     */
+    private void validateNodeData(Map<String, GraphNodeDto> nodeMap) {
+        for (GraphNodeDto node : nodeMap.values()) {
+            if (WfNodeType.QUESTION_CLASSIFIER.equals(node.getType())) {
+                io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil.validate(
+                    node.getId(), node.getData());
+            }
+            if (WfNodeType.JSON_SERIALIZE.equals(node.getType())) {
+                io.github.genkidoudou.web.workflow.util.JsonSerializeDataUtil.validate(
+                    node.getId(), node.getData());
+            }
+            if (WfNodeType.JSON_DESERIALIZE.equals(node.getType())) {
+                io.github.genkidoudou.web.workflow.util.JsonDeserializeDataUtil.validate(
+                    node.getId(), node.getData());
+            }
+        }
     }
 
     private void validateLoopBodyAnchorNodes(Map<String, GraphNodeDto> nodeMap) {
@@ -279,7 +300,7 @@ public class WorkflowGraphValidator {
                 validateIfElseEdges(node, edges);
             }
             if (WfNodeType.QUESTION_CLASSIFIER.equals(node.getType())) {
-                validateClassifierEdges(node.getId(), edges);
+                validateClassifierEdges(node.getId(), edges, node);
             }
         }
     }
@@ -334,16 +355,57 @@ public class WorkflowGraphValidator {
         return handles;
     }
 
-    private void validateClassifierEdges(String nodeId, List<GraphEdgeDto> edges) {
-        boolean hasHandle = false;
+    @SuppressWarnings("unchecked")
+    private void validateClassifierEdges(String nodeId, List<GraphEdgeDto> edges, GraphNodeDto node) {
+        Map<String, Object> rawData = node.getData() == null ? Map.of() : node.getData();
+        Map<String, Object> data = io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil.normalize(rawData);
+        int intentCount = io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil.intentCount(data);
+
+        boolean hasIntentEdge = false;
+        boolean hasFallback = false;
+        List<Map<String, Object>> legacyClasses = rawData.get("classes") instanceof List<?> list
+            ? (List<Map<String, Object>>) list : null;
+
         for (GraphEdgeDto edge : edges) {
-            if (nodeId.equals(edge.getSource()) && edge.getSourceHandle() != null && !edge.getSourceHandle().isBlank()) {
-                hasHandle = true;
-                break;
+            if (!nodeId.equals(edge.getSource())) {
+                continue;
+            }
+            String handle = edge.getSourceHandle();
+            if (handle == null || handle.isBlank()) {
+                throw new IllegalArgumentException("意图识别节点 " + nodeId + " 的出口边须带 sourceHandle");
+            }
+            if (io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil.FALLBACK_HANDLE.equals(handle)) {
+                hasFallback = true;
+                continue;
+            }
+            try {
+                int n = Integer.parseInt(handle.trim());
+                if (n >= 1 && n <= intentCount) {
+                    hasIntentEdge = true;
+                } else if (n != 0) {
+                    throw new IllegalArgumentException("意图识别节点 " + nodeId + " 的 sourceHandle 无效: " + handle);
+                }
+            } catch (NumberFormatException ex) {
+                String mapped = io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil
+                    .mapLegacyHandle(handle, legacyClasses);
+                if (mapped == null) {
+                    throw new IllegalArgumentException("意图识别节点 " + nodeId
+                        + " 的 sourceHandle 无法映射为数字 handle: " + handle
+                        + "，请重新连线（1.." + intentCount + " 或 0 兜底）");
+                }
+                if (io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil.FALLBACK_HANDLE.equals(mapped)) {
+                    hasFallback = true;
+                } else {
+                    hasIntentEdge = true;
+                }
             }
         }
-        if (!hasHandle) {
-            throw new IllegalArgumentException("question-classifier 节点 " + nodeId + " 的出口边须带 sourceHandle");
+        if (!hasIntentEdge) {
+            throw new IllegalArgumentException("意图识别节点 " + nodeId + " 至少需要连接一条意图分支（sourceHandle 1.."
+                + intentCount + "）");
+        }
+        if (!hasFallback) {
+            throw new IllegalArgumentException("意图识别节点 " + nodeId + " 必须连接「其他」兜底出口（sourceHandle=0）");
         }
     }
 

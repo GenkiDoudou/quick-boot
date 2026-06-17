@@ -31,6 +31,9 @@ public class WorkflowProperties {
     /** HTTP 请求节点配置。 */
     private HttpRequest httpRequest = new HttpRequest();
 
+    /** 代码节点执行配置。 */
+    private CodeNode codeNode = new CodeNode();
+
     /**
      * 对外 REST API 预留开关。
      */
@@ -71,5 +74,27 @@ public class WorkflowProperties {
 
         /** 请求 User-Agent。 */
         private String userAgent = "QuickBoot-WorkflowBot/1.0";
+    }
+
+    /**
+     * 代码节点沙箱执行限制。
+     */
+    @Data
+    public static class CodeNode {
+
+        /** 是否启用代码节点。 */
+        private boolean enabled = true;
+
+        /** 单节点最大执行时长（毫秒），上限 60s。 */
+        private long maxTimeoutMs = 60_000L;
+
+        /** 代码片段最大字符数。 */
+        private int maxCodeLength = 65_536;
+
+        /** Python 解释器命令（如 python、python3）。 */
+        private String pythonCommand = "python";
+
+        /** 单个工作流最多代码节点数量。 */
+        private int maxNodesPerWorkflow = 50;
     }
 }

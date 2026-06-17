@@ -548,6 +548,104 @@ export const WORKFLOW_NODE_TYPES = [
     }
   },
   {
+    type: 'code',
+    label: '代码',
+    category: 'tool',
+    description: '通过 JavaScript / Python 编写自定义逻辑，处理输入并返回对象',
+    example: 'params.input → 处理后 return { result }',
+    color: '#409eff',
+    icon: 'Edit',
+    defaults: {
+      language: 'javascript',
+      code: "function main({ params }) {\n  return {\n    result: params.input\n  };\n}",
+      timeoutSec: 60,
+      errorMode: 'abort',
+      inputVariables: [{ key: 'input', value: '' }],
+      outputVariables: [{ key: 'result', type: 'string' }],
+      fallbackOutputs: { result: '' }
+    },
+    outputs: [
+      { key: 'result', label: 'result', type: 'string' },
+      { key: 'isSuccess', label: '是否成功', type: 'boolean' },
+      { key: 'errorBody', label: '错误信息', type: 'string' }
+    ],
+    summarize(data) {
+      const lang = data?.language === 'python' ? 'Python' : 'JavaScript'
+      const inputs = Array.isArray(data?.inputVariables)
+        ? data.inputVariables.filter((p) => p?.key).length
+        : 0
+      const outputs = Array.isArray(data?.outputVariables)
+        ? data.outputVariables.filter((p) => p?.key).length
+        : 0
+      return `${lang} · ${inputs} 入参 · ${outputs} 出参`
+    },
+    hasValidationWarning(data) {
+      const hasCode = !!(data?.code || '').trim()
+      const hasInput = Array.isArray(data?.inputVariables)
+        && data.inputVariables.some((p) => (p?.key || '').trim())
+      const hasOutput = Array.isArray(data?.outputVariables)
+        && data.outputVariables.some((p) => (p?.key || '').trim())
+      return !hasCode || !hasInput || !hasOutput
+    }
+  },
+  {
+    type: 'json-serialize',
+    label: 'JSON 序列化',
+    category: 'tool',
+    description: '将 Object、Array 等结构转为 JSON 字符串，便于下游存储或传输',
+    example: '{{llm_1.output}} → output 字符串',
+    color: '#409eff',
+    icon: 'Document',
+    defaults: {
+      inputVariables: [{ key: 'input', value: '' }]
+    },
+    outputs: [{ key: 'output', label: 'output', type: 'string' }],
+    summarize(data) {
+      const row = Array.isArray(data?.inputVariables) ? data.inputVariables[0] : null
+      const key = (row?.key || '').trim()
+      const value = (row?.value || '').trim()
+      if (!key || !value) return '序列化 · 未配置输入'
+      return `序列化 · ${preview(value, 24) || key}`
+    },
+    hasValidationWarning(data) {
+      const row = Array.isArray(data?.inputVariables) ? data.inputVariables[0] : null
+      return !(row?.key || '').trim() || !(row?.value || '').trim()
+    }
+  },
+  {
+    type: 'json-deserialize',
+    label: 'JSON 反序列化',
+    category: 'tool',
+    description: '将 JSON 字符串解析为对象，支持按字段表提取子字段',
+    example: '{{http_1.body}} → output 对象',
+    color: '#67c23a',
+    icon: 'DocumentCopy',
+    defaults: {
+      inputVariables: [{ key: 'input', value: '' }],
+      outputFields: []
+    },
+    outputs: [{ key: 'output', label: 'output', type: 'object' }],
+    summarize(data) {
+      const row = Array.isArray(data?.inputVariables) ? data.inputVariables[0] : null
+      const key = (row?.key || '').trim()
+      const value = (row?.value || '').trim()
+      if (!key || !value) return '反序列化 · 未配置输入'
+      const fields = Array.isArray(data?.outputFields)
+        ? data.outputFields.filter((f) => (f?.key || '').trim())
+        : []
+      if (!fields.length) return '反序列化 · 整包输出'
+      return `反序列化 · ${fields.length} 个字段`
+    },
+    hasValidationWarning(data) {
+      const row = Array.isArray(data?.inputVariables) ? data.inputVariables[0] : null
+      if (!(row?.key || '').trim() || !(row?.value || '').trim()) return true
+      const fields = Array.isArray(data?.outputFields) ? data.outputFields : []
+      const keys = fields.map((f) => (f?.key || '').trim()).filter(Boolean)
+      if (keys.length !== new Set(keys).size) return true
+      return fields.some((f) => (f?.key || '').trim() === '' && ((f?.path || '').trim() || (f?.type || '').trim()))
+    }
+  },
+  {
     type: 'http-request',
     label: 'HTTP 请求',
     category: 'tool',
@@ -578,24 +676,46 @@ export const WORKFLOW_NODE_TYPES = [
   },
   {
     type: 'question-classifier',
-    label: '问题分类',
+    label: '意图识别',
     category: 'logic',
-    description: '用 LLM 将输入分到不同类别分支',
-    example: '文本 {{start_1.question}} → 分类 a/b/c，连线到不同后续节点',
+    description: '用 LLM 识别用户意图并分支路由',
+    example: '文本 {{query}} → 意图 1/2/… 或兜底「其他」',
     color: '#b88230',
     icon: 'Grid',
-    defaults: { query: '{{start_1.question}}', classes: [{ id: 'a', name: '类别A', description: '' }] },
-    outputs: [{ key: 'classId', label: '分类 ID', type: 'string' }],
+    defaults: {
+      chatModelId: null,
+      inputVariables: [{ key: 'query', value: '{{start_1.question}}' }],
+      query: '{{query}}',
+      systemPrompt: '',
+      outputVariables: [
+        { key: 'index', type: 'number', description: '命中意图序号（1..N），未命中为 0' },
+        { key: 'reason', type: 'string', description: '分类依据说明' }
+      ],
+      intents: [{ name: '意图1', examples: [] }]
+    },
+    outputs: [
+      { key: 'index', label: 'index', type: 'number' },
+      { key: 'reason', label: 'reason', type: 'string' }
+    ],
     fields: [
-      { key: 'query', label: '待分类文本', input: 'textarea' },
-      { key: 'classesJson', label: '分类 (JSON)', input: 'textarea', bind: 'classes', json: true }
+      { key: 'chatModelId', label: '大模型', input: 'select' },
+      { key: 'inputVariables', label: '输入参数', input: 'table' },
+      { key: 'systemPrompt', label: '系统提示词', input: 'textarea' }
     ],
     summarize(data) {
-      const n = Array.isArray(data?.classes) ? data.classes.length : 0
-      return `${n} 个分类`
+      const n = Array.isArray(data?.intents)
+        ? data.intents.length
+        : (Array.isArray(data?.classes) ? data.classes.length : 0)
+      return `${n} 个意图`
     },
     hasValidationWarning(data) {
-      return !data?.query || !Array.isArray(data?.classes) || !data.classes.length
+      const normalized = data || {}
+      const inputs = normalized.inputVariables
+      const hasInput = Array.isArray(inputs) && inputs.some((i) => i?.key && i?.value)
+      const intents = normalized.intents
+      const legacy = normalized.classes
+      const count = Array.isArray(intents) ? intents.length : (Array.isArray(legacy) ? legacy.length : 0)
+      return !hasInput && !normalized.query || count < 1
     }
   },
   {
@@ -775,6 +895,53 @@ export function resolveNodeOutputs(wfType, nodeData) {
       { key: 'output', label: 'output', type: 'string' },
       { key: 'text', label: 'text', type: 'string' }
     ]
+  }
+  if (wfType === 'json-deserialize') {
+    const outputs = [{ key: 'output', label: 'output', type: 'object' }]
+    const fields = nodeData?.outputFields
+    if (Array.isArray(fields)) {
+      fields
+        .filter((item) => (item?.key || '').trim())
+        .forEach((item) => {
+          outputs.push({
+            key: `output.${item.key}`,
+            label: item.key,
+            type: item.type || 'string'
+          })
+        })
+    }
+    return outputs
+  }
+  if (wfType === 'code') {
+    const vars = nodeData?.outputVariables
+    const outputs = Array.isArray(vars) && vars.length
+      ? vars
+          .filter((item) => item?.key)
+          .map((item) => ({
+            key: item.key,
+            label: item.key,
+            type: item.type || 'string'
+          }))
+      : [{ key: 'result', label: 'result', type: 'string' }]
+    return [
+      ...outputs,
+      { key: 'isSuccess', label: 'isSuccess', type: 'boolean' },
+      { key: 'errorBody', label: 'errorBody', type: 'string' }
+    ]
+  }
+  if (wfType === 'question-classifier') {
+    const vars = nodeData?.outputVariables
+    if (Array.isArray(vars) && vars.length) {
+      return vars
+        .filter((item) => item?.key)
+        .map((item) => ({
+          key: item.key,
+          label: item.key,
+          type: item.type || 'string',
+          description: item.description?.trim() || ''
+        }))
+    }
+    return NODE_META_MAP[wfType]?.outputs || []
   }
   if (wfType === 'start') {
     const inputs = nodeData?.inputs

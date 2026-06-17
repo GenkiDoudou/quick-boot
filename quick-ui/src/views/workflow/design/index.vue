@@ -475,10 +475,9 @@ function handleOptimizeLayout() {
 }
 
 function onNodeUpdate(updated) {
-  const idx = nodes.value.findIndex((n) => n.id === updated.id)
-  if (idx >= 0) {
-    nodes.value[idx] = updated
-  }
+  nodes.value = nodes.value.map((n) =>
+    n.id === updated.id ? { ...updated, data: { ...updated.data } } : n
+  )
 }
 
 function onDrop(event) {

@@ -19,6 +19,13 @@ public final class WfNodeType {
     public static final String VARIABLE_ASSIGN = "variable-assign";
     public static final String VARIABLE_AGGREGATOR = "variable-aggregator";
     public static final String HTTP_REQUEST = "http-request";
+    /** 自定义代码逻辑节点（JavaScript / Python）。 */
+    public static final String CODE = "code";
+    /** JSON 序列化：将 Object/Array 等转为 JSON 字符串。 */
+    public static final String JSON_SERIALIZE = "json-serialize";
+    /** JSON 反序列化：将 JSON 字符串解析为 Object/Array。 */
+    public static final String JSON_DESERIALIZE = "json-deserialize";
+    /** 意图识别（原 question-classifier）：LLM 多意图分支 + 兜底出口。 */
     public static final String QUESTION_CLASSIFIER = "question-classifier";
     public static final String PARAMETER_EXTRACTOR = "parameter-extractor";
     public static final String LIST_OPERATOR = "list-operator";

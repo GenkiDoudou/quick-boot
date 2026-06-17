@@ -44,6 +44,8 @@ public final class ErrorCodes {
         public static final int WORKFLOW_CONCURRENT_LIMIT = 20031;
         /** 工作流：模板不存在或已删除 */
         public static final int WORKFLOW_TEMPLATE_NOT_FOUND = 20032;
+        /** AI 应用：不存在或已删除 */
+        public static final int AI_APP_NOT_FOUND = 20033;
 
         private Biz() {
         }

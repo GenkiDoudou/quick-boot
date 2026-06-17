@@ -175,6 +175,13 @@ export const constantRoutes = [
     path: '/knowledge/mcp',
     redirect: '/ai/mcp',
     hidden: true
+  },
+  {
+    path: '/ai/embed/:token',
+    component: () => import('@/views/ai/app/embed/index.vue'),
+    name: 'AiAppEmbed',
+    hidden: true,
+    meta: { title: 'AI 应用嵌入' }
   }
 
 ]

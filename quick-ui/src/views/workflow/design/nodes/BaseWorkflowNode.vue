@@ -36,13 +36,13 @@
     />
     <template v-if="showClassifierHandles">
       <Handle
-        v-for="(cls, idx) in classifierClasses"
-        :key="cls.id || idx"
-        :id="cls.id || `class_${idx}`"
+        v-for="(row, idx) in intentCanvasRows"
+        :key="`${intentHandleKey}_${row.id}`"
+        :id="row.id"
         type="source"
         :position="Position.Right"
         class="wf-node__handle wf-node__handle--class"
-        :style="{ top: `${20 + idx * 18}%` }"
+        :style="{ top: `${18 + idx * 16}%` }"
       />
     </template>
   </div>
@@ -52,6 +52,7 @@
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { getNodeColor, getNodeLabel } from '../nodeMeta'
+import { resolveIntentCanvasRows } from '../utils/intentUtils'
 
 defineOptions({ name: 'BaseWorkflowNode' })
 
@@ -72,9 +73,11 @@ const showFalseHandle = computed(() => wfType.value === 'if-else')
 const showClassifierHandles = computed(() => wfType.value === 'question-classifier')
 const showDefaultSource = computed(() => !showTrueHandle.value && !showClassifierHandles.value)
 
-const classifierClasses = computed(() => {
-  const classes = props.data?.classes
-  return Array.isArray(classes) && classes.length ? classes : [{ id: 'default', name: '默认' }]
+const intentCanvasRows = computed(() => resolveIntentCanvasRows(props.data))
+const intentHandleKey = computed(() => {
+  const intents = props.data?.intents
+  const n = Array.isArray(intents) ? intents.length : 0
+  return `intent_handles_${n}`
 })
 </script>
 

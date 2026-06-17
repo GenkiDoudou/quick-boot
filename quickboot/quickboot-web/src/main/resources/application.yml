@@ -180,6 +180,7 @@ qc:
         - /file/upload/**
         - /file/classifies
         - /file/classifies/**
+        - /ai/embed/**
     # 首方/第三方 Client HMAC 签名校验（见 docs/superpowers/specs/2026-05-23-oauth2-integration-design.md §16）
     client-sign:
       enabled: true
@@ -236,6 +237,10 @@ qc:
           - /workflow/validateGraph
           - /workflow/publish
           - /workflow/run/**
+          # 提示词 / AI 应用编排含大量用户自定义文本
+          - /ai/prompt/add
+          - /ai/prompt/update
+          - /ai/prompt/optimize
 
         # REPLACE | THROW（推荐大写；小写 throw 在部分环境下亦可绑定）
         strategy: THROW
@@ -259,16 +264,37 @@ qc:
           - /drag/**
           - /jimubi/**
           - /jimureport/**
+          # 工作流图 DSL / 代码节点含用户自定义文本，不宜走 SQL 启发式拦截（已鉴权 workflow:edit）
+          - /workflow/saveGraph
+          - /workflow/validateGraph
+          - /workflow/publish
+          - /workflow/run/**
+          - /workflow/template/saveGraph
+          - /workflow/template/validateGraph
+          # 提示词正文含用户自定义文本，不宜走 SQL 启发式拦截
+          - /ai/prompt/add
+          - /ai/prompt/update
+          - /ai/prompt/optimize
       xss:
         enabled: true
         forbidden-message: 您的请求包含非法字符，请检查！
         ignoreUrls:
           - /monitor/clientTrack/report
           - /workflow/saveGraph
+          - /workflow/validateGraph
+          - /workflow/run/debug
+          - /workflow/publish
+          - /workflow/run/**
+          - /workflow/template/saveGraph
+          - /workflow/template/validateGraph
           - /jmreport/**
           - /drag/**
           - /jimubi/**
           - /jimureport/**
+          # 提示词正文含用户自定义文本，不宜走 XSS 拦截
+          - /ai/prompt/add
+          - /ai/prompt/update
+          - /ai/prompt/optimize
       idempotent:
         enabled: true
         # TOKEN-only：仅当请求头非空时占位；缺头不报错。cache-type: auto|redis|caffeine（auto=有 RedisConnectionFactory 则用 Redis）
@@ -406,6 +432,10 @@ qc:
       max-bytes: 5242880
       max-redirects: 3
       user-agent: QuickBoot-WorkflowBot/1.0
+  ai-app:
+    enabled: false
+    max-tool-calls: 5
+    chat-timeout-ms: 120000
 
 
 # Actuator 最小暴露

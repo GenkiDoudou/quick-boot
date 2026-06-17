@@ -40,6 +40,11 @@
             <artifactId>quickboot-workflow</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.genkidoudou.web</groupId>
+            <artifactId>quickboot-ai-app</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>io.github.genkidoudou.common</groupId>

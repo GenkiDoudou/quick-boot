@@ -27,6 +27,7 @@ qc:
         - /file/upload/**
         - /file/classifies
         - /file/classifies/**
+        - /ai/embed/**
     firewall:
       method-and-host:
         enabled: true
@@ -62,6 +63,10 @@ qc:
       test-timeout-ms: 20000
     export:
       include-secrets: false
+  ai-app:
+    enabled: true
+    max-tool-calls: 5
+    chat-timeout-ms: 120000
   workflow:
     enabled: true
     external-api:

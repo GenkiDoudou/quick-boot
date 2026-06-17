@@ -120,6 +120,9 @@ import BatchForm from './forms/BatchForm.vue'
 import LoopSetVariableForm from './forms/LoopSetVariableForm.vue'
 import BreakLoopForm from './forms/BreakLoopForm.vue'
 import ContinueLoopForm from './forms/ContinueLoopForm.vue'
+import CodeForm from './forms/CodeForm.vue'
+import JsonSerializeForm from './forms/JsonSerializeForm.vue'
+import JsonDeserializeForm from './forms/JsonDeserializeForm.vue'
 
 defineOptions({ name: 'NodeConfigPanel' })
 
@@ -149,6 +152,9 @@ const FORM_MAP = {
   'variable-assign': VariableAssignForm,
   'variable-aggregator': VariableAggregatorForm,
   'http-request': HttpRequestForm,
+  code: CodeForm,
+  'json-serialize': JsonSerializeForm,
+  'json-deserialize': JsonDeserializeForm,
   'question-classifier': QuestionClassifierForm,
   'parameter-extractor': ParameterExtractorForm,
   'list-operator': ListOperatorForm,

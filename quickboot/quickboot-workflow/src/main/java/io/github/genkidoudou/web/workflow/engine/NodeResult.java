@@ -65,6 +65,20 @@ public class NodeResult {
     }
 
     /**
+     * 构造带分支 handle 与 Trace 入参的成功结果。
+     *
+     * @param outputs      节点输出
+     * @param traceInputs  步骤 Trace 展示用入参
+     * @param branchHandle 分支标识
+     * @return 成功结果
+     */
+    public static NodeResult successWithBranchAndTrace(Map<String, Object> outputs,
+                                                       Map<String, Object> traceInputs,
+                                                       String branchHandle) {
+        return new NodeResult(true, outputs, traceInputs, branchHandle, null);
+    }
+
+    /**
      * 构造失败结果。
      *
      * @param errorMessage 失败原因

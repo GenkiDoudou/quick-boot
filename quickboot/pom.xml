@@ -18,6 +18,7 @@
         <module>quickboot-knowledge</module>
         <module>quickboot-ai</module>
         <module>quickboot-workflow</module>
+        <module>quickboot-ai-app</module>
         <module>quickboot-web</module>
     </modules>
 

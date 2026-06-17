@@ -33,7 +33,7 @@
       class="wf-card__handle"
     />
 
-    <div class="wf-card__inner" :class="{ 'wf-card__inner--selector': showIfElseHandles }">
+    <div class="wf-card__inner" :class="{ 'wf-card__inner--selector': showIfElseHandles || showClassifierHandles }">
       <div class="wf-card__header">
         <el-icon class="wf-card__icon" :size="16">
           <component :is="iconComponent" />
@@ -41,7 +41,7 @@
         <span class="wf-card__type">{{ typeLabel }}</span>
         <span v-if="showWarning" class="wf-card__warn" title="必填项未配置" />
       </div>
-      <div v-if="!showIfElseHandles && wfType !== 'loop-body' && wfType !== 'batch-body'" class="wf-card__title">{{ displayLabel }}</div>
+      <div v-if="!showIfElseHandles && !showClassifierHandles && wfType !== 'loop-body' && wfType !== 'batch-body'" class="wf-card__title">{{ displayLabel }}</div>
       <div v-if="wfType === 'loop'" class="wf-card__loop-sections">
         <div class="wf-card__loop-row">
           <span class="wf-card__loop-label">输入</span>
@@ -56,7 +56,7 @@
           <span class="wf-card__loop-value">{{ loopSections.output }}</span>
         </div>
       </div>
-      <div v-else-if="!showIfElseHandles && wfType !== 'loop-body' && wfType !== 'batch-body'" class="wf-card__summary">{{ summaryText }}</div>
+      <div v-else-if="!showIfElseHandles && !showClassifierHandles && wfType !== 'loop-body' && wfType !== 'batch-body'" class="wf-card__summary">{{ summaryText }}</div>
       <div v-else-if="wfType === 'loop-body' || wfType === 'batch-body'" class="wf-card__body-port-labels">
         <span class="wf-card__body-port wf-card__body-port--entry">开始</span>
         <span class="wf-card__body-port wf-card__body-port--exit">结束</span>
@@ -72,6 +72,23 @@
         >
           <span class="wf-card__selector-label">{{ row.label }}</span>
           <span v-if="row.preview" class="wf-card__selector-preview">{{ row.preview }}</span>
+          <Handle
+            :id="row.id"
+            type="source"
+            :position="Position.Right"
+            class="wf-card__handle wf-card__handle--row"
+          />
+        </div>
+      </div>
+      <!-- 意图识别：分支行 + 每行一个出口 -->
+      <div v-if="showClassifierHandles" :key="intentHandleKey" class="wf-card__selector">
+        <div
+          v-for="row in intentCanvasRows"
+          :key="`${intentHandleKey}_${row.id}`"
+          class="wf-card__selector-row"
+          :class="{ 'wf-card__selector-row--else': row.isFallback }"
+        >
+          <span class="wf-card__selector-label">{{ row.label }}</span>
           <Handle
             :id="row.id"
             type="source"
@@ -104,17 +121,6 @@
       :position="Position.Right"
       class="wf-card__handle"
     />
-    <template v-if="showClassifierHandles">
-      <Handle
-        v-for="(cls, idx) in classifierClasses"
-        :key="cls.id || idx"
-        :id="cls.id || `class_${idx}`"
-        type="source"
-        :position="Position.Right"
-        class="wf-card__handle wf-card__handle--branch"
-        :style="{ top: `${20 + idx * 18}%` }"
-      />
-    </template>
   </div>
 </template>
 
@@ -128,6 +134,7 @@ import {
   Collection,
   Switch,
   Document,
+  DocumentCopy,
   EditPen,
   Connection,
   Link,
@@ -142,6 +149,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getNodeColor, getNodeLabel, summarizeNode, hasNodeValidationWarning } from '../nodeMeta'
 import { resolveIfElseCanvasRows } from '../utils/ifElseBranchUtils'
+import { resolveIntentCanvasRows } from '../utils/intentUtils'
 import { resolveLoopCardSections } from '../utils/loopUtils'
 
 defineOptions({ name: 'WorkflowNodeCard' })
@@ -159,6 +167,7 @@ const ICON_MAP = {
   Collection,
   Switch,
   Document,
+  DocumentCopy,
   EditPen,
   Connection,
   Link,
@@ -204,7 +213,7 @@ const cardClasses = computed(() => ({
   'wf-card--success': props.data?.runStatus === 'SUCCESS',
   'wf-card--failed': props.data?.runStatus === 'FAILED',
   'wf-card--error': !!props.data?.validationError,
-  'wf-card--selector': showIfElseHandles.value,
+  'wf-card--selector': showIfElseHandles.value || showClassifierHandles.value,
   'wf-card--loop-body': wfType.value === 'loop-body',
   'wf-card--batch-body': wfType.value === 'batch-body',
   'wf-card--loop-head': wfType.value === 'loop',
@@ -235,10 +244,11 @@ const showDefaultSource = computed(() => {
 })
 
 const ifElseCanvasRows = computed(() => resolveIfElseCanvasRows(props.data))
-
-const classifierClasses = computed(() => {
-  const classes = props.data?.classes
-  return Array.isArray(classes) && classes.length ? classes : [{ id: 'default', name: '默认' }]
+const intentCanvasRows = computed(() => resolveIntentCanvasRows(props.data))
+const intentHandleKey = computed(() => {
+  const intents = props.data?.intents
+  const n = Array.isArray(intents) ? intents.length : 0
+  return `intent_handles_${n}`
 })
 </script>
 
