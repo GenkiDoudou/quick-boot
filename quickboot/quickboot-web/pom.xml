@@ -94,6 +94,13 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
 
+        <!-- dev-embedded：内嵌 MariaDB4J；optional 避免打入生产可执行 jar -->
+        <dependency>
+            <groupId>ch.vorburger.mariaDB4j</groupId>
+            <artifactId>mariaDB4j</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>

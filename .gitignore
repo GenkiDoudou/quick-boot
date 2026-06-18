@@ -29,7 +29,10 @@ bak
 node_modules
 
 # 本地 H2 数据库（勿提交）
-/data/
+/data/**
+!/data/mariadb4j/
+/data/mariadb4j/**
+!/data/mariadb4j/README.md
 *.mv.db
 *.trace.db
 *.lock.db

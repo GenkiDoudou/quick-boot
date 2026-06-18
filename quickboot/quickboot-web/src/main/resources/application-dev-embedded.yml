@@ -1,0 +1,20 @@
+# 本地嵌入式 MariaDB4J（数据目录 ./data/mariadb4j，可整目录拷贝换机）
+# 启动：mvn -pl quickboot-web spring-boot:run -Dspring-boot.run.profiles=dev,dev-embedded
+#
+# 与 application-dev.yml 叠加：本文件覆盖主库 JDBC；其余 dev 配置（AI、workflow 等）保持不变。
+# 向量库仍指向远程 PG；若本机已启 docker/pgvector，可改为 127.0.0.1:5433。
+
+qc:
+  embedded-mariadb:
+    enabled: true
+    port: 3307
+    # mvn 通常在 quickboot/ 目录执行，../data 指向仓库根 data/mariadb4j
+    data-dir: ../data/mariadb4j
+    database-name: qc2
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/qc2?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
