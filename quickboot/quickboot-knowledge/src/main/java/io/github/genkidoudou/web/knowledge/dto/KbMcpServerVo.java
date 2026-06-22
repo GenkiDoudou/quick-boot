@@ -56,6 +56,9 @@ public class KbMcpServerVo {
     @Schema(description = "最近探测时间")
     private LocalDateTime lastTestTime;
 
+    @Schema(description = "最近成功测试发现的工具数量")
+    private Integer toolCount;
+
     @Schema(description = "环境变量列表")
     private List<KbMcpEnvVo> envs = new ArrayList<>();
 

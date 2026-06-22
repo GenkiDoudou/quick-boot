@@ -1,27 +1,35 @@
 package io.github.genkidoudou.web.knowledge.mcp.runtime;
 
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.web.knowledge.config.KnowledgeMcpProperties;
 import io.github.genkidoudou.web.knowledge.constants.McpTransport;
+import io.github.genkidoudou.web.knowledge.mcp.support.McpTransportUrlSupport;
+import io.github.genkidoudou.web.knowledge.mcp.support.McpTransportUrlSupport.StreamableHttpUrlParts;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpUrlGuard;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import org.springframework.stereotype.Component;
 
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 按解析后的配置构建 MCP Java SDK {@link io.modelcontextprotocol.spec.McpClientTransport}。
- * <p>
- * 注：MCP SDK 0.10.0 核心包仅提供 STDIO 与 SSE Transport；{@code STREAMABLE_HTTP} 暂以 SSE Transport 连接（endpoint {@code /mcp}）。
  */
 @Component
 public class McpTransportFactory {
+
+    /** MCP SDK 0.18+ 各 Transport 需显式传入 JSON 映射器。 */
+    private static final McpJsonMapper JSON_MAPPER = new JacksonMcpJsonMapper(new ObjectMapper());
 
     private final KnowledgeMcpProperties properties;
     private final McpUrlGuard urlGuard;
@@ -43,10 +51,10 @@ public class McpTransportFactory {
             return createStdioTransport(config);
         }
         if (McpTransport.SSE.equals(transport)) {
-            return createHttpTransport(config, null);
+            return createSseTransport(config);
         }
         if (McpTransport.STREAMABLE_HTTP.equals(transport)) {
-            return createHttpTransport(config, "/mcp");
+            return createStreamableHttpTransport(config);
         }
         throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "不支持的传输方式: " + transport);
     }
@@ -65,20 +73,39 @@ public class McpTransportFactory {
         if (env != null && !env.isEmpty()) {
             builder.env(env);
         }
-        return new StdioClientTransport(builder.build());
+        return new StdioClientTransport(builder.build(), JSON_MAPPER);
     }
 
-    private io.modelcontextprotocol.spec.McpClientTransport createHttpTransport(McpResolvedConfig config, String sseEndpoint) {
+    /**
+     * 遗留 HTTP+SSE 传输（服务端提供 /sse 等 SSE 端点）。
+     */
+    private io.modelcontextprotocol.spec.McpClientTransport createSseTransport(McpResolvedConfig config) {
         urlGuard.validateUrl(config.getUrl());
-        HttpClientSseClientTransport.Builder builder = HttpClientSseClientTransport.builder(config.getUrl().trim());
-        if (StrUtil.isNotBlank(sseEndpoint)) {
-            builder.sseEndpoint(sseEndpoint);
-        }
-        applyHttpHeaders(builder, config);
+        HttpClientSseClientTransport.Builder builder = HttpClientSseClientTransport.builder(config.getUrl().trim())
+            .jsonMapper(JSON_MAPPER);
+        applySseHeaders(builder, config);
         return builder.build();
     }
 
-    private void applyHttpHeaders(HttpClientSseClientTransport.Builder builder, McpResolvedConfig config) {
+    /**
+     * Streamable HTTP（2025-03-26 协议）：用户配置为完整 MCP 端点 URL，须拆为 baseUri + endpoint 再交给 SDK。
+     */
+    private io.modelcontextprotocol.spec.McpClientTransport createStreamableHttpTransport(McpResolvedConfig config) {
+        urlGuard.validateUrl(config.getUrl());
+        StreamableHttpUrlParts parts = McpTransportUrlSupport.splitStreamableHttpUrl(config.getUrl());
+        HttpClientStreamableHttpTransport.Builder builder =
+            HttpClientStreamableHttpTransport.builder(parts.baseUri())
+                .endpoint(parts.endpoint())
+                .jsonMapper(JSON_MAPPER)
+                // ModelScope 等托管 MCP 使用 HTTP/1.1；跟随重定向以兼容 /mcp 与 /mcp/ 差异
+                .customizeClient(client -> client
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .followRedirects(HttpClient.Redirect.NORMAL));
+        applyStreamableHttpHeaders(builder, config);
+        return builder.build();
+    }
+
+    private void applySseHeaders(HttpClientSseClientTransport.Builder builder, McpResolvedConfig config) {
         Map<String, String> headers = config.getHeaders();
         if (headers == null || headers.isEmpty()) {
             return;
@@ -86,6 +113,14 @@ public class McpTransportFactory {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
         headers.forEach(requestBuilder::header);
         builder.requestBuilder(requestBuilder);
+    }
+
+    private void applyStreamableHttpHeaders(HttpClientStreamableHttpTransport.Builder builder, McpResolvedConfig config) {
+        Map<String, String> headers = config.getHeaders();
+        if (headers == null || headers.isEmpty()) {
+            return;
+        }
+        builder.customizeRequest(requestBuilder -> headers.forEach(requestBuilder::setHeader));
     }
 
     private void validateStdioCommand(String command) {

@@ -40,6 +40,7 @@ import io.github.genkidoudou.web.system.role.service.SysRoleService;
 import io.github.genkidoudou.web.system.user.domain.SysUser;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,7 @@ public class SysRoleServiceImpl implements SysRoleService {
     private final SysUserRoleMapper userRoleMapper;
     private final SysUserMapper userMapper;
     private final SysUserRoleBindService userRoleBindService;
+    private final UserAuthCacheService userAuthCacheService;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -91,6 +93,7 @@ public class SysRoleServiceImpl implements SysRoleService {
             SysUserRoleMapper userRoleMapper,
             SysUserMapper userMapper,
             SysUserRoleBindService userRoleBindService,
+            UserAuthCacheService userAuthCacheService,
             JdbcTemplate jdbcTemplate) {
         this.roleMapper = roleMapper;
         this.roleMenuMapper = roleMenuMapper;
@@ -98,6 +101,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         this.userRoleMapper = userRoleMapper;
         this.userMapper = userMapper;
         this.userRoleBindService = userRoleBindService;
+        this.userAuthCacheService = userAuthCacheService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -202,6 +206,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         if (!ADMIN_ROLE_ID.equals(req.getRoleId())) {
             replaceRoleDeptBindings(req.getRoleId(), effectiveScope, req.getDeptIds());
         }
+        userAuthCacheService.evictUsersByRoleId(req.getRoleId());
     }
 
     @Override
@@ -291,6 +296,7 @@ public class SysRoleServiceImpl implements SysRoleService {
             rm.setMenuId(menuId);
             roleMenuMapper.insert(rm);
         }
+        userAuthCacheService.evictUsersByRoleId(req.getRoleId());
     }
 
     @Override
@@ -355,6 +361,7 @@ public class SysRoleServiceImpl implements SysRoleService {
             }
             userRoleBindService.ensureUserHasRole(uid, req.getRoleId());
         }
+        userAuthCacheService.evictUsersByRoleId(req.getRoleId());
     }
 
     @Override
@@ -363,6 +370,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery()
                 .eq(SysUserRole::getRoleId, req.getRoleId())
                 .eq(SysUserRole::getUserId, req.getUserId()));
+        userAuthCacheService.evictUser(req.getUserId());
     }
 
     @Override
@@ -375,6 +383,7 @@ public class SysRoleServiceImpl implements SysRoleService {
             userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery()
                     .eq(SysUserRole::getRoleId, req.getRoleId())
                     .eq(SysUserRole::getUserId, uid));
+            userAuthCacheService.evictUser(uid);
         }
     }
 

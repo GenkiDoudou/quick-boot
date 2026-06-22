@@ -23,6 +23,17 @@ import { defineStore } from 'pinia'
 /** Vite 构建时收集 views 下全部 .vue，供 loadView 按路径字符串懒加载 */
 const modules = import.meta.glob('./../../views/**/*.vue')
 
+/** 预建视图路径 → 懒加载工厂，避免每次 loadView 全量扫描 glob 键 */
+const viewModuleMap = new Map()
+for (const path in modules) {
+  const chunk = path.split(/views[/\\]/)[1]
+  if (!chunk) {
+    continue
+  }
+  const dir = chunk.split('.vue')[0].replace(/\\/g, '/')
+  viewModuleMap.set(dir, () => modules[path]())
+}
+
 const usePermissionStore = defineStore(
   'permission',
   {
@@ -58,39 +69,51 @@ const usePermissionStore = defineStore(
        * @returns {Promise<Array>} rewriteRoutes，供 permission.js 中 router.addRoute
        */
       generateRoutes(roles) {
-        return new Promise(resolve => {
-          getRouters().then(res => {
-            const normalized = (res.data || []).map(wrapRootInnerLinkRaw)
-            // 深拷贝三份：侧栏树、扁平 rewrite、顶栏默认树各自独立变换
-            const sdata = JSON.parse(JSON.stringify(normalized))
-            const rdata = JSON.parse(JSON.stringify(normalized))
-            const defaultData = JSON.parse(JSON.stringify(normalized))
-            const sidebarRoutes = filterAsyncRouter(sdata)
-            const rewriteRoutes = filterAsyncRouter(rdata, false, true)
-            const defaultRoutes = filterAsyncRouter(defaultData)
-            const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
-            asyncRoutes.forEach(route => {
-              router.addRoute(route)
-            })
-            this.setRoutes(rewriteRoutes)
-            this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
-            this.setDefaultRoutes(sidebarRoutes)
-            this.setTopbarRoutes(defaultRoutes)
-
-            const settingsStore = useSettingsStore()
-            const appStore = useAppStore()
-            if (normalizeNavType(settingsStore.navType) === 2) {
-              applyNavLayout({
-                navType: 2,
-                permissionStore: this,
-                appStore,
-                route: router.currentRoute.value
-              })
-            }
-
-            resolve(rewriteRoutes)
-          })
+        return getRouters().then(res => this.buildRoutesFromMenuData(res.data || []))
+      },
+      /**
+       * 使用已拉取的菜单数据构建路由（与 getInfo 并行请求时使用）。
+       * @param {Array} menuData 后端 /getRouters 返回的菜单树
+       * @returns {Promise<Array>}
+       */
+      buildRoutesFromMenuData(menuData) {
+        return Promise.resolve(this.resolveMenuRoutes(menuData))
+      },
+      /**
+       * 解析菜单 JSON 为可注册路由并写入 store。
+       * @param {Array} menuData
+       * @returns {Array} rewriteRoutes
+       */
+      resolveMenuRoutes(menuData) {
+        const normalized = (menuData || []).map(wrapRootInnerLinkRaw)
+        // 深拷贝三份：侧栏树、扁平 rewrite、顶栏默认树各自独立变换
+        const sdata = JSON.parse(JSON.stringify(normalized))
+        const rdata = JSON.parse(JSON.stringify(normalized))
+        const defaultData = JSON.parse(JSON.stringify(normalized))
+        const sidebarRoutes = filterAsyncRouter(sdata)
+        const rewriteRoutes = filterAsyncRouter(rdata, false, true)
+        const defaultRoutes = filterAsyncRouter(defaultData)
+        const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
+        asyncRoutes.forEach(route => {
+          router.addRoute(route)
         })
+        this.setRoutes(rewriteRoutes)
+        this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
+        this.setDefaultRoutes(sidebarRoutes)
+        this.setTopbarRoutes(defaultRoutes)
+
+        const settingsStore = useSettingsStore()
+        const appStore = useAppStore()
+        if (normalizeNavType(settingsStore.navType) === 2) {
+          applyNavLayout({
+            navType: 2,
+            permissionStore: this,
+            appStore,
+            route: router.currentRoute.value
+          })
+        }
+
+        return rewriteRoutes
       }
     }
   })
@@ -229,17 +252,7 @@ export const loadView = (view) => {
     return undefined
   }
   const normalizedView = String(view).replace(/\\/g, '/')
-  let res
-  for (const path in modules) {
-    const chunk = path.split(/views[/\\]/)[1]
-    if (!chunk) {
-      continue
-    }
-    const dir = chunk.split('.vue')[0].replace(/\\/g, '/')
-    if (dir === normalizedView) {
-      res = () => modules[path]()
-    }
-  }
+  const res = viewModuleMap.get(normalizedView)
   if (!res && import.meta.env.DEV) {
     console.warn(`[loadView] 未找到视图组件: ${normalizedView}`)
   }

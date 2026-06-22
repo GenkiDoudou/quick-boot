@@ -6,8 +6,8 @@ import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignService
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.security.firewall.password.PasswordCodec;
 import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientLookupService;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
-import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ class ClientSignServiceTest {
     private static final String SECRET = "0123456789abcdef0123456789abcdef";
 
     @Mock
-    private SysOauthClientMapper oauthClientMapper;
+    private OauthClientLookupService oauthClientLookupService;
 
     @Mock
     private PasswordCodec passwordCodec;
@@ -46,7 +46,7 @@ class ClientSignServiceTest {
         properties.setNonceCacheName("clientSignNonceTest");
         ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(properties.getNonceCacheName());
         OauthClientApiPathAuthService apiPathAuthService = new OauthClientApiPathAuthService();
-        clientSignService = new ClientSignService(properties, oauthClientMapper, passwordCodec, cacheManager,
+        clientSignService = new ClientSignService(properties, oauthClientLookupService, passwordCodec, cacheManager,
                 apiPathAuthService);
 
         SysOauthClient client = new SysOauthClient();
@@ -56,7 +56,7 @@ class ClientSignServiceTest {
         client.setDelFlag("0");
         client.setSignVerify("1");
         client.setApiPathPatterns("/login\n/getInfo");
-        when(oauthClientMapper.selectById(CLIENT_ID)).thenReturn(client);
+        when(oauthClientLookupService.getByClientId(CLIENT_ID)).thenReturn(client);
     }
 
     @Test

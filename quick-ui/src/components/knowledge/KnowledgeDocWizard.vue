@@ -9,13 +9,15 @@
     <div v-show="wizardStep === 0" class="kb-doc-wizard__body">
       <el-tabs v-model="sourceTab">
         <el-tab-pane label="文件上传" name="file">
+          <p class="kb-doc-wizard__file-hint">
+            支持多选文档（pdf/doc/docx/md/txt），或上传 ZIP 由系统自动解压；多次上传为<strong>追加</strong>，不会覆盖已有文档。同名文件会各生成一条记录，卡片右下角可区分上传时间。
+          </p>
           <C7Upload
             v-if="visible && kbId"
             ref="c7UploadRef"
             :key="'file-' + uploadSessionKey"
             classify="knowledge"
             :auto-upload="false"
-            :limit="1"
             v-model:results="uploadResults"
           />
         </el-tab-pane>
@@ -77,12 +79,20 @@
     </div>
 
     <div v-show="wizardStep === 2" v-loading="previewLoading" class="kb-doc-wizard__body">
-      <div class="kb-doc-wizard__preview-head">
+      <el-alert
+        v-if="previewData.zipMode"
+        type="info"
+        :closable="false"
+        show-icon
+        title="ZIP 压缩包入库不支持分段内容预览，请确认分段设置后继续。"
+        class="kb-doc-wizard__zip-alert"
+      />
+      <div v-else class="kb-doc-wizard__preview-head">
         <span>共 {{ previewData.total ?? 0 }} 段</span>
         <el-tag v-if="previewData.truncated" size="small" type="warning">仅展示前 200 段</el-tag>
       </div>
-      <el-empty v-if="!previewLoading && !previewSegmentList.length" description="暂无预览分段" />
-      <div v-else class="kb-doc-wizard__preview-list">
+      <el-empty v-if="!previewLoading && !previewData.zipMode && !previewSegmentList.length" description="暂无预览分段" />
+      <div v-else-if="!previewData.zipMode && previewSegmentList.length" class="kb-doc-wizard__preview-list">
         <div v-for="item in previewSegmentList" :key="item.chunkIndex" class="kb-doc-wizard__preview-item">
           <div class="kb-doc-wizard__preview-item-head">
             <span>#{{ (item.chunkIndex ?? 0) + 1 }}</span>
@@ -137,7 +147,8 @@ import {
   addManualDocument,
   previewSegments as previewSegmentsApi,
   previewSegmentsFile,
-  uploadDocument
+  uploadDocument,
+  uploadDocumentZip
 } from '@/api/knowledge/doc'
 import { listLibraryFile, listLibraryFolderTree } from '@/api/knowledge/library'
 import { buildSegmentConfig, defaultSegmentForm, segmentFormFromKb } from '@/api/knowledge/segment'
@@ -166,7 +177,7 @@ const visible = computed({
 const wizardStep = ref(0)
 const submitting = ref(false)
 const previewLoading = ref(false)
-const previewData = ref({ total: 0, truncated: false, segments: [] })
+const previewData = ref({ total: 0, truncated: false, segments: [], zipMode: false })
 const previewSegmentList = computed(() => previewData.value.segments || [])
 const sourceTab = ref('file')
 const manualTitle = ref('')
@@ -207,7 +218,7 @@ watch(
       libFile.value = null
       customizeSegment.value = false
       uploadResults.value = []
-      previewData.value = { total: 0, truncated: false, segments: [] }
+      previewData.value = { total: 0, truncated: false, segments: [], zipMode: false }
       getKnowledgeBase(kbId).then((res) => {
         kbDetail.value = res?.data || null
         segment.value = segmentFormFromKb(kbDetail.value)
@@ -218,16 +229,33 @@ watch(
 
 function resetWizard() {
   wizardStep.value = 0
-  previewData.value = { total: 0, truncated: false, segments: [] }
+  previewData.value = { total: 0, truncated: false, segments: [], zipMode: false }
   c7UploadRef.value?.clearFiles?.()
+}
+
+/** @param {File|{ raw?: File, name?: string }} file */
+function isZipFile(file) {
+  const raw = file?.raw || file
+  const name = String(raw?.name || '').toLowerCase()
+  return name.endsWith('.zip')
+}
+
+function getSelectedRawFiles() {
+  return (c7UploadRef.value?.getFiles?.() || []).map((item) => item.raw).filter(Boolean)
 }
 
 function validateSourceStep() {
   const tab = sourceTab.value
   if (tab === 'file') {
-    const files = c7UploadRef.value?.getFiles?.() || []
-    if (!files.length) {
+    const raws = getSelectedRawFiles()
+    if (!raws.length) {
       ElMessage.warning('请选择文件')
+      return false
+    }
+    const zipFiles = raws.filter(isZipFile)
+    const docFiles = raws.filter((f) => !isZipFile(f))
+    if (zipFiles.length && docFiles.length) {
+      ElMessage.warning('请勿同时选择 ZIP 压缩包与普通文档')
       return false
     }
   } else if (tab === 'manual') {
@@ -258,8 +286,14 @@ function loadSegmentPreview() {
   previewLoading.value = true
   let req
   if (tab === 'file') {
-    const files = c7UploadRef.value?.getFiles?.() || []
-    const raw = files[0]?.raw
+    const raws = getSelectedRawFiles()
+    const zipOnly = raws.length > 0 && raws.every(isZipFile)
+    if (zipOnly) {
+      previewData.value = { total: 0, truncated: false, segments: [], zipMode: true }
+      previewLoading.value = false
+      return Promise.resolve()
+    }
+    const raw = raws.find((f) => !isZipFile(f)) || raws[0]
     if (!raw) {
       previewLoading.value = false
       return Promise.reject(new Error('no file'))
@@ -284,7 +318,8 @@ function loadSegmentPreview() {
       previewData.value = {
         total: data.total ?? 0,
         truncated: !!data.truncated,
-        segments: Array.isArray(data.segments) ? data.segments : []
+        segments: Array.isArray(data.segments) ? data.segments : [],
+        zipMode: false
       }
       if (!previewSegmentList.value.length) {
         ElMessage.warning('分块结果为空，请调整分段设置')
@@ -313,10 +348,11 @@ async function onPrimaryClick() {
     return
   }
   submitting.value = true
+  let addedCount = 0
   try {
-    await submitWizard()
+    addedCount = await submitWizard()
     visible.value = false
-    emit('success')
+    emit('success', { addedCount })
   } catch {
     // 保持弹窗
   } finally {
@@ -329,16 +365,32 @@ function submitWizard() {
   const seg = buildSegmentConfig(customizeSegment.value, segment.value)
   const kbId = String(props.kbId)
   const tab = sourceTab.value
-  let req
   if (tab === 'file') {
-    const files = c7UploadRef.value?.getFiles?.() || []
-    const raw = files[0]?.raw
-    if (!raw) {
+    const raws = getSelectedRawFiles()
+    if (!raws.length) {
       ElMessage.warning('请选择文件')
       return Promise.reject(new Error('no file'))
     }
-    req = uploadDocument(kbId, raw, seg)
-  } else if (tab === 'manual') {
+    const zipFiles = raws.filter(isZipFile)
+    const docFiles = raws.filter((f) => !isZipFile(f))
+    if (zipFiles.length && docFiles.length) {
+      ElMessage.warning('请勿同时选择 ZIP 压缩包与普通文档')
+      return Promise.reject(new Error('mixed files'))
+    }
+    if (zipFiles.length) {
+      return Promise.all(zipFiles.map((z) => uploadDocumentZip(kbId, z, seg))).then((responses) => {
+        const total = responses.reduce((sum, res) => sum + (res?.data?.total || 0), 0)
+        ElMessage.success(`已追加 ${total} 个入库任务（来自 ${zipFiles.length} 个压缩包，不覆盖已有文档）`)
+        return total
+      })
+    }
+    return Promise.all(docFiles.map((f) => uploadDocument(kbId, f, seg))).then(() => {
+      ElMessage.success(`已追加 ${docFiles.length} 个入库任务（不覆盖已有文档）`)
+      return docFiles.length
+    })
+  }
+  let req
+  if (tab === 'manual') {
     req = addManualDocument({
       kbId,
       title: manualTitle.value.trim(),
@@ -359,7 +411,10 @@ function submitWizard() {
       segmentConfig: seg
     })
   }
-  return req.then(() => ElMessage.success('已提交入库任务'))
+  return req.then(() => {
+    ElMessage.success('已追加 1 个入库任务（不覆盖已有文档）')
+    return 1
+  })
 }
 
 function loadLibraryTree() {
@@ -390,6 +445,17 @@ function confirmLibraryPick() {
 </script>
 
 <style scoped>
+.kb-doc-wizard__file-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.kb-doc-wizard__zip-alert {
+  margin-bottom: 12px;
+}
+
 .kb-doc-wizard__steps {
   margin-bottom: 20px;
 }

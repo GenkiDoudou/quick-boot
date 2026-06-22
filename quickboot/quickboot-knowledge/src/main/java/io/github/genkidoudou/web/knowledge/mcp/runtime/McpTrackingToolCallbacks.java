@@ -39,10 +39,12 @@ public final class McpTrackingToolCallbacks {
             @Override
             public String call(String toolInput) {
                 ToolDefinition def = delegate.getToolDefinition();
-                if (def != null) {
-                    tracker.record(def.name());
+                String toolName = def != null ? def.name() : null;
+                String result = delegate.call(toolInput);
+                if (toolName != null && !toolName.isBlank()) {
+                    tracker.recordInvocation(toolName, toolInput, result);
                 }
-                return delegate.call(toolInput);
+                return result;
             }
         };
     }

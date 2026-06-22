@@ -4,6 +4,7 @@ import {
   addAiAppSession,
   addEmbedSession,
   listAiAppMessage,
+  listAiAppSession,
   listEmbedMessage,
   subscribeAiAppChatStream,
   subscribeEmbedChatStream
@@ -68,15 +69,72 @@ export function useAiAppChat(options = {}) {
     return sessionId.value
   }
 
-  async function createSession(appId) {
+  async function createSession(appId, title = '新会话') {
     if (mode === 'embed') {
       return ensureSession(appId, () => addEmbedSession(embedToken, visitorId))
     }
-    return ensureSession(appId, (id) => addAiAppSession({ appId: id, title: '新会话' }))
+    return ensureSession(appId, (id) => addAiAppSession({ appId: id, title }))
+  }
+
+  /**
+   * 复用已有会话或创建一条（编排预览等场景，避免每次进入都新建）。
+   * @param {string|number} appId
+   * @param {string} [preferredTitle='预览调试']
+   */
+  async function reuseOrCreateSession(appId, preferredTitle = '预览调试') {
+    if (sessionId.value) {
+      await loadMessages(sessionId.value)
+      return sessionId.value
+    }
+    if (mode === 'embed') {
+      const sessions = await listEmbedSession(embedToken, visitorId)
+      const list = sessions.data || []
+      if (list.length) {
+        selectSession(list[0].id)
+        return list[0].id
+      }
+      return createSession(appId)
+    }
+    const res = await listAiAppSession(appId)
+    const list = res.data || []
+    const preferred = list.find((s) => s.title === preferredTitle)
+    if (preferred) {
+      selectSession(preferred.id)
+      return preferred.id
+    }
+    return createSession(appId, preferredTitle)
+  }
+
+  /**
+   * 发送前确保已有会话（演示页懒创建；优先复用无消息的空会话）。
+   * @param {string|number} appId
+   * @param {string} [title='新会话']
+   */
+  async function ensureSessionForSend(appId, title = '新会话') {
+    if (sessionId.value) return sessionId.value
+    if (mode === 'embed') {
+      return createSession(appId)
+    }
+    const res = await listAiAppSession(appId)
+    const demoList = (res.data || []).filter((s) => s.title !== '预览调试')
+    for (const s of demoList) {
+      const sessionTitle = (s.title || '新会话').trim()
+      if (sessionTitle !== title) continue
+      const msgRes = await listAiAppMessage(s.id)
+      if (!(msgRes.data || []).length) {
+        sessionId.value = s.id
+        messages.value = []
+        return s.id
+      }
+    }
+    const created = await addAiAppSession({ appId, title })
+    sessionId.value = created.data
+    messages.value = []
+    return created.data
   }
 
   function sendChat(payload) {
-    const { appId, message, preview = false, webSearch = false } = payload
+    const { appId, message, preview = false, webSearch = false, previewConfigJson } = payload
     if (!sessionId.value || streaming.value) return
 
     const userMsg = {
@@ -95,7 +153,8 @@ export function useAiAppChat(options = {}) {
       sessionId: sessionId.value,
       message,
       preview,
-      webSearch
+      webSearch,
+      ...(previewConfigJson ? { previewConfigJson } : {})
     }
 
     const handlers = {
@@ -164,6 +223,8 @@ export function useAiAppChat(options = {}) {
     toolStatus,
     loadMessages,
     createSession,
+    reuseOrCreateSession,
+    ensureSessionForSend,
     sendChat,
     selectSession,
     resetChat

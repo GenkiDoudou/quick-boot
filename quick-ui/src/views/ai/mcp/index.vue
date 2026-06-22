@@ -1,59 +1,32 @@
 <template>
   <div class="app-container">
-    <C7JsonTable
-      ref="tableRef"
+    <C7CardGrid
+      ref="gridRef"
       row-key="mcpId"
-      :show-index="false"
-      :show-selection="true"
       :list-function="listFunction"
-      :table-columns="tableColumns"
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
-      :delete-function="batchDeleteFunction"
-      :show-add-button="true"
-      :add-button-permi="['ai:mcp:add']"
-      :show-edit-button="true"
-      :edit-button-permi="['ai:mcp:edit']"
-      :show-delete-button="true"
-      :delete-button-permi="['ai:mcp:remove']"
+      :show-toolbar="false"
+      :show-add-card="true"
+      :add-card-permi="['ai:mcp:add']"
+      add-card-text="新增 MCP"
       :on-add="openAdd"
-      :on-edit="openEdit"
-      :check-delete-success="() => true"
+      :page-sizes="[12, 24, 48]"
+      :default-page-size="12"
+      empty-text="暂无 MCP 服务"
       rows-key="data.records"
       total-key="data.total"
     >
-      <template #toolbar-left>
-        <el-button plain @click="handleExportSelected" v-hasPermi="['ai:mcp:export']">导出所选</el-button>
-      </template>
-
-      <template #transport="{ row }">
-        <el-tag size="small">{{ transportLabel(row.transport) }}</el-tag>
-      </template>
-
-      <template #status="{ row }">
-        <el-tag :type="row.status === 0 ? 'success' : 'info'">{{ row.status === 0 ? '正常' : '停用' }}</el-tag>
-      </template>
-
-      <template #lastTestStatus="{ row }">
-        <el-tag v-if="row.lastTestStatus" size="small" :type="testTagType(row.lastTestStatus)">
-          {{ row.lastTestStatus }}
-        </el-tag>
-        <span v-else>—</span>
-      </template>
-
-      <template #action="{ row }">
-        <el-button link type="primary" @click="handleTest(row)" v-hasPermi="['ai:mcp:test']">测试</el-button>
-        <el-button link @click="openEdit(row)" v-hasPermi="['ai:mcp:edit']">修改</el-button>
-        <c7-button
-          btn-type="delete"
-          link
-          confirm
-          :confirm-message="`确认删除 ${row.name} 吗？`"
-          :click-function="() => removeRow(row)"
-          v-hasPermi="['ai:mcp:remove']"
+      <template #card="{ row, refreshData }">
+        <McpServerCard
+          :item="row"
+          @open="openTools"
+          @test="handleTest"
+          @edit="openEdit"
+          @delete="(item) => handleDeleteRow(item, refreshData)"
         />
       </template>
-    </C7JsonTable>
+    </C7CardGrid>
 
     <c7-dialog v-model="visible" :title="form.mcpId ? '编辑 MCP' : '新增 MCP'" :on-confirm="submit" width="720px">
       <el-tabs v-model="activeTab">
@@ -114,7 +87,15 @@
           <template v-else>
             <el-form :model="form" label-width="110px">
               <el-form-item label="URL" required>
-                <el-input v-model="form.url" placeholder="https://mcp.example.com/sse" />
+                <el-input
+                  v-model="form.url"
+                  :placeholder="form.transport === 'STREAMABLE_HTTP'
+                    ? 'https://mcp.api-inference.modelscope.net/xxx/mcp'
+                    : 'https://mcp.example.com/sse'"
+                />
+                <div v-if="form.transport === 'STREAMABLE_HTTP'" class="ai-mcp-page__url-tip">
+                  ModelScope 等托管 MCP 请使用 Streamable HTTP，URL 通常以 /mcp 结尾。
+                </div>
               </el-form-item>
               <el-form-item label="请求头">
                 <div class="ai-mcp-page__args">
@@ -153,14 +134,35 @@
       </el-tabs>
     </c7-dialog>
 
-    <el-dialog v-model="testVisible" title="连接测试结果" width="560px">
+    <McpToolsDrawer
+      v-model="toolsVisible"
+      :mcp="selectedMcp"
+      :loading="toolsLoading"
+      :result="toolsResult"
+      @refresh="reloadTools"
+    />
+
+    <el-dialog v-model="testVisible" title="连接测试结果" width="720px">
       <div v-if="testResult">
         <el-alert :type="testResult.success ? 'success' : 'error'" :title="testResult.message" show-icon :closable="false" />
         <p v-if="testResult.toolCount != null" class="ai-mcp-page__test-count">工具数量：{{ testResult.toolCount }}</p>
-        <el-table v-if="testResult.tools?.length" :data="testResult.tools" size="small" class="ai-mcp-page__test-table">
-          <el-table-column prop="name" label="工具名" width="180" />
-          <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        </el-table>
+        <el-collapse v-if="testResult.tools?.length" class="ai-mcp-page__test-collapse">
+          <el-collapse-item
+            v-for="(tool, idx) in testResult.tools"
+            :key="tool.name || idx"
+            :title="`${tool.name}（${tool.parameters?.length || 0} 个参数）`"
+          >
+            <p v-if="tool.description" class="ai-mcp-page__test-tool-desc">{{ tool.description }}</p>
+            <el-table v-if="tool.parameters?.length" :data="tool.parameters" size="small" border>
+              <el-table-column prop="name" label="参数" width="120" />
+              <el-table-column prop="type" label="类型" width="90" />
+              <el-table-column prop="required" label="必填" width="60">
+                <template #default="{ row }">{{ row.required ? '是' : '否' }}</template>
+              </el-table-column>
+              <el-table-column prop="description" label="说明" show-overflow-tooltip />
+            </el-table>
+          </el-collapse-item>
+        </el-collapse>
       </div>
     </el-dialog>
   </div>
@@ -169,59 +171,46 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { c7Confirm } from '@/packages/C7MessageBox/index.js'
 import {
   addMcp,
-  exportMcp,
   getMcpInfo,
   listMcp,
+  listMcpTools,
   removeMcp,
   testMcp,
   updateMcp
 } from '@/api/ai/mcp'
+import McpServerCard from './components/McpServerCard.vue'
+import McpToolsDrawer from './components/McpToolsDrawer.vue'
 
 defineOptions({ name: 'AiMcp' })
 
-const tableRef = ref(null)
+const gridRef = ref(null)
 const visible = ref(false)
 const activeTab = ref('basic')
 const formRef = ref(null)
 const testVisible = ref(false)
 const testResult = ref(null)
+const toolsVisible = ref(false)
+const toolsLoading = ref(false)
+const toolsResult = ref(null)
+const selectedMcp = ref(null)
 
-const defaultSearchParam = { name: '', code: '', transport: '', status: null }
+const defaultSearchParam = { name: '', transport: '' }
 
 const searchColumns = [
   { prop: 'name', label: '名称', type: 'input' },
-  { prop: 'code', label: '编码', type: 'input' },
   {
     prop: 'transport',
-    label: '传输',
+    label: '类型',
     type: 'select',
     options: [
-      { label: 'STDIO', value: 'STDIO' },
-      { label: 'SSE', value: 'SSE' },
-      { label: 'STREAMABLE_HTTP', value: 'STREAMABLE_HTTP' }
-    ]
-  },
-  {
-    prop: 'status',
-    label: '状态',
-    type: 'select',
-    options: [
-      { label: '正常', value: 0 },
-      { label: '停用', value: 1 }
+      { label: 'STDIO（本地）', value: 'STDIO' },
+      { label: 'SSE（联网）', value: 'SSE' },
+      { label: 'Streamable HTTP', value: 'STREAMABLE_HTTP' }
     ]
   }
-]
-
-const tableColumns = [
-  { prop: 'name', label: '名称', minWidth: 140 },
-  { prop: 'code', label: '编码', minWidth: 120 },
-  { prop: 'transport', label: '传输', width: 130, columnType: 'slot', slotName: 'transport' },
-  { prop: 'status', label: '状态', width: 90, columnType: 'slot', slotName: 'status' },
-  { prop: 'lastTestStatus', label: '最近测试', width: 110, columnType: 'slot', slotName: 'lastTestStatus' },
-  { prop: 'updateTime', label: '更新时间', width: 170 },
-  { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 200, fixed: 'right' }
 ]
 
 const emptyForm = () => ({
@@ -247,36 +236,30 @@ const rules = {
   transport: [{ required: true, message: '请选择传输方式', trigger: 'change' }]
 }
 
-function transportLabel(t) {
-  const map = { STDIO: 'STDIO', SSE: 'SSE', STREAMABLE_HTTP: 'HTTP' }
-  return map[t] || t || '—'
-}
-
-function testTagType(status) {
-  if (status === 'SUCCESS') return 'success'
-  if (status === 'FAILED') return 'danger'
-  return 'info'
-}
-
 function listFunction(params) {
   return listMcp(params)
 }
 
-function batchDeleteFunction(ids) {
-  return removeMcp(ids)
-}
-
-function removeRow(row) {
-  return removeMcp([row.mcpId]).then(() => {
-    tableRef.value?.refreshData()
-  })
-}
-
-function refreshTableAfterMutation() {
-  if (tableRef.value?.getDataList) {
-    return tableRef.value.getDataList()
+async function handleDeleteRow(row, refreshData) {
+  try {
+    await c7Confirm(`确认删除 ${row.name} 吗？`)
+    await removeMcp([row.mcpId])
+    ElMessage.success('删除成功')
+    if (typeof refreshData === 'function') {
+      await refreshData()
+    } else {
+      gridRef.value?.refreshData()
+    }
+  } catch {
+    /* 用户取消 */
   }
-  return tableRef.value?.refreshData?.()
+}
+
+function refreshGridAfterMutation() {
+  if (gridRef.value?.getDataList) {
+    return gridRef.value.getDataList()
+  }
+  return gridRef.value?.refreshData?.()
 }
 
 function openAdd() {
@@ -349,7 +332,7 @@ function submit() {
         .then(() => {
           ElMessage.success(payload.mcpId ? '修改成功' : '新增成功')
           visible.value = false
-          refreshTableAfterMutation()
+          refreshGridAfterMutation()
           resolve()
         })
         .catch(reject)
@@ -361,31 +344,40 @@ function handleTest(row) {
   testMcp(row.mcpId).then((res) => {
     testResult.value = res?.data || {}
     testVisible.value = true
-    tableRef.value?.refreshData()
+    gridRef.value?.refreshData()
   })
 }
 
-function handleExportSelected() {
-  const rows = tableRef.value?.getSelectionRows?.() || []
-  const ids = rows.map((r) => r.mcpId).join(',')
-  if (!ids) {
-    ElMessage.warning('请先勾选要导出的 MCP')
-    return
+function openTools(row) {
+  selectedMcp.value = { ...row }
+  toolsResult.value = null
+  toolsVisible.value = true
+  reloadTools()
+}
+
+async function reloadTools() {
+  if (!selectedMcp.value?.mcpId) return
+  toolsLoading.value = true
+  try {
+    const res = await listMcpTools(selectedMcp.value.mcpId)
+    toolsResult.value = res?.data || { success: false, message: '无响应数据' }
+    gridRef.value?.refreshData()
+  } finally {
+    toolsLoading.value = false
   }
-  exportMcp(ids, false).then((res) => {
-    const text = JSON.stringify(res?.data || {}, null, 2)
-    navigator.clipboard?.writeText(text).then(() => {
-      ElMessage.success('已复制 mcp.json 片段到剪贴板')
-    }).catch(() => {
-      ElMessage.success('导出成功，请从网络响应查看 JSON')
-    })
-  })
 }
 </script>
 
 <style scoped>
 .ai-mcp-page__tip {
   margin-bottom: 12px;
+}
+
+.ai-mcp-page__url-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
 }
 
 .ai-mcp-page__args {
@@ -406,7 +398,14 @@ function handleExportSelected() {
   font-size: 13px;
 }
 
-.ai-mcp-page__test-table {
+.ai-mcp-page__test-collapse {
   margin-top: 8px;
+  border: none;
+}
+
+.ai-mcp-page__test-tool-desc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 </style>

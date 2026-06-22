@@ -62,6 +62,7 @@ import { listModelOptions } from '@/api/ai/model'
 import {
   addAiAppSession,
   getAiAppInfo,
+  listAiAppMessage,
   listAiAppSession,
   removeAiAppSession
 } from '@/api/ai/app'
@@ -95,6 +96,7 @@ const {
   toolStatus,
   selectSession: activateChatSession,
   resetChat,
+  ensureSessionForSend,
   sendChat
 } = useAiAppChat()
 
@@ -135,19 +137,56 @@ async function loadApp() {
   }
 }
 
+const PREVIEW_SESSION_TITLE = '预览调试'
+const DEMO_SESSION_TITLE = '新会话'
+
+/** 演示页会话：排除编排预览专用会话 */
+function isDemoSession(session) {
+  return session?.title !== PREVIEW_SESSION_TITLE
+}
+
+/**
+ * 清理无消息的空「新会话」，避免历史进入页面堆积。
+ * @param {Array} allSessions
+ * @returns {Promise<boolean>} 是否发生过删除
+ */
+async function purgeEmptyDemoSessions(allSessions) {
+  const targets = (allSessions || []).filter((s) => {
+    if (!isDemoSession(s)) return false
+    const title = (s.title || DEMO_SESSION_TITLE).trim()
+    return title === DEMO_SESSION_TITLE
+  })
+  const toDelete = []
+  for (const s of targets) {
+    const msgRes = await listAiAppMessage(s.id)
+    if (!(msgRes.data || []).length) {
+      toDelete.push(s.id)
+    }
+  }
+  if (!toDelete.length) return false
+  await Promise.all(toDelete.map((id) => removeAiAppSession(id)))
+  return true
+}
+
 async function loadSessions() {
-  const res = await listAiAppSession(appId.value)
-  sessions.value = res.data || []
+  let res = await listAiAppSession(appId.value)
+  let all = res.data || []
+  if (await purgeEmptyDemoSessions(all)) {
+    res = await listAiAppSession(appId.value)
+    all = res.data || []
+  }
+  sessions.value = all.filter(isDemoSession)
   if (sessions.value.length) {
     activateChatSession(sessions.value[0].id)
   } else {
-    await newSession()
+    resetChat()
   }
 }
 
 async function newSession() {
-  const res = await addAiAppSession({ appId: appId.value, title: '新会话' })
-  await loadSessions()
+  const res = await addAiAppSession({ appId: appId.value, title: DEMO_SESSION_TITLE })
+  const listRes = await listAiAppSession(appId.value)
+  sessions.value = (listRes.data || []).filter(isDemoSession)
   activateChatSession(res.data)
 }
 
@@ -165,11 +204,14 @@ async function deleteSession(id) {
   ElMessage.success('已删除')
 }
 
-function onSend({ message, webSearch }) {
+async function onSend({ message, webSearch }) {
   if (app.status !== 'published') {
     ElMessage.warning('应用未发布，请先在编排页预览或发布后再演示')
     return
   }
+  await ensureSessionForSend(appId.value, DEMO_SESSION_TITLE)
+  const listRes = await listAiAppSession(appId.value)
+  sessions.value = (listRes.data || []).filter(isDemoSession)
   sendChat({ appId: appId.value, message, preview: false, webSearch })
 }
 

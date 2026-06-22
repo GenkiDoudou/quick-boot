@@ -10,6 +10,7 @@ import io.github.genkidoudou.web.system.role.dto.RoleMenuRequest;
 import io.github.genkidoudou.web.system.role.mapper.SysRoleDeptMapper;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -34,6 +35,7 @@ class SysRoleServiceImplTest {
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
                 mock(SysUserRoleBindService.class),
+                mock(UserAuthCacheService.class),
                 mock(JdbcTemplate.class));
 
         assertThatThrownBy(() -> service.removeBatch(List.of(2L, SysRoleServiceImpl.ADMIN_ROLE_ID)))
@@ -53,6 +55,7 @@ class SysRoleServiceImplTest {
                 userRoleMapper,
                 mock(SysUserMapper.class),
                 mock(SysUserRoleBindService.class),
+                mock(UserAuthCacheService.class),
                 mock(JdbcTemplate.class));
 
         SysRole r = new SysRole();
@@ -74,6 +77,7 @@ class SysRoleServiceImplTest {
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
                 mock(SysUserRoleBindService.class),
+                mock(UserAuthCacheService.class),
                 mock(JdbcTemplate.class));
 
         RoleDataScopeRequest req = new RoleDataScopeRequest();
@@ -101,6 +105,7 @@ class SysRoleServiceImplTest {
                 mock(SysUserRoleMapper.class),
                 mock(SysUserMapper.class),
                 mock(SysUserRoleBindService.class),
+                mock(UserAuthCacheService.class),
                 mock(JdbcTemplate.class));
 
         RoleMenuRequest req = new RoleMenuRequest();

@@ -31,4 +31,8 @@ public class AiAppChatBo {
 
     @Schema(description = "千问联网搜索开关")
     private Boolean webSearch;
+
+    @Schema(description = "预览调试时传入的草稿 configJson（优先于库内 configJson，编排页未保存也可生效）")
+    @Size(max = 100000, message = "预览配置过长")
+    private String previewConfigJson;
 }

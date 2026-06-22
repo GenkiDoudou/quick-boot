@@ -223,10 +223,11 @@ export function subscribeAiAppChatStream(body, handlers = {}) {
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
   const url = `${prefix}/ai/app/chat/stream`
   const path = '/ai/app/chat/stream'
+  const bodyStr = JSON.stringify(body)
 
   ;(async () => {
     try {
-      const signHeaders = await buildSignedFetchHeaders('POST', path)
+      const signHeaders = await buildSignedFetchHeaders('POST', path, bodyStr)
       const headers = {
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
@@ -239,7 +240,7 @@ export function subscribeAiAppChatStream(body, handlers = {}) {
       const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(body),
+        body: bodyStr,
         signal: controller.signal
       })
       if (!response.ok) {
@@ -275,10 +276,11 @@ export function subscribeEmbedChatStream(embedToken, visitorId, body, handlers =
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
   const url = `${prefix}/ai/embed/${embedToken}/chat/stream`
   const path = `/ai/embed/${embedToken}/chat/stream`
+  const bodyStr = JSON.stringify(body)
 
   ;(async () => {
     try {
-      const signHeaders = await buildSignedFetchHeaders('POST', path)
+      const signHeaders = await buildSignedFetchHeaders('POST', path, bodyStr)
       const headers = {
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
@@ -288,7 +290,7 @@ export function subscribeEmbedChatStream(embedToken, visitorId, body, handlers =
       const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(body),
+        body: bodyStr,
         signal: controller.signal
       })
       if (!response.ok) {

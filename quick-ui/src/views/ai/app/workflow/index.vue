@@ -95,7 +95,7 @@ const {
   streaming,
   streamBuffer,
   toolStatus,
-  createSession,
+  reuseOrCreateSession,
   sendChat
 } = useAiAppChat()
 
@@ -103,7 +103,7 @@ onMounted(async () => {
   const res = await listWorkflow({ pageNum: 1, pageSize: 200, status: 'PUBLISHED' })
   workflowOptions.value = res.data?.records || []
   await loadApp()
-  await createSession(appId.value)
+  await reuseOrCreateSession(appId.value, '预览调试')
 })
 
 async function loadApp() {

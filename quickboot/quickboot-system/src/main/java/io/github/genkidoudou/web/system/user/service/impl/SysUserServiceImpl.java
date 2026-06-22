@@ -40,6 +40,7 @@ import io.github.genkidoudou.web.system.user.dto.UserImportResultVo;
 import io.github.genkidoudou.web.system.user.dto.UserResetPwdRequest;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSession;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSessionStore;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.github.genkidoudou.web.system.user.service.SysUserRoleBindService;
 import io.github.genkidoudou.web.system.user.service.SysUserService;
@@ -74,6 +75,7 @@ public class SysUserServiceImpl implements SysUserService {
     private final SysRoleMapper roleMapper;
     private final PasswordCodec passwordCodec;
     private final SysUserRoleBindService userRoleBindService;
+    private final UserAuthCacheService userAuthCacheService;
     private final FileTemplate fileTemplate;
     private final SysFileMapper sysFileMapper;
     private final QcImportProperties importProperties;
@@ -85,6 +87,7 @@ public class SysUserServiceImpl implements SysUserService {
             SysRoleMapper roleMapper,
             PasswordCodec passwordCodec,
             SysUserRoleBindService userRoleBindService,
+            UserAuthCacheService userAuthCacheService,
             FileTemplate fileTemplate,
             SysFileMapper sysFileMapper,
             QcImportProperties importProperties) {
@@ -94,6 +97,7 @@ public class SysUserServiceImpl implements SysUserService {
         this.roleMapper = roleMapper;
         this.passwordCodec = passwordCodec;
         this.userRoleBindService = userRoleBindService;
+        this.userAuthCacheService = userAuthCacheService;
         this.fileTemplate = fileTemplate;
         this.sysFileMapper = sysFileMapper;
         this.importProperties = importProperties;
@@ -358,6 +362,7 @@ public class SysUserServiceImpl implements SysUserService {
         }
         assertRolesValid(req.getRoleIds());
         userRoleBindService.replaceAllRolesForUser(req.getUserId(), req.getRoleIds());
+        userAuthCacheService.evictUser(req.getUserId());
     }
 
     @Override

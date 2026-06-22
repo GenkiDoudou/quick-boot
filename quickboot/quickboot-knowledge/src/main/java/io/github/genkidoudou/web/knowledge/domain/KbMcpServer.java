@@ -71,6 +71,9 @@ public class KbMcpServer implements Serializable {
     /** 最近探测时间。 */
     private LocalDateTime lastTestTime;
 
+    /** 最近成功测试发现的工具数量；未测试或失败时为 null。 */
+    private Integer toolCount;
+
     /** 逻辑删除：0 否 / 1 是。 */
     private Integer deleted;
 

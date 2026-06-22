@@ -26,13 +26,17 @@ import io.github.genkidoudou.web.knowledge.dto.KbMcpServerQueryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbMcpServerVo;
 import io.github.genkidoudou.web.knowledge.dto.McpHeaderItemBo;
 import io.github.genkidoudou.web.knowledge.dto.McpTestResultVo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeBo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeResultVo;
 import io.github.genkidoudou.web.knowledge.mapper.KbKnowledgeBaseMcpMapper;
 import io.github.genkidoudou.web.knowledge.mapper.KbMcpEnvMapper;
 import io.github.genkidoudou.web.knowledge.mapper.KbMcpServerMapper;
 import io.github.genkidoudou.web.knowledge.mcp.runtime.McpClientManager;
 import io.github.genkidoudou.web.knowledge.mcp.runtime.McpConnectionTester;
+import io.github.genkidoudou.web.knowledge.mcp.runtime.McpToolInvoker;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpHeaderSupport;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpSecretSupport;
+import io.github.genkidoudou.web.knowledge.mcp.support.McpTransportUrlSupport;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpUrlGuard;
 import io.github.genkidoudou.web.knowledge.service.KbMcpServerService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -58,6 +62,7 @@ public class KbMcpServerServiceImpl implements KbMcpServerService {
     private final KnowledgeMcpProperties mcpProperties;
     private final McpClientManager clientManager;
     private final McpConnectionTester connectionTester;
+    private final McpToolInvoker toolInvoker;
     private final McpUrlGuard urlGuard;
 
     public KbMcpServerServiceImpl(KbMcpServerMapper serverMapper,
@@ -67,6 +72,7 @@ public class KbMcpServerServiceImpl implements KbMcpServerService {
                                   KnowledgeMcpProperties mcpProperties,
                                   McpClientManager clientManager,
                                   McpConnectionTester connectionTester,
+                                  McpToolInvoker toolInvoker,
                                   McpUrlGuard urlGuard) {
         this.serverMapper = serverMapper;
         this.envMapper = envMapper;
@@ -75,6 +81,7 @@ public class KbMcpServerServiceImpl implements KbMcpServerService {
         this.mcpProperties = mcpProperties;
         this.clientManager = clientManager;
         this.connectionTester = connectionTester;
+        this.toolInvoker = toolInvoker;
         this.urlGuard = urlGuard;
     }
 
@@ -199,6 +206,28 @@ public class KbMcpServerServiceImpl implements KbMcpServerService {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "MCP 配置不存在或已删除");
         }
         return connectionTester.test(mcpId);
+    }
+
+    @Override
+    public McpTestResultVo listTools(Long mcpId) {
+        if (getById(mcpId) == null) {
+            McpTestResultVo result = new McpTestResultVo();
+            result.setSuccess(false);
+            result.setMessage("MCP 配置不存在或已删除");
+            return result;
+        }
+        return connectionTester.listTools(mcpId);
+    }
+
+    @Override
+    public McpToolInvokeResultVo invokeTool(McpToolInvokeBo req) {
+        if (getById(req.getMcpId()) == null) {
+            McpToolInvokeResultVo result = new McpToolInvokeResultVo();
+            result.setSuccess(false);
+            result.setMessage("MCP 配置不存在或已删除");
+            return result;
+        }
+        return toolInvoker.invoke(req.getMcpId(), req.getToolName(), req.getArguments());
     }
 
     @Override
@@ -353,6 +382,10 @@ public class KbMcpServerServiceImpl implements KbMcpServerService {
                 throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "远程传输方式下 URL 不能为空");
             }
             urlGuard.validateUrl(req.getUrl());
+            String mismatch = McpTransportUrlSupport.transportMismatchHint(transport, req.getUrl());
+            if (mismatch != null) {
+                throw new WarningException(ErrorCodes.Common.INVALID_PARAM, mismatch);
+            }
         } else {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "不支持的传输方式: " + transport);
         }

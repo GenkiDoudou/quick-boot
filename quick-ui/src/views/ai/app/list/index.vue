@@ -1,51 +1,32 @@
 <template>
   <div class="app-container">
-    <C7JsonTable
-      ref="tableRef"
+    <C7CardGrid
+      ref="gridRef"
       row-key="id"
-      :show-index="false"
-      :show-selection="true"
       :list-function="listFunction"
-      :table-columns="tableColumns"
       :search-columns="searchColumns"
       :default-search-param="defaultSearchParam"
-      :delete-function="batchDeleteFunction"
-      :show-add-button="true"
-      :add-button-permi="['aiapp:add']"
-      :show-edit-button="false"
-      :show-delete-button="true"
-      :delete-button-permi="['aiapp:remove']"
+      :show-toolbar="false"
+      :show-add-card="true"
+      :add-card-permi="['aiapp:add']"
+      add-card-text="创建应用"
       :on-add="openAdd"
-      :check-delete-success="() => true"
+      :page-sizes="[12, 24, 48]"
+      :default-page-size="12"
+      empty-text="暂无 AI 应用"
       rows-key="data.records"
       total-key="data.total"
     >
-      <template #appType="{ row }">
-        <el-tag :type="row.appType === 'agent' ? 'primary' : 'warning'">
-          {{ row.appType === 'agent' ? '智能体' : '高级编排' }}
-        </el-tag>
-      </template>
-
-      <template #status="{ row }">
-        <el-tag :type="row.status === 'published' ? 'success' : 'info'">
-          {{ row.status === 'published' ? '已发布' : '草稿' }}
-        </el-tag>
-      </template>
-
-      <template #action="{ row }">
-        <el-button link type="primary" @click="goDesign(row)" v-hasPermi="['aiapp:edit']">编排</el-button>
-        <el-button link @click="goChat(row)" v-hasPermi="['aiapp:chat']">演示</el-button>
-        <el-button link type="success" @click="openPublish(row)" v-hasPermi="['aiapp:publish']">发布</el-button>
-        <c7-button
-          btn-type="delete"
-          link
-          confirm
-          :confirm-message="`确认删除应用「${row.name}」吗？`"
-          :click-function="() => removeRow(row)"
-          v-hasPermi="['aiapp:remove']"
+      <template #card="{ row, refreshData }">
+        <AiAppCard
+          :item="row"
+          @design="goDesign"
+          @chat="goChat"
+          @publish="openPublish"
+          @delete="(item) => handleDeleteRow(item, refreshData)"
         />
       </template>
-    </C7JsonTable>
+    </C7CardGrid>
 
     <c7-dialog v-model="visible" title="创建 AI 应用" :on-confirm="submitAdd">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
@@ -75,16 +56,18 @@
 </template>
 
 <script setup>
-import { computed, onActivated, ref } from 'vue'
+import { onActivated, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { c7Confirm } from '@/packages/C7MessageBox/index.js'
 import { addAiApp, listAiApp, removeAiApp } from '@/api/ai/app'
 import PublishDialog from '../components/PublishDialog.vue'
+import AiAppCard from './components/AiAppCard.vue'
 
 defineOptions({ name: 'AiAppList' })
 
 const router = useRouter()
-const tableRef = ref(null)
+const gridRef = ref(null)
 const visible = ref(false)
 const formRef = ref(null)
 const publishVisible = ref(false)
@@ -98,13 +81,12 @@ const rules = {
 
 const defaultSearchParam = { name: '', appType: '', status: '' }
 
-const searchColumns = computed(() => [
-  { prop: 'name', label: '名称', type: 'input', span: 8, props: { placeholder: '请输入名称', clearable: true } },
+const searchColumns = [
+  { prop: 'name', label: '名称', type: 'input', props: { placeholder: '请输入名称', clearable: true } },
   {
     prop: 'appType',
     label: '类型',
     type: 'select',
-    span: 8,
     options: [
       { label: '智能体', value: 'agent' },
       { label: '高级编排', value: 'workflow' }
@@ -114,29 +96,15 @@ const searchColumns = computed(() => [
     prop: 'status',
     label: '状态',
     type: 'select',
-    span: 8,
     options: [
       { label: '草稿', value: 'draft' },
       { label: '已发布', value: 'published' }
     ]
   }
-])
-
-const tableColumns = computed(() => [
-  { prop: 'name', label: '名称', minWidth: 160 },
-  { prop: 'appType', label: '类型', width: 110, columnType: 'slot', slotName: 'appType' },
-  { prop: 'status', label: '状态', width: 100, columnType: 'slot', slotName: 'status' },
-  { prop: 'description', label: '介绍', minWidth: 200, showOverflowTooltip: true },
-  { prop: 'updateTime', label: '更新时间', width: 170 },
-  { prop: 'action', label: '操作', width: 260, columnType: 'slot', slotName: 'action', fixed: 'right' }
-])
+]
 
 function listFunction(params) {
   return listAiApp(params)
-}
-
-function batchDeleteFunction(ids) {
-  return removeAiApp(ids)
 }
 
 function openAdd() {
@@ -149,7 +117,7 @@ async function submitAdd() {
   const res = await addAiApp(form.value)
   ElMessage.success('创建成功')
   visible.value = false
-  await tableRef.value?.refreshData?.()
+  await gridRef.value?.refreshData?.()
   const id = res.data
   if (id) {
     goDesign({ id, appType: form.value.appType })
@@ -174,17 +142,26 @@ function openPublish(row) {
 
 function onPublished() {
   publishApp.value = { ...publishApp.value, status: 'published' }
-  tableRef.value?.refreshData?.()
+  gridRef.value?.refreshData?.()
 }
 
-async function removeRow(row) {
-  await removeAiApp([row.id])
-  ElMessage.success('删除成功')
-  tableRef.value?.refreshData?.()
+async function handleDeleteRow(row, refreshData) {
+  try {
+    await c7Confirm(`确认删除应用「${row.name}」吗？`)
+    await removeAiApp([row.id])
+    ElMessage.success('删除成功')
+    if (typeof refreshData === 'function') {
+      await refreshData()
+    } else {
+      await gridRef.value?.refreshData?.()
+    }
+  } catch {
+    /* 用户取消 */
+  }
 }
 
 /** 从编排/演示页返回时刷新列表 */
 onActivated(() => {
-  tableRef.value?.refreshData?.()
+  gridRef.value?.refreshData?.()
 })
 </script>

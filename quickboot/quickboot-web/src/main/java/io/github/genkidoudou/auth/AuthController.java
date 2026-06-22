@@ -17,6 +17,8 @@ import io.github.genkidoudou.web.system.online.support.OnlineSessionRecorder;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSession;
 import io.github.genkidoudou.web.system.user.datascope.DataScopeSessionStore;
 import io.github.genkidoudou.web.system.user.datascope.LoginDataScopeService;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthSessionStore;
 import io.github.genkidoudou.web.system.user.domain.SysUser;
 import io.github.genkidoudou.web.system.user.mapper.SysUserMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +46,7 @@ public class AuthController {
     private final MenuService menuService;
     private final AuthLoginService authLoginService;
     private final LoginDataScopeService loginDataScopeService;
+    private final UserAuthCacheService userAuthCacheService;
     private final SysUserMapper userMapper;
     private final LoginLockService loginLockService;
     private final SysLogininforLogService sysLogininforLogService;
@@ -105,6 +108,7 @@ public class AuthController {
             StpUtil.login(userId);
             onlineSessionRecorder.record(request, userId);
             loginDataScopeService.refreshSession(userId);
+            userAuthCacheService.refreshSessionOnLogin(userId);
             sysLogininforLogService.recordSuccess(request, userId, name);
             Map<String, Object> data = new HashMap<>(2);
             data.put("access_token", StpUtil.getTokenValue());
@@ -141,8 +145,17 @@ public class AuthController {
 
         Map<String, Object> data = new LinkedHashMap<>(4);
         data.put("user", user);
-        data.put("roles", menuService.listRoleKeysByUserId(userId));
-        data.put("permissions", menuService.listPermissionsByUserId(userId));
+        long authVersion = userAuthCacheService.currentGlobalVersion();
+        List<String> roles = UserAuthSessionStore.getRolesIfValid(authVersion);
+        List<String> permissions = UserAuthSessionStore.getPermissionsIfValid(authVersion);
+        if (roles == null) {
+            roles = menuService.listRoleKeysByUserId(userId);
+        }
+        if (permissions == null) {
+            permissions = menuService.listPermissionsByUserId(userId);
+        }
+        data.put("roles", roles);
+        data.put("permissions", permissions);
         return R.ok(data);
     }
 

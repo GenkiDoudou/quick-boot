@@ -8,6 +8,7 @@ import io.github.genkidoudou.web.system.menu.mapper.SysMenuMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysRoleMenuMapper;
 import io.github.genkidoudou.web.system.menu.mapper.SysUserRoleMapper;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import io.github.genkidoudou.web.system.menu.service.impl.MenuServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -116,7 +117,14 @@ class MenuServiceImplTest {
             SysRoleMapper roleMapper,
             SysRoleMenuMapper roleMenuMapper,
             SysUserRoleMapper userRoleMapper) {
-        return new MenuServiceImpl(menuMapper, roleMapper, roleMenuMapper, userRoleMapper, true, "http://localhost:9992");
+        return new MenuServiceImpl(
+                menuMapper,
+                roleMapper,
+                roleMenuMapper,
+                userRoleMapper,
+                mock(UserAuthCacheService.class),
+                true,
+                "http://localhost:9992");
     }
 
     private static List<SysMenu> sampleMenus() {

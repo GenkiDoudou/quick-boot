@@ -6,6 +6,8 @@ import io.github.genkidoudou.web.knowledge.dto.KbMcpServerBo;
 import io.github.genkidoudou.web.knowledge.dto.KbMcpServerQueryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbMcpServerVo;
 import io.github.genkidoudou.web.knowledge.dto.McpTestResultVo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeBo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeResultVo;
 
 import java.util.List;
 import java.util.Map;
@@ -60,6 +62,22 @@ public interface KbMcpServerService {
      * @return 测试结果
      */
     McpTestResultVo test(Long mcpId);
+
+    /**
+     * 拉取 MCP 工具列表（供管理页详情展示，失败时不抛异常）。
+     *
+     * @param mcpId MCP 主键
+     * @return 工具列表结果
+     */
+    McpTestResultVo listTools(Long mcpId);
+
+    /**
+     * 试跑 MCP 工具。
+     *
+     * @param req 工具名与入参
+     * @return 执行结果
+     */
+    McpToolInvokeResultVo invokeTool(McpToolInvokeBo req);
 
     /**
      * 导出 Cursor 兼容 mcp.json 片段。

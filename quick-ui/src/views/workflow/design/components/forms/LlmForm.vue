@@ -129,6 +129,43 @@
       </p>
     </div>
 
+    <!-- MCP 工具 -->
+    <div class="llm-form__section">
+      <div class="llm-form__section-header">
+        <span class="llm-form__section-title">MCP 工具</span>
+        <el-tooltip content="启用后，大模型可在运行时调用所选 MCP 服务的工具能力（来自 MCP 管理）" placement="top">
+          <el-icon class="llm-form__info"><InfoFilled /></el-icon>
+        </el-tooltip>
+      </div>
+      <div class="llm-form__output-row">
+        <span class="llm-form__output-label">启用 MCP</span>
+        <el-switch v-model="data.useMcpTools" size="small" @change="onMcpToolsToggle" />
+      </div>
+      <template v-if="data.useMcpTools">
+        <el-select
+          v-model="data.mcpIds"
+          multiple
+          filterable
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="选择 MCP 服务（可多选）"
+          class="llm-form__mcp-select"
+          :loading="mcpLoading"
+          @change="onMcpIdsChange"
+        >
+          <el-option
+            v-for="item in mcpOptions"
+            :key="item.mcpId"
+            :label="formatMcpLabel(item)"
+            :value="item.mcpId"
+          />
+        </el-select>
+        <p v-if="mcpStreamingHint" class="llm-form__warn">
+          启用 MCP 时将自动关闭流式输出（工具调用需同步等待结果）
+        </p>
+      </template>
+    </div>
+
     <!-- 输出（Coze 风格） -->
     <div class="llm-form__section">
       <div class="llm-form__section-header llm-form__section-header--output">
@@ -234,7 +271,12 @@
 
       <div class="llm-form__output-row">
         <span class="llm-form__output-label">流式输出</span>
-        <el-switch v-model="data.streaming" size="small" @change="emitUpdate" />
+        <el-switch
+          v-model="data.streaming"
+          size="small"
+          :disabled="mcpBlocksStreaming"
+          @change="emitUpdate"
+        />
       </div>
       <div class="llm-form__output-row">
         <span class="llm-form__output-label">温度</span>
@@ -251,6 +293,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { InfoFilled, Plus, Minus, FullScreen } from '@element-plus/icons-vue'
 import { listModelOptions } from '@/api/ai/model'
+import { listMcpOptions } from '@/api/ai/mcp'
 import { getPromptInfo, listPromptOptions } from '@/api/ai/prompt'
 import { ElMessage } from 'element-plus'
 import TemplateField from './TemplateField.vue'
@@ -290,6 +333,8 @@ const emit = defineEmits(['update:modelValue'])
 
 const modelOptions = ref([])
 const modelLoading = ref(false)
+const mcpOptions = ref([])
+const mcpLoading = ref(false)
 const promptOptions = ref([])
 const promptLoading = ref(false)
 const selectedPromptId = ref(null)
@@ -314,7 +359,9 @@ const data = reactive({
   userPrompt: '',
   temperature: 0.3,
   streaming: true,
-  outputFormat: 'text'
+  outputFormat: 'text',
+  useMcpTools: false,
+  mcpIds: []
 })
 
 const outputFormatHint = computed(() => {
@@ -345,6 +392,13 @@ const userPromptWarnings = computed(() =>
   findUndeclaredLlmPromptReferences(data.userPrompt, declaredInputKeys.value)
 )
 
+/** 已选 MCP 且开启工具调用时，流式输出不可用 */
+const mcpBlocksStreaming = computed(
+  () => data.useMcpTools && Array.isArray(data.mcpIds) && data.mcpIds.length > 0
+)
+
+const mcpStreamingHint = computed(() => mcpBlocksStreaming.value && data.streaming)
+
 watch(
   () => props.modelValue,
   (val) => {
@@ -358,6 +412,11 @@ watch(
     data.temperature = val?.temperature ?? 0.3
     data.streaming = val?.streaming ?? true
     data.outputFormat = val?.outputFormat ?? 'text'
+    data.useMcpTools = val?.useMcpTools ?? false
+    data.mcpIds = Array.isArray(val?.mcpIds) ? [...val.mcpIds] : []
+    if (data.useMcpTools && data.mcpIds.length && data.streaming) {
+      data.streaming = false
+    }
 
     const inputs = val?.inputVariables
     if (Array.isArray(inputs)) {
@@ -394,6 +453,18 @@ onMounted(() => {
     .finally(() => {
       promptLoading.value = false
     })
+
+  mcpLoading.value = true
+  listMcpOptions()
+    .then((res) => {
+      mcpOptions.value = res.data || []
+    })
+    .catch(() => {
+      mcpOptions.value = []
+    })
+    .finally(() => {
+      mcpLoading.value = false
+    })
 })
 
 /**
@@ -412,6 +483,33 @@ function formatModelLabel(item) {
 function formatPromptLabel(item) {
   const category = (item.category || '').trim()
   return category ? `${item.name}（${category}）` : item.name
+}
+
+/**
+ * @param {{ name?: string, code?: string, transport?: string }} item
+ * @returns {string}
+ */
+function formatMcpLabel(item) {
+  const transport = (item.transport || '').trim()
+  const code = (item.code || '').trim()
+  const suffix = transport ? ` · ${transport}` : ''
+  return code ? `${item.name} (${code})${suffix}` : `${item.name}${suffix}`
+}
+
+function onMcpToolsToggle() {
+  if (!data.useMcpTools) {
+    data.mcpIds = []
+  } else if (data.streaming) {
+    data.streaming = false
+  }
+  emitUpdate()
+}
+
+function onMcpIdsChange() {
+  if (mcpBlocksStreaming.value && data.streaming) {
+    data.streaming = false
+  }
+  emitUpdate()
 }
 
 function onSystemPromptInput() {
@@ -533,7 +631,9 @@ function emitUpdate() {
     userPrompt: data.userPrompt,
     temperature: data.temperature,
     streaming: data.streaming,
-    outputFormat: data.outputFormat
+    outputFormat: data.outputFormat,
+    useMcpTools: data.useMcpTools,
+    mcpIds: Array.isArray(data.mcpIds) ? [...data.mcpIds] : []
   })
   queueMicrotask(() => {
     syncing = false
@@ -627,7 +727,8 @@ function removeOutputRow(idx) {
   width: 120px;
 }
 
-.llm-form__prompt-select {
+.llm-form__prompt-select,
+.llm-form__mcp-select {
   width: 100%;
   margin-bottom: 8px;
 }

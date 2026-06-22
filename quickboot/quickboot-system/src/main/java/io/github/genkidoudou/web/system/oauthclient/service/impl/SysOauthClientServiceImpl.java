@@ -13,6 +13,7 @@ import io.github.genkidoudou.web.system.oauthclient.dto.SysOauthClientVo;
 import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
 import io.github.genkidoudou.web.system.oauthclient.service.AuthLoginService;
 import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientLookupService;
 import io.github.genkidoudou.web.system.oauthclient.service.SysOauthClientService;
 import io.github.genkidoudou.web.system.oauthclient.support.Oauth2SecretSupport;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class SysOauthClientServiceImpl implements SysOauthClientService {
     private final PasswordCodec passwordCodec;
     private final AuthLoginService authLoginService;
     private final OauthClientApiPathAuthService apiPathAuthService;
+    private final OauthClientLookupService oauthClientLookupService;
 
     @Override
     public List<SysOauthClient> list(String clientName) {
@@ -86,6 +88,7 @@ public class SysOauthClientServiceImpl implements SysOauthClientService {
         row.setSignVerify(normalizeSignVerify(req.getSignVerify()));
         row.setClientSecret(Oauth2SecretSupport.encodeForStorage(passwordCodec, req.getClientSecret()));
         mapper.insert(row);
+        oauthClientLookupService.evict(row.getClientId());
     }
 
     @Override
@@ -108,6 +111,7 @@ public class SysOauthClientServiceImpl implements SysOauthClientService {
             row.setClientSecret(existing.getClientSecret());
         }
         mapper.updateById(row);
+        oauthClientLookupService.evict(row.getClientId());
     }
 
     @Override
@@ -117,6 +121,7 @@ public class SysOauthClientServiceImpl implements SysOauthClientService {
             return;
         }
         mapper.deleteByIds(clientIds);
+        oauthClientLookupService.evictAll(clientIds);
     }
 
     private static void assertRedirectWhenRequired(String grantTypes, String redirectUris) {

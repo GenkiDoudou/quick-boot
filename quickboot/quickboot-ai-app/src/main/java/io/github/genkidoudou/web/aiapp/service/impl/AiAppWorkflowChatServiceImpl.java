@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.security.SaTokenAsyncRunner;
 import io.github.genkidoudou.web.aiapp.config.AiAppProperties;
 import io.github.genkidoudou.web.aiapp.constants.AiAppStatus;
 import io.github.genkidoudou.web.aiapp.constants.AiAppType;
@@ -54,7 +55,8 @@ public class AiAppWorkflowChatServiceImpl implements AiAppWorkflowChatService {
     @Override
     public SseEmitter streamChat(AiAppChatBo req, String userKey) {
         SseEmitter emitter = new SseEmitter(properties.getChatTimeoutMs());
-        CompletableFuture.runAsync(() -> runWorkflowChat(req, userKey, emitter));
+        String token = SaTokenAsyncRunner.captureTokenValue();
+        CompletableFuture.runAsync(() -> SaTokenAsyncRunner.run(token, () -> runWorkflowChat(req, userKey, emitter)));
         return emitter;
     }
 

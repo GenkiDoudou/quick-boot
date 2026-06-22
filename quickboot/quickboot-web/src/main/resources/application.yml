@@ -241,6 +241,10 @@ qc:
           - /ai/prompt/add
           - /ai/prompt/update
           - /ai/prompt/optimize
+          # AI 智能体应用编排 configJson 含 workflowBindings.description 等，不宜走敏感词拦截
+          - /ai/app/add
+          - /ai/app/update
+          - /ai/app/chat/stream
 
         # REPLACE | THROW（推荐大写；小写 throw 在部分环境下亦可绑定）
         strategy: THROW
@@ -275,6 +279,10 @@ qc:
           - /ai/prompt/add
           - /ai/prompt/update
           - /ai/prompt/optimize
+          # AI 智能体 configJson 字段名 description 会误触 script 等关键字
+          - /ai/app/add
+          - /ai/app/update
+          - /ai/app/chat/stream
       xss:
         enabled: true
         forbidden-message: 您的请求包含非法字符，请检查！
@@ -295,6 +303,10 @@ qc:
           - /ai/prompt/add
           - /ai/prompt/update
           - /ai/prompt/optimize
+          # AI 智能体编排与预览聊天含用户自定义文本
+          - /ai/app/add
+          - /ai/app/update
+          - /ai/app/chat/stream
       idempotent:
         enabled: true
         # TOKEN-only：仅当请求头非空时占位；缺头不报错。cache-type: auto|redis|caffeine（auto=有 RedisConnectionFactory 则用 Redis）
@@ -348,8 +360,8 @@ qc:
         anonymous:  false
       - classify: knowledge
         limit-size: 50MB
-        limit-count: 1
-        limit-ext: pdf,doc,docx,md,txt
+        limit-count: 20
+        limit-ext: pdf,doc,docx,md,txt,zip
         anonymous:  false
       - classify: knowledge-library
         limit-size: 50MB

@@ -43,6 +43,22 @@ export function testMcp(mcpId) {
 }
 
 /**
+ * 拉取 MCP 工具列表（点击卡片详情用）。
+ * @param {string|number} mcpId MCP ID
+ */
+export function listMcpTools(mcpId) {
+  return request({ url: '/ai/mcp/tools', method: 'get', params: { mcpId } })
+}
+
+/**
+ * 试跑 MCP 工具。
+ * @param {{ mcpId: string|number, toolName: string, arguments?: object }} data
+ */
+export function invokeMcpTool(data) {
+  return request({ url: '/ai/mcp/invokeTool', method: 'post', data })
+}
+
+/**
  * 导出 mcp.json 片段。
  * @param {string} [ids] 逗号分隔 ID
  * @param {boolean} [includeSecrets=false]

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.web.knowledge.constants.KbDocPreviewMode;
 import io.github.genkidoudou.web.knowledge.constants.KbDocSourceType;
 import io.github.genkidoudou.web.knowledge.constants.KbDocStatus;
 import io.github.genkidoudou.web.knowledge.constants.KbTaskStatus;
@@ -20,7 +21,9 @@ import io.github.genkidoudou.web.knowledge.domain.KbKnowledgeBase;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddFromLibraryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddFromWebBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddManualBo;
+import io.github.genkidoudou.web.knowledge.dto.KbDocumentBatchUploadVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentChunkVo;
+import io.github.genkidoudou.web.knowledge.dto.KbDocumentPreviewVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentQueryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentUploadVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentVo;
@@ -34,23 +37,32 @@ import io.github.genkidoudou.web.knowledge.mapper.KbKnowledgeBaseMapper;
 import io.github.genkidoudou.web.knowledge.service.KbDocLibraryFileService;
 import io.github.genkidoudou.web.knowledge.service.KbDocumentService;
 import io.github.genkidoudou.web.knowledge.support.KnowledgeVectorSupport;
+import io.github.genkidoudou.web.knowledge.support.KnowledgeZipSupport;
 import io.github.genkidoudou.web.knowledge.support.SegmentConfigResolver;
 import io.github.genkidoudou.web.system.file.dto.SysFileUploadVo;
 import io.github.genkidoudou.web.system.file.service.SysFileService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 知识库文档管理服务实现。
  */
 @Service
 public class KbDocumentServiceImpl implements KbDocumentService {
+
+    private static final int TEXT_PREVIEW_MAX_BYTES = 512 * 1024;
+    private static final int TEXT_PREVIEW_MAX_CHARS = 200_000;
 
     private final KbDocumentMapper documentMapper;
     private final KbKnowledgeBaseMapper knowledgeBaseMapper;
@@ -95,7 +107,8 @@ public class KbDocumentServiceImpl implements KbDocumentService {
             .eq(query.getKbId() != null, KbDocument::getKbId, query.getKbId())
             .like(StrUtil.isNotBlank(query.getTitle()), KbDocument::getTitle, query.getTitle())
             .eq(StrUtil.isNotBlank(query.getDocStatus()), KbDocument::getDocStatus, query.getDocStatus())
-            .orderByDesc(KbDocument::getCreateTime);
+            .orderByDesc(KbDocument::getCreateTime)
+            .orderByDesc(KbDocument::getDocId);
 
         Page<KbDocument> mp = documentMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<KbDocumentVo> rows = new ArrayList<>(mp.getRecords().size());
@@ -149,6 +162,180 @@ public class KbDocumentServiceImpl implements KbDocumentService {
     }
 
     @Override
+    public KbDocumentPreviewVo previewInfo(Long docId) {
+        KbDocument doc = requireExistingDoc(docId);
+        KbDocumentPreviewVo vo = new KbDocumentPreviewVo();
+        vo.setDocId(doc.getDocId());
+        vo.setTitle(doc.getTitle());
+        vo.setSourceType(doc.getSourceType());
+        vo.setDocStatus(doc.getDocStatus());
+        vo.setSourceUrl(doc.getSourceUrl());
+        vo.setChunkCount(doc.getChunkCount());
+
+        String ext = fileExtLower(doc.getTitle());
+        vo.setFileExt(ext);
+
+        if (KbDocSourceType.WEB.equals(doc.getSourceType())) {
+            vo.setPreviewMode(KbDocPreviewMode.WEB);
+            vo.setStreamable(false);
+        } else if (doc.getFileId() != null) {
+            String mode = resolvePreviewMode(ext);
+            vo.setPreviewMode(mode);
+            vo.setStreamable(isStreamableMode(mode));
+            if (isTextReadableMode(mode)) {
+                TextPreview textPreview = readFileTextPreview(doc.getFileId());
+                vo.setTextContent(textPreview.content());
+                vo.setTextTruncated(textPreview.truncated());
+            }
+        } else {
+            vo.setPreviewMode(KbDocPreviewMode.NONE);
+            vo.setStreamable(false);
+        }
+
+        if (StrUtil.isBlank(vo.getTextContent()) && doc.getChunkCount() != null && doc.getChunkCount() > 0) {
+            TextPreview chunkText = joinChunkTextPreview(doc.getDocId());
+            if (StrUtil.isNotBlank(chunkText.content())) {
+                vo.setTextContent(chunkText.content());
+                vo.setTextTruncated(chunkText.truncated());
+                if (KbDocPreviewMode.NONE.equals(vo.getPreviewMode()) || KbDocPreviewMode.OFFICE.equals(vo.getPreviewMode())) {
+                    vo.setPreviewMode(KbDocPreviewMode.CHUNKS);
+                }
+            }
+        }
+
+        return vo;
+    }
+
+    @Override
+    public void writePreviewStream(Long docId, HttpServletResponse response) throws Exception {
+        KbDocument doc = requireExistingDoc(docId);
+        if (doc.getFileId() == null) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "该文档无可预览的原始文件");
+        }
+        String mode = resolvePreviewMode(fileExtLower(doc.getTitle()));
+        if (!isStreamableMode(mode)) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "该文档类型不支持流式预览，请查看文本内容");
+        }
+        SysFileService.DownloadPayload payload = sysFileService.download(doc.getFileId());
+        String ct = payload.contentType();
+        response.setContentType(ct != null && !ct.isBlank() ? ct : MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        setInlineDisposition(response, payload.originalName());
+        Resource resource = payload.resource();
+        try (InputStream in = resource.getInputStream()) {
+            in.transferTo(response.getOutputStream());
+        }
+    }
+
+    private KbDocument requireExistingDoc(Long docId) {
+        KbDocument doc = getById(docId);
+        if (doc == null) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "文档不存在或已删除");
+        }
+        return doc;
+    }
+
+    private record TextPreview(String content, boolean truncated) {
+    }
+
+    private TextPreview readFileTextPreview(Long fileId) {
+        SysFileService.DownloadPayload payload = sysFileService.download(fileId);
+        try (InputStream in = payload.resource().getInputStream()) {
+            byte[] buf = in.readNBytes(TEXT_PREVIEW_MAX_BYTES + 1);
+            boolean truncated = buf.length > TEXT_PREVIEW_MAX_BYTES;
+            if (truncated) {
+                byte[] cut = new byte[TEXT_PREVIEW_MAX_BYTES];
+                System.arraycopy(buf, 0, cut, 0, TEXT_PREVIEW_MAX_BYTES);
+                buf = cut;
+            }
+            String text = new String(buf, StandardCharsets.UTF_8);
+            if (text.length() > TEXT_PREVIEW_MAX_CHARS) {
+                text = text.substring(0, TEXT_PREVIEW_MAX_CHARS);
+                truncated = true;
+            }
+            return new TextPreview(text, truncated);
+        } catch (Exception ex) {
+            throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "读取文件预览失败：" + ex.getMessage());
+        }
+    }
+
+    private TextPreview joinChunkTextPreview(Long docId) {
+        List<KbDocumentChunk> rows = chunkMapper.selectList(
+            Wrappers.<KbDocumentChunk>lambdaQuery()
+                .eq(KbDocumentChunk::getDocId, docId)
+                .orderByAsc(KbDocumentChunk::getChunkIndex)
+        );
+        if (rows.isEmpty()) {
+            return new TextPreview("", false);
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean truncated = false;
+        for (KbDocumentChunk row : rows) {
+            String part = StrUtil.blankToDefault(row.getContentFull(), row.getContentPreview());
+            if (StrUtil.isBlank(part)) {
+                continue;
+            }
+            if (sb.length() + part.length() > TEXT_PREVIEW_MAX_CHARS) {
+                int remain = TEXT_PREVIEW_MAX_CHARS - sb.length();
+                if (remain > 0) {
+                    sb.append(part, 0, remain);
+                }
+                truncated = true;
+                break;
+            }
+            if (!sb.isEmpty()) {
+                sb.append("\n\n");
+            }
+            sb.append(part);
+        }
+        return new TextPreview(sb.toString(), truncated);
+    }
+
+    private static String resolvePreviewMode(String ext) {
+        if (StrUtil.isBlank(ext)) {
+            return KbDocPreviewMode.NONE;
+        }
+        return switch (ext.toLowerCase(Locale.ROOT)) {
+            case "pdf" -> KbDocPreviewMode.PDF;
+            case "txt" -> KbDocPreviewMode.TEXT;
+            case "md", "markdown" -> KbDocPreviewMode.MARKDOWN;
+            case "html", "htm" -> KbDocPreviewMode.HTML;
+            case "doc", "docx" -> KbDocPreviewMode.OFFICE;
+            default -> KbDocPreviewMode.NONE;
+        };
+    }
+
+    private static boolean isStreamableMode(String mode) {
+        return KbDocPreviewMode.PDF.equals(mode) || KbDocPreviewMode.HTML.equals(mode);
+    }
+
+    private static boolean isTextReadableMode(String mode) {
+        return KbDocPreviewMode.TEXT.equals(mode)
+            || KbDocPreviewMode.MARKDOWN.equals(mode)
+            || KbDocPreviewMode.HTML.equals(mode);
+    }
+
+    private static String fileExtLower(String filename) {
+        if (StrUtil.isBlank(filename)) {
+            return "";
+        }
+        int dot = filename.lastIndexOf('.');
+        if (dot < 0 || dot == filename.length() - 1) {
+            return "";
+        }
+        return filename.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static void setInlineDisposition(HttpServletResponse response, String fileName) throws java.io.UnsupportedEncodingException {
+        if (fileName == null || fileName.isBlank()) {
+            response.setHeader("Content-Disposition", "inline");
+            return;
+        }
+        String encoded = io.github.genkidoudou.common.excel.ExcelUtils.percentEncode(fileName);
+        response.setHeader("Content-Disposition",
+            "inline; filename=\"" + encoded + "\"; filename*=utf-8''" + encoded);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public KbDocumentUploadVo upload(Long kbId, MultipartFile file, SegmentConfigBo segmentConfig) {
         KbKnowledgeBase kb = requireActiveKnowledgeBase(kbId);
@@ -159,6 +346,27 @@ public class KbDocumentServiceImpl implements KbDocumentService {
         SysFileUploadVo fileVo = sysFileService.upload(file, KnowledgeConstants.FILE_CLASSIFY);
         String title = StrUtil.blankToDefault(file.getOriginalFilename(), fileVo.getFileName());
         return createDocumentAndTask(kb, KbDocSourceType.FILE, fileVo.getFileId(), null, null, title, segmentConfig);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KbDocumentBatchUploadVo uploadZip(Long kbId, MultipartFile zipFile, SegmentConfigBo segmentConfig) {
+        KbKnowledgeBase kb = requireActiveKnowledgeBase(kbId);
+        KnowledgeZipSupport.ZipExtractResult extracted = KnowledgeZipSupport.extractDocuments(zipFile);
+
+        KbDocumentBatchUploadVo batch = new KbDocumentBatchUploadVo();
+        batch.setSkipped(new ArrayList<>(extracted.skipped()));
+
+        for (KnowledgeZipSupport.ExtractedDoc doc : extracted.entries()) {
+            SysFileUploadVo fileVo = sysFileService.uploadBytes(
+                doc.content(), doc.entryName(), KnowledgeConstants.FILE_CLASSIFY);
+            String title = StrUtil.blankToDefault(doc.entryName(), fileVo.getFileName());
+            KbDocumentUploadVo item = createDocumentAndTask(
+                kb, KbDocSourceType.FILE, fileVo.getFileId(), null, null, title, segmentConfig);
+            batch.getItems().add(item);
+        }
+        batch.setTotal(batch.getItems().size());
+        return batch;
     }
 
     @Override

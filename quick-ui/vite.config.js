@@ -35,6 +35,14 @@ export default defineConfig(({mode, command}) => {
                     changeOrigin: true,
                     rewrite: (p) => p.replace(/^\/dev-api/, '')
                 }
+            },
+            warmup: {
+                clientFiles: [
+                    './src/main.js',
+                    './src/App.vue',
+                    './src/layout/index.vue',
+                    './src/permission.js'
+                ]
             }
         },
         //fix:error:stdin>:7356:1: warning: "@charset" must be the first rule in the file
@@ -64,7 +72,49 @@ export default defineConfig(({mode, command}) => {
             minify: 'esbuild',
             esbuild: {
                 drop: ['console', 'debugger']
+            },
+            chunkSizeWarningLimit: 1600,
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (!id.includes('node_modules')) {
+                            return undefined
+                        }
+                        if (id.includes('monaco-editor') || id.includes('@guolao/vue-monaco-editor')) {
+                            return 'monaco'
+                        }
+                        if (id.includes('echarts')) {
+                            return 'echarts'
+                        }
+                        if (id.includes('@vue-flow') || id.includes('@dagrejs/dagre')) {
+                            return 'workflow-flow'
+                        }
+                        if (id.includes('element-plus')) {
+                            return 'element-plus'
+                        }
+                        if (
+                            id.includes('/vue/') ||
+                            id.includes('vue-router') ||
+                            id.includes('pinia') ||
+                            id.includes('@vueuse/')
+                        ) {
+                            return 'vue-vendor'
+                        }
+                        return undefined
+                    }
+                }
             }
+        },
+        optimizeDeps: {
+            include: [
+                'vue',
+                'vue-router',
+                'pinia',
+                'axios',
+                '@vueuse/core',
+                'element-plus/es',
+                'element-plus/es/locale/lang/zh-cn'
+            ]
         }
     }
 })

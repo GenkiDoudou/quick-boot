@@ -29,12 +29,13 @@ public final class DataScopeSessionStore {
      * @return 当前会话快照；未登录或未写入时返回 {@code null}
      */
     public static DataScopeSession get() {
-        if (!StpUtil.isLogin()) {
-            return null;
-        }
         try {
+            if (!StpUtil.isLogin()) {
+                return null;
+            }
             return (DataScopeSession) StpUtil.getSession().get(SESSION_KEY);
         } catch (Exception ignored) {
+            // 非 Web 线程（如 SSE 异步聊天）无 Sa-Token 上下文
             return null;
         }
     }

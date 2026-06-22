@@ -352,7 +352,7 @@ const {
   streaming,
   streamBuffer,
   toolStatus,
-  createSession,
+  reuseOrCreateSession,
   sendChat
 } = useAiAppChat()
 
@@ -366,7 +366,8 @@ const isQwenModel = computed(() => {
 
 onMounted(async () => {
   await Promise.all([loadOptions(), loadApp()])
-  await createSession(appId.value)
+  // 预览会话延后创建，避免阻塞编排页首屏渲染
+  reuseOrCreateSession(appId.value, '预览调试')
 })
 
 async function loadOptions() {
@@ -514,7 +515,7 @@ function normalizeWorkflowBindings() {
     .map((b) => {
       const wf = findWorkflow(b.workflowId)
       return {
-        workflowId: b.workflowId,
+        workflowId: String(b.workflowId),
         toolName: b.toolName?.trim() || buildToolName(wf?.name, b.workflowId),
         description: b.description?.trim() || buildTriggerDescription(wf)
       }
@@ -523,12 +524,12 @@ function normalizeWorkflowBindings() {
 
 function defaultConfig() {
   return {
-    chatModelId: config.chatModelId,
+    chatModelId: config.chatModelId != null ? String(config.chatModelId) : null,
     systemPrompt: config.systemPrompt,
     openingMessage: config.openingMessage,
     suggestedQuestions: config.suggestedQuestions.filter(Boolean),
     quickCommands: config.quickCommands.filter((c) => c.label && c.prompt),
-    kbIds: config.kbIds,
+    kbIds: (config.kbIds || []).map((id) => String(id)),
     workflowBindings: normalizeWorkflowBindings(),
     memoryVariables: config.memoryVariables.filter((v) => v.key),
     historyTurns: config.historyTurns,
@@ -570,8 +571,13 @@ async function handleOptimize() {
 }
 
 async function onSend({ message, webSearch }) {
-  await save()
-  sendChat({ appId: appId.value, message, preview: true, webSearch })
+  sendChat({
+    appId: appId.value,
+    message,
+    preview: true,
+    webSearch,
+    previewConfigJson: JSON.stringify(defaultConfig())
+  })
 }
 
 function goBack() {

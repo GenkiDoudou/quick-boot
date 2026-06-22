@@ -7,7 +7,7 @@ import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.security.firewall.password.PasswordCodec;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
-import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientLookupService;
 import io.github.genkidoudou.web.system.oauthclient.support.Oauth2SecretSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +43,7 @@ public class ClientSignService {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final ClientSignProperties properties;
-    private final SysOauthClientMapper oauthClientMapper;
+    private final OauthClientLookupService oauthClientLookupService;
     private final PasswordCodec passwordCodec;
     private final CacheManager cacheManager;
     private final OauthClientApiPathAuthService apiPathAuthService;
@@ -62,13 +62,12 @@ public class ClientSignService {
             return;
         }
 
-        String clientId = header(request, "X-Client-Id");
-        if (StrUtil.isNotBlank(clientId)) {
-            SysOauthClient early = oauthClientMapper.selectById(clientId.trim());
-            if (early != null && "0".equals(early.getDelFlag()) && "0".equals(early.getStatus())
-                    && !OauthClientSignVerifySupport.isSignVerifyEnabled(early)) {
-                return;
-            }
+        String clientIdRaw = header(request, "X-Client-Id");
+        String clientId = StrUtil.isBlank(clientIdRaw) ? null : clientIdRaw.trim();
+        SysOauthClient client = clientId == null ? null : oauthClientLookupService.getByClientId(clientId);
+        if (client != null && "0".equals(client.getDelFlag()) && "0".equals(client.getStatus())
+                && !OauthClientSignVerifySupport.isSignVerifyEnabled(client)) {
+            return;
         }
 
         String timestamp = header(request, "X-Client-Timestamp");
@@ -89,9 +88,8 @@ public class ClientSignService {
             throw fail("请求已过期");
         }
 
-        assertNonceFresh(clientId.trim(), nonce.trim());
+        assertNonceFresh(clientId, nonce.trim());
 
-        SysOauthClient client = oauthClientMapper.selectById(clientId.trim());
         if (client == null || !"0".equals(client.getDelFlag())) {
             throw fail("无效的客户端");
         }

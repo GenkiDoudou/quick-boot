@@ -30,6 +30,7 @@
       <!-- 文档面板 -->
       <div v-show="activePanel === 'docs'" class="kb-detail__panel">
         <div class="kb-detail__toolbar">
+          <span v-if="total > 0" class="kb-detail__doc-count">共 {{ total }} 个文档</span>
           <el-input
             v-model="searchTitle"
             placeholder="请输入文档名称，回车搜索"
@@ -76,7 +77,7 @@
           <!-- 文档卡片 -->
           <div
             v-for="doc in docList"
-            :key="doc.docId"
+            :key="'doc-' + doc.docId"
             class="kb-doc-card"
             @click="onDocCardClick(doc)"
           >
@@ -91,6 +92,7 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
+                    <el-dropdown-item @click="handlePreview(doc)">预览</el-dropdown-item>
                     <el-dropdown-item
                       :disabled="doc.docStatus === 'PARSING'"
                       @click="handleReindex(doc)"
@@ -124,6 +126,7 @@
               <template v-else>
                 <span>待处理</span>
               </template>
+              <span v-if="doc.createTime" class="kb-doc-card__time">{{ formatDocTime(doc.createTime) }}</span>
             </div>
           </div>
         </div>
@@ -133,7 +136,7 @@
             v-model:current-page="pageNum"
             v-model:page-size="pageSize"
             :total="total"
-            :page-sizes="[10, 20, 50]"
+            :page-sizes="[20, 50, 100]"
             layout="total, prev, pager, next, sizes"
             background
             @current-change="loadDocuments"
@@ -252,12 +255,14 @@
 
     <KnowledgeDocSegmentDrawer v-model="segmentDrawerVisible" :doc-id="activeDocId" />
 
+    <KnowledgeDocPreviewDialog v-model="previewVisible" :doc-id="previewDocId" />
+
     <KnowledgeDocWizard
       v-if="kbId"
       v-model="wizardVisible"
       :kb-id="kbId"
       :initial-source-tab="wizardSourceTab"
-      @success="loadDocuments"
+      @success="onWizardSuccess"
     />
   </div>
 </template>
@@ -288,6 +293,7 @@ import {
 import { getKnowledgeBase } from '@/api/knowledge/base'
 import { listDocument, reindexDocument, removeDocument } from '@/api/knowledge/doc'
 import { searchKnowledge, listRetrievalHistory } from '@/api/knowledge/search'
+import KnowledgeDocPreviewDialog from '@/components/knowledge/KnowledgeDocPreviewDialog.vue'
 import KnowledgeDocWizard from '@/components/knowledge/KnowledgeDocWizard.vue'
 import KnowledgeDocSegmentDrawer from '@/components/knowledge/KnowledgeDocSegmentDrawer.vue'
 import KnowledgeKbSettings from '@/components/knowledge/KnowledgeKbSettings.vue'
@@ -325,12 +331,15 @@ const docList = ref([])
 const docLoading = ref(false)
 const searchTitle = ref('')
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(50)
 const total = ref(0)
 const pollTimer = ref(null)
 
 const wizardVisible = ref(false)
 const wizardSourceTab = ref('file')
+
+const previewVisible = ref(false)
+const previewDocId = ref(null)
 
 const segmentDrawerVisible = ref(false)
 const activeDocId = ref(null)
@@ -376,6 +385,21 @@ function formatScore(score) {
   return Number(score).toFixed(4)
 }
 
+/** 规范化文档行（Snowflake ID 保持字符串） */
+function normalizeDocRow(doc) {
+  if (!doc) return doc
+  return {
+    ...doc,
+    docId: doc.docId != null ? String(doc.docId) : doc.docId
+  }
+}
+
+function formatDocTime(time) {
+  if (!time) return ''
+  const s = String(time)
+  return s.length >= 16 ? s.slice(0, 16) : s
+}
+
 function goBack() {
   router.push({ path: '/knowledge/base' })
 }
@@ -397,7 +421,7 @@ function loadDocuments() {
     pageSize: pageSize.value
   })
     .then((res) => {
-      docList.value = res?.data?.records || []
+      docList.value = (res?.data?.records || []).map(normalizeDocRow)
       total.value = res?.data?.total || 0
       schedulePolling(docList.value)
     })
@@ -427,6 +451,23 @@ function openWizard(sourceTab) {
   }
   wizardSourceTab.value = sourceTab
   wizardVisible.value = true
+}
+
+/** 上传成功后回到第一页并刷新（上传为追加，不覆盖历史文档） */
+function onWizardSuccess(payload) {
+  pageNum.value = 1
+  return loadDocuments().then(() => {
+    const added = Number(payload?.addedCount || 0)
+    if (added > 0 && total.value > added) {
+      ElMessage.info(`知识库共 ${total.value} 个文档（本次新增 ${added} 个，历史文档已保留）`)
+    }
+  })
+}
+
+function handlePreview(doc) {
+  if (!doc?.docId) return
+  previewDocId.value = String(doc.docId)
+  previewVisible.value = true
 }
 
 function onDocCardClick(doc) {
@@ -655,7 +696,17 @@ onBeforeUnmount(stopPolling)
 }
 
 .kb-detail__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+.kb-detail__doc-count {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
 }
 
 .kb-detail__search {
@@ -811,10 +862,17 @@ onBeforeUnmount(stopPolling)
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
   font-size: 12px;
   color: var(--el-text-color-secondary);
   padding-top: 8px;
   border-top: 1px solid var(--el-fill-color-light);
+}
+
+.kb-doc-card__time {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
 }
 
 .kb-doc-card__status-label {

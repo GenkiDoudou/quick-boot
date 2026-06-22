@@ -6,7 +6,9 @@ import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddFromLibraryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddFromWebBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentAddManualBo;
+import io.github.genkidoudou.web.knowledge.dto.KbDocumentBatchUploadVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentChunkVo;
+import io.github.genkidoudou.web.knowledge.dto.KbDocumentPreviewVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentQueryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentUploadVo;
 import io.github.genkidoudou.web.knowledge.dto.KbDocumentVo;
@@ -20,6 +22,7 @@ import io.github.genkidoudou.web.knowledge.service.KbDocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -64,6 +67,23 @@ public class KbDocumentController {
         return R.ok(service.getInfo(docId));
     }
 
+    @Operation(summary = "文档预览元数据")
+    @SaCheckPermission("knowledge:doc:list")
+    @GetMapping("/previewInfo")
+    public R<KbDocumentPreviewVo> previewInfo(
+        @Parameter(description = "文档ID") @RequestParam @Min(1) Long docId) {
+        return R.ok(service.previewInfo(docId));
+    }
+
+    @Operation(summary = "文档原文流式预览（PDF/HTML 等 inline）")
+    @SaCheckPermission("knowledge:doc:list")
+    @GetMapping("/previewStream")
+    public void previewStream(
+        @Parameter(description = "文档ID") @RequestParam @Min(1) Long docId,
+        HttpServletResponse response) throws Exception {
+        service.writePreviewStream(docId, response);
+    }
+
     @Operation(summary = "文档分块列表")
     @SaCheckPermission("knowledge:doc:list")
     @GetMapping("/chunks")
@@ -105,6 +125,16 @@ public class KbDocumentController {
         @Parameter(description = "文档文件") @RequestPart("file") MultipartFile file,
         @Parameter(description = "可选分段配置") @RequestPart(value = "segmentConfig", required = false) SegmentConfigBo segmentConfig) {
         return R.ok(service.upload(kbId, file, segmentConfig));
+    }
+
+    @Operation(summary = "上传 ZIP 压缩包并批量异步入库")
+    @SaCheckPermission("knowledge:doc:upload")
+    @PostMapping(value = "/uploadZip", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<KbDocumentBatchUploadVo> uploadZip(
+        @Parameter(description = "知识库ID") @RequestParam @Min(1) Long kbId,
+        @Parameter(description = "ZIP 压缩包") @RequestPart("file") MultipartFile file,
+        @Parameter(description = "可选分段配置") @RequestPart(value = "segmentConfig", required = false) SegmentConfigBo segmentConfig) {
+        return R.ok(service.uploadZip(kbId, file, segmentConfig));
     }
 
     @Operation(summary = "手动录入文档")

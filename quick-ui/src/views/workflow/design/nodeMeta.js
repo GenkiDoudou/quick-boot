@@ -139,11 +139,15 @@ export const WORKFLOW_NODE_TYPES = [
       userPrompt: '{{question}}',
       temperature: 0.3,
       streaming: false,
-      outputFormat: 'text'
+      outputFormat: 'text',
+      useMcpTools: false,
+      mcpIds: []
     },
     outputs: [
       { key: 'text', label: '生成文本', type: 'string' },
-      { key: 'json', label: 'JSON 结果', type: 'object' }
+      { key: 'json', label: 'JSON 结果', type: 'object' },
+      { key: 'mcpToolsUsed', label: 'MCP 工具调用', type: 'array', description: '启用 MCP 时记录本次调用的工具名称' },
+      { key: 'mcpToolResults', label: 'MCP 工具结果', type: 'array', description: '每次工具调用的入参与原始返回，未经大模型改写' }
     ],
     fields: [
       { key: 'chatModelId', label: '大模型', input: 'select' },
@@ -158,7 +162,9 @@ export const WORKFLOW_NODE_TYPES = [
       const fmtLabel = fmt === 'json' ? 'JSON' : fmt === 'markdown' ? 'Markdown' : '文本'
       const stream = data?.streaming ? '流式' : '非流式'
       const temp = data?.temperature ?? 0.3
-      return `${fmtLabel} · T=${temp} · ${stream}`
+      const mcpCount = data?.useMcpTools && Array.isArray(data?.mcpIds) ? data.mcpIds.length : 0
+      const mcp = mcpCount > 0 ? ` · MCP×${mcpCount}` : ''
+      return `${fmtLabel} · T=${temp} · ${stream}${mcp}`
     },
     hasValidationWarning(data) {
       return !data?.userPrompt
@@ -832,26 +838,47 @@ export function resolveNodeOutputs(wfType, nodeData) {
     }))
   }
   if (wfType === 'llm') {
+    const mcpOutput = nodeData?.useMcpTools
+      ? [
+        {
+          key: 'mcpToolsUsed',
+          label: 'MCP 工具调用',
+          type: 'array',
+          description: '本次调用的 MCP 工具名称列表'
+        },
+        {
+          key: 'mcpToolResults',
+          label: 'MCP 工具结果',
+          type: 'array',
+          description: '工具入参与原始返回（bing_search 等），未经大模型改写'
+        }
+      ]
+      : []
     const vars = nodeData?.outputVariables
     if (Array.isArray(vars) && vars.length) {
-      return vars
-        .filter((item) => item?.key)
-        .map((item) => ({
-          key: item.key,
-          label: item.key,
-          type: item.type || 'string',
-          description: item.description?.trim() || ''
-        }))
+      return [
+        ...vars
+          .filter((item) => item?.key)
+          .map((item) => ({
+            key: item.key,
+            label: item.key,
+            type: item.type || 'string',
+            description: item.description?.trim() || ''
+          })),
+        ...mcpOutput
+      ]
     }
     if (nodeData?.outputFormat === 'json') {
       return [
         { key: 'json', label: 'JSON', type: 'object' },
-        { key: 'text', label: '原始文本', type: 'string' }
+        { key: 'text', label: '原始文本', type: 'string' },
+        ...mcpOutput
       ]
     }
     return [
       { key: 'output', label: 'output', type: 'string' },
-      { key: 'text', label: 'text', type: 'string' }
+      { key: 'text', label: 'text', type: 'string' },
+      ...mcpOutput
     ]
   }
   if (wfType === 'loop') {

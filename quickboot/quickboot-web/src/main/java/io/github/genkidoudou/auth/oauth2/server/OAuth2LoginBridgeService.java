@@ -9,6 +9,7 @@ import io.github.genkidoudou.web.system.oauthclient.service.AuthLoginService;
 import io.github.genkidoudou.core.service.LoginLockService;
 import io.github.genkidoudou.auth.SysLogininforLogService;
 import io.github.genkidoudou.web.system.user.datascope.LoginDataScopeService;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -25,6 +26,7 @@ public class OAuth2LoginBridgeService {
     private final AuthLoginService authLoginService;
     private final LoginLockService loginLockService;
     private final LoginDataScopeService loginDataScopeService;
+    private final UserAuthCacheService userAuthCacheService;
     private final SysLogininforLogService sysLogininforLogService;
     private final ObjectProvider<ImageCaptchaApplication> imageCaptchaApplicationProvider;
     private final HttpServletRequest request;
@@ -63,6 +65,7 @@ public class OAuth2LoginBridgeService {
             loginLockService.onLoginSuccess(name);
             StpUtil.login(userId);
             loginDataScopeService.refreshSession(userId);
+            userAuthCacheService.refreshSessionOnLogin(userId);
             sysLogininforLogService.recordSuccess(request, userId, name);
             return SaResult.ok().set("loginId", userId);
         } catch (Exception ex) {

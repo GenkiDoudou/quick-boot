@@ -1,7 +1,4 @@
 import { createApp } from 'vue'
-import Cookies from 'js-cookie'
-import ElementPlus from 'element-plus'
-import locale from 'element-plus/es/locale/lang/zh-cn'
 import '@/assets/styles/mobile.scss'
 import '@/assets/styles/index.scss'
 // 命令式组件样式（Message / MessageBox / Loading 等）
@@ -50,13 +47,6 @@ app.use(directive)
 
 app.component('svg-icon', SvgIcon)
 installPackages(app)
-
-// 仅注册 locale / 默认尺寸；组件由 unplugin-vue-components 按需解析
-app.use(ElementPlus, {
-  locale: locale,
-  size: Cookies.get('size') || 'default',
-  zIndex: 2000
-})
 
 initMobileEnvironment()
 

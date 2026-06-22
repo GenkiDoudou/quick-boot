@@ -91,7 +91,9 @@ spring:
     validate-on-migrate: false
   devtools:
     restart:
-      enabled: true
+      # IDE 自动编译与 DevTools 热重启并发写 target/classes 时，易出现 ClassFormatError（如 Duplicate method page）。
+      # 关闭自动重启后仍保留 LiveReload；改代码后请手动重启应用或执行 mvn compile 后再启。
+      enabled: false
     livereload:
       enabled: true
   ai:

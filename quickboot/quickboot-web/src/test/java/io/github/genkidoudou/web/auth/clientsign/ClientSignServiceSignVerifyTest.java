@@ -5,7 +5,7 @@ import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignPropert
 import io.github.genkidoudou.web.system.oauthclient.clientsign.ClientSignService;
 import io.github.genkidoudou.web.system.oauthclient.service.OauthClientApiPathAuthService;
 import io.github.genkidoudou.web.system.oauthclient.domain.SysOauthClient;
-import io.github.genkidoudou.web.system.oauthclient.mapper.SysOauthClientMapper;
+import io.github.genkidoudou.web.system.oauthclient.service.OauthClientLookupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 class ClientSignServiceSignVerifyTest {
 
     @Mock
-    private SysOauthClientMapper oauthClientMapper;
+    private OauthClientLookupService oauthClientLookupService;
 
     private ClientSignService clientSignService;
 
@@ -35,7 +35,7 @@ class ClientSignServiceSignVerifyTest {
         properties.setNonceCacheName("clientSignNonceTest2");
         clientSignService = new ClientSignService(
                 properties,
-                oauthClientMapper,
+                oauthClientLookupService,
                 null,
                 new ConcurrentMapCacheManager(properties.getNonceCacheName()),
                 new OauthClientApiPathAuthService());
@@ -48,7 +48,7 @@ class ClientSignServiceSignVerifyTest {
         client.setSignVerify("0");
         client.setStatus("0");
         client.setDelFlag("0");
-        when(oauthClientMapper.selectById("no-sign")).thenReturn(client);
+        when(oauthClientLookupService.getByClientId("no-sign")).thenReturn(client);
 
         MockHttpServletRequest raw = new MockHttpServletRequest("GET", "/system/user/list");
         raw.addHeader("X-Client-Id", "no-sign");

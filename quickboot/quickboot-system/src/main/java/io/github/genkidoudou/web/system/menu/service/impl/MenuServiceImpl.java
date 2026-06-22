@@ -19,7 +19,10 @@ import io.github.genkidoudou.web.system.menu.service.MenuService;
 import io.github.genkidoudou.web.system.menu.vo.RoleMenuTreeselectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeSelectVo;
 import io.github.genkidoudou.web.system.menu.vo.SysMenuTreeVo;
+import io.github.genkidoudou.web.system.user.authcache.UserAuthCacheService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +56,7 @@ public class MenuServiceImpl implements MenuService {
     private final SysRoleMapper sysRoleMapper;
     private final SysRoleMenuMapper sysRoleMenuMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final UserAuthCacheService userAuthCacheService;
 
     /** 积木 iframe 基址，须指向后端（如 :9992），与 {@code qc.jimu.base-url} 一致 */
     private final boolean jimuEnabled;
@@ -63,6 +67,7 @@ public class MenuServiceImpl implements MenuService {
             SysRoleMapper sysRoleMapper,
             SysRoleMenuMapper sysRoleMenuMapper,
             SysUserRoleMapper sysUserRoleMapper,
+            @Lazy UserAuthCacheService userAuthCacheService,
             @Value("${qc.jimu.enabled:true}") boolean jimuEnabled,
             @Value("${qc.jimu.base-url:http://localhost:9992}") String jimuBaseUrl
         ) {
@@ -70,6 +75,7 @@ public class MenuServiceImpl implements MenuService {
         this.sysRoleMapper = sysRoleMapper;
         this.sysRoleMenuMapper = sysRoleMenuMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
+        this.userAuthCacheService = userAuthCacheService;
         this.jimuEnabled = jimuEnabled;
         this.jimuBaseUrl = jimuBaseUrl;
     }
@@ -121,6 +127,7 @@ public class MenuServiceImpl implements MenuService {
         validateTypeFields(m, true);
         validateParentExists(m.getParentId(), null);
         sysMenuMapper.insert(m);
+        userAuthCacheService.evictAllUsersForMenuChange();
     }
 
     @Override
@@ -146,6 +153,7 @@ public class MenuServiceImpl implements MenuService {
         m.setParentId(parentId);
         normalizeDirComponent(m);
         sysMenuMapper.updateById(m);
+        userAuthCacheService.evictAllUsersForMenuChange();
     }
 
     @Override
@@ -174,6 +182,7 @@ public class MenuServiceImpl implements MenuService {
                 throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "菜单不存在或已删除: " + menuId);
             }
         }
+        userAuthCacheService.evictAllUsersForMenuChange();
     }
 
     @Override
@@ -189,6 +198,7 @@ public class MenuServiceImpl implements MenuService {
             throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "存在未删除的子菜单，无法删除");
         }
         sysMenuMapper.deleteById(menuId);
+        userAuthCacheService.evictAllUsersForMenuChange();
     }
 
     @Override
@@ -221,6 +231,7 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    @Cacheable(cacheNames = UserAuthCacheService.ROLES_CACHE, key = "#userId")
     public List<String> listRoleKeysByUserId(Long userId) {
         List<SysUserRole> urs = sysUserRoleMapper.selectList(
                 Wrappers.<SysUserRole>lambdaQuery().eq(SysUserRole::getUserId, userId));
@@ -240,6 +251,7 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    @Cacheable(cacheNames = UserAuthCacheService.PERMS_CACHE, key = "#userId")
     public List<String> listPermissionsByUserId(Long userId) {
         List<String> roleKeys = listRoleKeysByUserId(userId);
         boolean superAdmin = roleKeys.stream().anyMatch(ADMIN_ROLE_KEY::equals);

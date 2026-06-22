@@ -10,6 +10,8 @@ import io.github.genkidoudou.web.knowledge.dto.KbMcpServerBo;
 import io.github.genkidoudou.web.knowledge.dto.KbMcpServerQueryBo;
 import io.github.genkidoudou.web.knowledge.dto.KbMcpServerVo;
 import io.github.genkidoudou.web.knowledge.dto.McpTestResultVo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeBo;
+import io.github.genkidoudou.web.knowledge.dto.McpToolInvokeResultVo;
 import io.github.genkidoudou.web.knowledge.service.KbMcpServerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -93,6 +95,21 @@ public class KbMcpServerController {
     public R<McpTestResultVo> test(
         @Parameter(description = "MCP ID") @RequestParam @Min(1) Long mcpId) {
         return R.ok(service.test(mcpId));
+    }
+
+    @Operation(summary = "MCP 工具列表")
+    @SaCheckPermission("ai:mcp:query")
+    @GetMapping("/tools")
+    public R<McpTestResultVo> listTools(
+        @Parameter(description = "MCP ID") @RequestParam @Min(1) Long mcpId) {
+        return R.ok(service.listTools(mcpId));
+    }
+
+    @Operation(summary = "试跑 MCP 工具")
+    @SaCheckPermission("ai:mcp:test")
+    @PostMapping("/invokeTool")
+    public R<McpToolInvokeResultVo> invokeTool(@Validated @RequestBody McpToolInvokeBo req) {
+        return R.ok(service.invokeTool(req));
     }
 
     @Operation(summary = "导出 mcp.json 片段")
