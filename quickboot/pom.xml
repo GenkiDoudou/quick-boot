@@ -65,8 +65,8 @@
         <!-- Spring AI 1.0.x（支持 Spring Boot 3.4.x / 3.5.x） -->
         <spring-ai.version>1.0.0</spring-ai.version>
 
-        <!-- MCP Java SDK：0.18.1 修复 Streamable HTTP 对 notifications/initialized 空 body 202 的处理 -->
-        <mcp-sdk.version>0.18.1</mcp-sdk.version>
+        <!-- MCP Java SDK：0.17.1 兼容 ModelScope 等 GET /mcp 返回 JSON 的托管 MCP（0.18+ 会误判为 SSE） -->
+        <mcp-sdk.version>0.17.1</mcp-sdk.version>
 
         <!-- Tika 3.x 需要 ≥2.13（UnsynchronizedByteArrayInputStream.builder）；EasyExcel 传递 2.11 须统一抬升 -->
         <commons-io.version>2.18.0</commons-io.version>

@@ -138,7 +138,8 @@ public class LoopSubgraphExecutor {
                 if (context.getRunId() != null) {
                     stepRecorder.insert(context, orderNo, node, "FAILED", Map.of(), Map.of(),
                         result.getErrorMessage(), stepDuration);
-                    streamEmitter.emitStepEnd(context.getRunId(), nodeId, "FAILED", stepDuration, Map.of(), Map.of());
+                    streamEmitter.emitStepEnd(context.getRunId(), nodeId, node.getType(), "FAILED", stepDuration,
+                        Map.of(), Map.of(), result.getErrorMessage());
                 }
                 throw new IllegalStateException(
                     "循环体节点 " + nodeId + " 执行失败: " + result.getErrorMessage());
@@ -149,8 +150,10 @@ public class LoopSubgraphExecutor {
             }
             if (context.getRunId() != null) {
                 Map<String, Object> traceInputs = result.getTraceInputs();
-                stepRecorder.insert(context, orderNo, node, "SUCCESS", traceInputs, result.getOutputs(), null, stepDuration);
-                streamEmitter.emitStepEnd(context.getRunId(), nodeId, "SUCCESS", stepDuration, traceInputs, result.getOutputs());
+                Map<String, Object> safeInputs = traceInputs == null ? Map.of() : traceInputs;
+                stepRecorder.insert(context, orderNo, node, "SUCCESS", safeInputs, result.getOutputs(), null, stepDuration);
+                streamEmitter.emitStepEnd(context.getRunId(), nodeId, node.getType(), "SUCCESS", stepDuration,
+                    safeInputs, result.getOutputs(), null);
             }
             executed.add(nodeId);
 

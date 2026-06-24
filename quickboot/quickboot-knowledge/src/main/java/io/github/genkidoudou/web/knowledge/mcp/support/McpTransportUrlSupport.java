@@ -55,6 +55,18 @@ public final class McpTransportUrlSupport {
     }
 
     /**
+     * URL 是否应使用无状态 POST 模式（不发起 GET /mcp SSE）。
+     * ModelScope 托管 MCP 对 GET 返回 JSON 探活，与 SDK 默认 Streamable HTTP 不兼容。
+     */
+    public static boolean prefersStatelessRequestResponse(String url) {
+        if (StrUtil.isBlank(url)) {
+            return false;
+        }
+        String host = extractHost(url.trim());
+        return host != null && host.contains("mcp.api-inference.modelscope.net");
+    }
+
+    /**
      * URL 是否像 Streamable HTTP 端点（如 ModelScope {@code .../mcp}）。
      */
     public static boolean looksLikeStreamableHttpUrl(String url) {
@@ -102,6 +114,10 @@ public final class McpTransportUrlSupport {
         }
         if (base.contains("record not found")) {
             return base + "。提示：远程 MCP 实例可能已过期或被删除，请在 ModelScope 控制台重新获取 URL。";
+        }
+        if (base.contains("Invalid SSE response") && base.contains("return 200 for GET /mcp")) {
+            return base + "。提示：ModelScope 等对 GET /mcp 返回 JSON 探活而非 SSE；"
+                + "请确认传输方式为 Streamable HTTP 并已重启后端（将自动使用无状态 POST 模式连接）。";
         }
         return base;
     }

@@ -41,6 +41,15 @@
         <span class="wf-card__type">{{ typeLabel }}</span>
         <span v-if="showWarning" class="wf-card__warn" title="必填项未配置" />
       </div>
+      <div v-if="runMetrics" class="wf-card__run-strip">
+        <span v-if="runMetrics.order != null" class="wf-card__run-chip">步骤 {{ runMetrics.order }}</span>
+        <span
+          v-if="runMetrics.status === 'RUNNING'"
+          class="wf-card__run-chip wf-card__run-chip--running"
+        >运行中</span>
+        <span v-else-if="runMetrics.durationLabel" class="wf-card__run-chip">{{ runMetrics.durationLabel }}</span>
+        <span v-if="runMetrics.tokenLabel" class="wf-card__run-chip wf-card__run-chip--token">{{ runMetrics.tokenLabel }}</span>
+      </div>
       <div v-if="!showIfElseHandles && !showClassifierHandles && wfType !== 'loop-body' && wfType !== 'batch-body'" class="wf-card__title">{{ displayLabel }}</div>
       <div v-if="wfType === 'loop'" class="wf-card__loop-sections">
         <div class="wf-card__loop-row">
@@ -121,11 +130,19 @@
       :position="Position.Right"
       class="wf-card__handle"
     />
+
+    <NodeRunTrace
+      v-if="showRunTrace"
+      :step="data.runTrace"
+      :expanded="!!data.runTraceExpanded"
+      :running="data.runStatus === 'RUNNING'"
+      @toggle="onTraceToggle"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import {
   Upload,
@@ -151,6 +168,12 @@ import { getNodeColor, getNodeLabel, summarizeNode, hasNodeValidationWarning } f
 import { resolveIfElseCanvasRows } from '../utils/ifElseBranchUtils'
 import { resolveIntentCanvasRows } from '../utils/intentUtils'
 import { resolveLoopCardSections } from '../utils/loopUtils'
+import NodeRunTrace from '../components/NodeRunTrace.vue'
+import {
+  extractTokenUsage,
+  formatDurationSec,
+  formatTokenUsage
+} from '../utils/runTraceUtils'
 
 defineOptions({ name: 'WorkflowNodeCard' })
 
@@ -159,6 +182,44 @@ const props = defineProps({
   data: { type: Object, default: () => ({}) },
   selected: { type: Boolean, default: false }
 })
+
+const toggleNodeTrace = inject('wfToggleNodeTrace', null)
+const runDebugActive = inject('wfRunDebugActive', computed(() => false))
+
+const showRunTrace = computed(
+  () =>
+    runDebugActive.value &&
+    (!!props.data?.runTrace || props.data?.runStatus === 'RUNNING')
+)
+
+/** 试运行期间节点上的步骤 / 耗时 / Token 标记 */
+const runMetrics = computed(() => {
+  if (!runDebugActive.value) return null
+  const trace = props.data?.runTrace
+  const status = props.data?.runStatus
+  if (!trace && !status) return null
+
+  const pseudoStep = trace ? { inputs: trace.inputs, outputs: trace.outputs } : null
+  const tokenLabel = pseudoStep ? formatTokenUsage(extractTokenUsage(pseudoStep)) : ''
+  const order =
+    trace?.orderNo != null && trace.orderNo !== ''
+      ? Number(trace.orderNo) + 1
+      : null
+
+  return {
+    order,
+    status,
+    durationLabel:
+      trace?.durationMs != null && status !== 'RUNNING'
+        ? formatDurationSec(trace.durationMs)
+        : '',
+    tokenLabel
+  }
+})
+
+function onTraceToggle() {
+  toggleNodeTrace?.(props.id)
+}
 
 const ICON_MAP = {
   Upload,
@@ -217,7 +278,9 @@ const cardClasses = computed(() => ({
   'wf-card--loop-body': wfType.value === 'loop-body',
   'wf-card--batch-body': wfType.value === 'batch-body',
   'wf-card--loop-head': wfType.value === 'loop',
-  'wf-card--batch-head': wfType.value === 'batch'
+  'wf-card--batch-head': wfType.value === 'batch',
+  'wf-card--trace': showRunTrace.value && !!props.data?.runTraceExpanded,
+  'wf-card--run-debug': !!runMetrics.value
 }))
 
 const showBodyInHandle = computed(() => wfType.value === 'loop-body' || wfType.value === 'batch-body')
@@ -266,6 +329,14 @@ const intentHandleKey = computed(() => {
 
   &--selector {
     width: 280px;
+  }
+
+  &--trace {
+    width: 320px;
+  }
+
+  &--run-debug {
+    width: 320px;
   }
 
   &--loop-body {
@@ -435,6 +506,36 @@ const intentHandleKey = computed(() => {
   border-radius: 50%;
   background: #e6a23c;
   flex-shrink: 0;
+}
+
+.wf-card__run-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.wf-card__run-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #606266;
+  background: #f2f3f5;
+  white-space: nowrap;
+
+  &--running {
+    color: #3370ff;
+    background: #e8f3ff;
+  }
+
+  &--token {
+    color: #0a2463;
+    background: #ecf5ff;
+  }
 }
 
 .wf-card__title {

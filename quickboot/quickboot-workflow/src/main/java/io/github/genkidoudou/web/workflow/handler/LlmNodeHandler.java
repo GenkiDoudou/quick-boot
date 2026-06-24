@@ -3,6 +3,7 @@ package io.github.genkidoudou.web.workflow.handler;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import io.github.genkidoudou.web.knowledge.config.KnowledgeProperties;
+import io.github.genkidoudou.web.knowledge.mcp.runtime.McpTextualToolCallSupport;
 import io.github.genkidoudou.web.knowledge.mcp.runtime.McpToolInvocationRecord;
 import io.github.genkidoudou.web.knowledge.mcp.runtime.McpToolCallbackProvider;
 import io.github.genkidoudou.web.knowledge.mcp.runtime.McpToolUsageTracker;
@@ -15,10 +16,13 @@ import io.github.genkidoudou.web.workflow.engine.NodeResult;
 import io.github.genkidoudou.web.workflow.engine.WorkflowContext;
 import io.github.genkidoudou.web.workflow.stream.WorkflowStreamEmitter;
 import io.github.genkidoudou.web.workflow.support.WorkflowAiGuard;
+import io.github.genkidoudou.web.workflow.support.WorkflowTokenUsageSupport;
+import io.github.genkidoudou.web.workflow.support.WorkflowTraceMetaSupport;
 import io.github.genkidoudou.web.workflow.util.JsonDeepParseUtil;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -28,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,6 +51,15 @@ public class LlmNodeHandler implements NodeHandler {
 
         若已提供外部 MCP 工具且与问题相关，可调用工具获取实时数据；不得捏造引用或工具结果。
         """;
+
+    /** 系统提示词显式提到工具名时，追加 MUST 调用约束。 */
+    private static final String MCP_MUST_CALL_HINT_TEMPLATE = """
+
+        系统提示词要求使用工具 %s：你必须先调用对应工具获取真实数据，再基于工具返回结果作答；禁止不调用工具直接编造内容。
+        请使用 API 原生工具调用机制，禁止在正文中输出 <function_calls>、<invoke> 等 XML/文本格式假装调用工具。
+        """;
+
+    private static final int MCP_TEXTUAL_FALLBACK_MAX_ROUNDS = 2;
 
     private final WorkflowAiGuard aiGuard;
     private final InputParameterTemplateRenderer inputParameterRenderer;
@@ -104,20 +118,35 @@ public class LlmNodeHandler implements NodeHandler {
 
         ChatClient.Builder clientBuilder = ChatClient.builder(chatModel);
         boolean mcpActive = false;
+        ToolCallback[] mcpCallbacks = new ToolCallback[0];
+        List<String> availableToolNames = List.of();
+        String mcpStatusNote = null;
         if (wantMcpTools) {
             KnowledgeProperties properties = knowledgeProperties.getIfAvailable();
-            if (properties != null && properties.getMcp().isEnabled()) {
+            if (properties == null || !properties.getMcp().isEnabled()) {
+                mcpStatusNote = "MCP 未启用（qc.knowledge.mcp.enabled=false）";
+            } else {
                 McpToolCallbackProvider toolProvider = mcpToolCallbackProvider.getIfAvailable();
-                if (toolProvider != null && tracker != null) {
+                if (toolProvider == null) {
+                    mcpStatusNote = "MCP 工具提供者未就绪";
+                } else if (tracker == null) {
+                    mcpStatusNote = "MCP 调用追踪器未就绪";
+                } else {
                     ToolCallback[] callbacks = McpTrackingToolCallbacks.wrap(
                         toolProvider.getToolCallbacks(mcpIds), tracker);
+                    availableToolNames = extractToolNames(callbacks);
                     if (callbacks.length > 0) {
-                        systemPrompt = systemPrompt + MCP_TOOL_HINT;
+                        systemPrompt = systemPrompt + buildMcpToolHint(systemPrompt, availableToolNames);
                         clientBuilder.defaultToolCallbacks(callbacks);
+                        mcpCallbacks = callbacks;
                         mcpActive = true;
+                    } else {
+                        mcpStatusNote = "所选 MCP 服务未返回可用工具，请检查 MCP 连接与工具列表";
                     }
                 }
             }
+        } else if (Boolean.TRUE.equals(data.get("useMcpTools")) && mcpIds.isEmpty()) {
+            mcpStatusNote = "已开启 MCP 但未选择 MCP 服务";
         }
 
         boolean streaming = Boolean.TRUE.equals(data.get("streaming"))
@@ -127,20 +156,32 @@ public class LlmNodeHandler implements NodeHandler {
         try {
             ChatClient client = clientBuilder.defaultSystem(systemPrompt).build();
             String text;
+            Map<String, Object> tokenUsage = null;
             if (streaming) {
                 text = executeStreaming(node.getId(), context, client, userPrompt, temperature);
+            } else if (mcpActive) {
+                WorkflowTokenUsageSupport.CallTextAndUsage callResult = executeMcpCall(
+                    client, userPrompt, temperature, mcpCallbacks, availableToolNames, systemPrompt, tracker);
+                text = callResult.text();
+                tokenUsage = callResult.tokenUsage();
             } else {
-                text = client.prompt()
-                    .options(buildChatOptions(temperature))
-                    .user(userPrompt)
-                    .call()
-                    .content();
+                WorkflowTokenUsageSupport.CallTextAndUsage callResult = WorkflowTokenUsageSupport.resolveCall(
+                    client.prompt()
+                        .options(buildChatOptions(temperature, false, false))
+                        .user(userPrompt)
+                        .call());
+                text = callResult.text();
+                tokenUsage = callResult.tokenUsage();
             }
             if (text == null) {
                 text = "";
             }
             List<McpToolInvocationRecord> mcpInvocations = tracker != null ? tracker.drainInvocations() : List.of();
-            return NodeResult.success(buildOutputs(text, data, mcpInvocations));
+            Map<String, Object> traceInputs = buildTraceInputs(
+                systemPrompt, userPrompt, temperature, streaming, nodeModelId, mcpActive,
+                availableToolNames, mcpInvocations, mcpStatusNote, tokenUsage);
+            return NodeResult.successWithTrace(
+                buildOutputs(text, data, mcpInvocations, mcpActive), traceInputs);
         } catch (Exception ex) {
             if (tracker != null) {
                 tracker.clear();
@@ -153,7 +194,7 @@ public class LlmNodeHandler implements NodeHandler {
                                     String userPrompt, double temperature) {
         StringBuilder accumulated = new StringBuilder();
         client.prompt()
-            .options(buildChatOptions(temperature))
+            .options(buildChatOptions(temperature, false, false))
             .user(userPrompt)
             .stream()
             .content()
@@ -203,11 +244,17 @@ public class LlmNodeHandler implements NodeHandler {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> buildOutputs(String text, Map<String, Object> data,
-                                             List<McpToolInvocationRecord> mcpInvocations) {
+                                             List<McpToolInvocationRecord> mcpInvocations,
+                                             boolean mcpActive) {
         Map<String, Object> outputs = new HashMap<>();
         String outputFormat = String.valueOf(data.getOrDefault("outputFormat", "text"));
         outputs.put("text", text);
-        if (mcpInvocations != null && !mcpInvocations.isEmpty()) {
+        if (mcpActive) {
+            List<McpToolInvocationRecord> invocations =
+                mcpInvocations == null ? List.of() : mcpInvocations;
+            outputs.put("mcpToolsUsed", invocations.stream().map(McpToolInvocationRecord::toolName).toList());
+            outputs.put("mcpToolResults", invocations.isEmpty() ? List.of() : toMcpToolResultMaps(invocations));
+        } else if (mcpInvocations != null && !mcpInvocations.isEmpty()) {
             outputs.put("mcpToolsUsed", mcpInvocations.stream().map(McpToolInvocationRecord::toolName).toList());
             outputs.put("mcpToolResults", toMcpToolResultMaps(mcpInvocations));
         }
@@ -322,8 +369,183 @@ public class LlmNodeHandler implements NodeHandler {
         return text;
     }
 
-    private ChatOptions buildChatOptions(double temperature) {
+    /**
+     * MCP 调用：优先走 Spring AI 原生 tool_calls 循环；若模型输出 XML 式伪调用则手动执行并重试。
+     */
+    private WorkflowTokenUsageSupport.CallTextAndUsage executeMcpCall(
+        ChatClient client, String userPrompt, double temperature, ToolCallback[] callbacks,
+        List<String> availableToolNames, String systemPrompt, McpToolUsageTracker tracker) {
+        boolean requireTool = mustRequireToolCall(systemPrompt, availableToolNames);
+        WorkflowTokenUsageSupport.CallTextAndUsage result = WorkflowTokenUsageSupport.resolveCall(
+            client.prompt()
+                .options(buildChatOptions(temperature, true, requireTool))
+                .user(userPrompt)
+                .call());
+        String text = result.text() == null ? "" : result.text();
+        Map<String, Object> tokenUsage = result.tokenUsage();
+
+        if (tracker != null && !tracker.getInvocations().isEmpty()) {
+            return new WorkflowTokenUsageSupport.CallTextAndUsage(text, tokenUsage);
+        }
+
+        for (int round = 0; round < MCP_TEXTUAL_FALLBACK_MAX_ROUNDS; round++) {
+            Optional<McpTextualToolCallSupport.ParsedCall> parsed = McpTextualToolCallSupport.tryParse(text);
+            if (parsed.isEmpty()) {
+                break;
+            }
+            String toolResult = McpTextualToolCallSupport.invoke(callbacks, parsed.get());
+            String followUp = """
+                【工具 %s 已执行完成，返回如下】
+                %s
+
+                请基于上述工具返回的真实数据回答用户，不要重复输出工具调用标记或 XML。原问题：
+                %s
+                """.formatted(parsed.get().toolName(), toolResult, userPrompt);
+            result = WorkflowTokenUsageSupport.resolveCall(
+                client.prompt()
+                    .options(buildChatOptions(temperature, true, false))
+                    .user(followUp)
+                    .call());
+            text = result.text() == null ? "" : result.text();
+            tokenUsage = mergeTokenUsage(tokenUsage, result.tokenUsage());
+        }
+        return new WorkflowTokenUsageSupport.CallTextAndUsage(text, tokenUsage);
+    }
+
+    private boolean mustRequireToolCall(String systemPrompt, List<String> availableToolNames) {
+        if (availableToolNames == null || availableToolNames.isEmpty()) {
+            return false;
+        }
+        String prompt = systemPrompt == null ? "" : systemPrompt;
+        for (String toolName : availableToolNames) {
+            if (StrUtil.isBlank(toolName)) {
+                continue;
+            }
+            if (prompt.contains(toolName)) {
+                return true;
+            }
+            int idx = toolName.lastIndexOf('_');
+            if (idx >= 0 && idx < toolName.length() - 1 && prompt.contains(toolName.substring(idx + 1))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Object> mergeTokenUsage(Map<String, Object> base, Map<String, Object> extra) {
+        if (extra == null || extra.isEmpty()) {
+            return base;
+        }
+        Map<String, Object> merged = base == null ? new LinkedHashMap<>() : new LinkedHashMap<>(base);
+        for (Map.Entry<String, Object> entry : extra.entrySet()) {
+            if (!(entry.getValue() instanceof Number number)) {
+                merged.put(entry.getKey(), entry.getValue());
+                continue;
+            }
+            Object existing = merged.get(entry.getKey());
+            if (existing instanceof Number existingNumber) {
+                merged.put(entry.getKey(), existingNumber.longValue() + number.longValue());
+            } else {
+                merged.put(entry.getKey(), number.longValue());
+            }
+        }
+        return merged.isEmpty() ? null : merged;
+    }
+
+    /**
+     * 构建 ChatOptions。启用 MCP 时必须使用 {@link OpenAiChatOptions}，
+     * 否则 Spring AI ChatClient 不会将 defaultToolCallbacks 合并进 Prompt（工具无法发给模型）。
+     */
+    private ChatOptions buildChatOptions(double temperature, boolean mcpActive, boolean requireToolCall) {
+        if (mcpActive) {
+            OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder()
+                .temperature(temperature)
+                .internalToolExecutionEnabled(true)
+                .toolChoice(requireToolCall ? "required" : "auto");
+            return builder.build();
+        }
         return ChatOptions.builder().temperature(temperature).build();
+    }
+
+    /**
+     * 构建 MCP 工具提示：基础说明 + 系统提示词中显式提到的工具名强制调用约束。
+     */
+    private String buildMcpToolHint(String systemPrompt, List<String> availableToolNames) {
+        StringBuilder sb = new StringBuilder(MCP_TOOL_HINT);
+        if (availableToolNames == null || availableToolNames.isEmpty()) {
+            return sb.toString();
+        }
+        List<String> mentioned = new ArrayList<>();
+        String prompt = systemPrompt == null ? "" : systemPrompt;
+        for (String toolName : availableToolNames) {
+            if (StrUtil.isNotBlank(toolName) && prompt.contains(toolName)) {
+                mentioned.add(toolName);
+            }
+        }
+        if (!mentioned.isEmpty()) {
+            sb.append(String.format(MCP_MUST_CALL_HINT_TEMPLATE, String.join("、", mentioned)));
+        }
+        sb.append("\n可用 MCP 工具：").append(String.join("、", availableToolNames)).append('。');
+        return sb.toString();
+    }
+
+    /**
+     * 从 ToolCallback 数组提取工具名称列表（写入 Trace）。
+     */
+    private List<String> extractToolNames(ToolCallback[] callbacks) {
+        if (callbacks == null || callbacks.length == 0) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>(callbacks.length);
+        for (ToolCallback callback : callbacks) {
+            if (callback == null || callback.getToolDefinition() == null) {
+                continue;
+            }
+            String name = callback.getToolDefinition().name();
+            if (StrUtil.isNotBlank(name)) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
+    private Map<String, Object> buildTraceInputs(String systemPrompt, String userPrompt, double temperature,
+                                                 boolean streaming, Long modelId, boolean mcpActive,
+                                                 List<String> availableToolNames,
+                                                 List<McpToolInvocationRecord> mcpInvocations,
+                                                 String mcpStatusNote,
+                                                 Map<String, Object> tokenUsage) {
+        Map<String, Object> trace = new LinkedHashMap<>();
+        trace.put("systemPrompt", truncateTraceText(systemPrompt, 3000));
+        trace.put("userPrompt", truncateTraceText(userPrompt, 3000));
+        trace.put("temperature", temperature);
+        trace.put("streaming", streaming);
+        if (modelId != null) {
+            trace.put("chatModelId", modelId);
+        }
+        Map<String, Object> extras = new LinkedHashMap<>();
+        if (mcpActive) {
+            extras.put("mcpEnabled", true);
+            extras.put("mcpAvailableTools", availableToolNames == null ? List.of() : availableToolNames);
+        }
+        if (mcpInvocations != null) {
+            extras.put("mcpToolsUsed", mcpInvocations.stream().map(McpToolInvocationRecord::toolName).toList());
+        }
+        if (StrUtil.isNotBlank(mcpStatusNote)) {
+            extras.put("mcpStatusNote", mcpStatusNote);
+        }
+        WorkflowTraceMetaSupport.enrichTraceInputs(trace, "llm", tokenUsage, extras);
+        return trace;
+    }
+
+    private String truncateTraceText(String text, int maxLen) {
+        if (text == null) {
+            return "";
+        }
+        if (text.length() <= maxLen) {
+            return text;
+        }
+        return text.substring(0, maxLen) + "…";
     }
 
     private double parseTemperature(Object raw) {

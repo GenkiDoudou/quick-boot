@@ -9,12 +9,13 @@ import io.github.genkidoudou.web.knowledge.constants.McpTransport;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpTransportUrlSupport;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpTransportUrlSupport.StreamableHttpUrlParts;
 import io.github.genkidoudou.web.knowledge.mcp.support.McpUrlGuard;
+import io.github.genkidoudou.web.knowledge.mcp.transport.StatelessStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import org.springframework.stereotype.Component;
 
 import java.net.http.HttpClient;
@@ -28,7 +29,7 @@ import java.util.Map;
 @Component
 public class McpTransportFactory {
 
-    /** MCP SDK 0.18+ 各 Transport 需显式传入 JSON 映射器。 */
+    /** MCP SDK 各 Transport 需显式传入 JSON 映射器。 */
     private static final McpJsonMapper JSON_MAPPER = new JacksonMcpJsonMapper(new ObjectMapper());
 
     private final KnowledgeMcpProperties properties;
@@ -50,10 +51,18 @@ public class McpTransportFactory {
         if (McpTransport.STDIO.equals(transport)) {
             return createStdioTransport(config);
         }
+        // ModelScope 等 URL 误选 SSE 时仍走无状态 Streamable HTTP，避免 GET /mcp 被当 SSE 解析
+        if (McpTransport.SSE.equals(transport)
+            && McpTransportUrlSupport.prefersStatelessRequestResponse(config.getUrl())) {
+            return createStatelessStreamableHttpTransport(config);
+        }
         if (McpTransport.SSE.equals(transport)) {
             return createSseTransport(config);
         }
         if (McpTransport.STREAMABLE_HTTP.equals(transport)) {
+            if (McpTransportUrlSupport.prefersStatelessRequestResponse(config.getUrl())) {
+                return createStatelessStreamableHttpTransport(config);
+            }
             return createStreamableHttpTransport(config);
         }
         throw new WarningException(ErrorCodes.Common.INVALID_PARAM, "不支持的传输方式: " + transport);
@@ -85,6 +94,23 @@ public class McpTransportFactory {
             .jsonMapper(JSON_MAPPER);
         applySseHeaders(builder, config);
         return builder.build();
+    }
+
+    /**
+     * ModelScope 等仅支持 POST JSON-RPC、GET /mcp 返回 JSON 探活的服务端。
+     */
+    private io.modelcontextprotocol.spec.McpClientTransport createStatelessStreamableHttpTransport(
+        McpResolvedConfig config) {
+        urlGuard.validateUrl(config.getUrl());
+        StreamableHttpUrlParts parts = McpTransportUrlSupport.splitStreamableHttpUrl(config.getUrl());
+        return StatelessStreamableHttpTransport.builder(parts.baseUri())
+            .endpoint(parts.endpoint())
+            .jsonMapper(JSON_MAPPER)
+            .headers(config.getHeaders())
+            .customizeClient(client -> client
+                .version(HttpClient.Version.HTTP_1_1)
+                .followRedirects(HttpClient.Redirect.NORMAL))
+            .build();
     }
 
     /**

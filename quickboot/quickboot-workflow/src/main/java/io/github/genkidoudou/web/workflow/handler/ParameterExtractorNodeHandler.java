@@ -9,11 +9,14 @@ import io.github.genkidoudou.web.workflow.engine.NodeResult;
 import io.github.genkidoudou.web.workflow.engine.TemplateRenderer;
 import io.github.genkidoudou.web.workflow.engine.WorkflowContext;
 import io.github.genkidoudou.web.workflow.support.WorkflowAiGuard;
+import io.github.genkidoudou.web.workflow.support.WorkflowTokenUsageSupport;
+import io.github.genkidoudou.web.workflow.support.WorkflowTraceMetaSupport;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -50,10 +53,16 @@ public class ParameterExtractorNodeHandler implements NodeHandler {
             """.formatted(schemaJson, query);
         try {
             ChatClient client = ChatClient.builder(chatModel).build();
-            String json = client.prompt().user(prompt).call().content();
+            WorkflowTokenUsageSupport.CallTextAndUsage callResult =
+                WorkflowTokenUsageSupport.resolveCall(client.prompt().user(prompt).call());
+            String json = callResult.text();
             JSONObject obj = JSONUtil.parseObj(extractJson(json));
             Map<String, Object> outputs = new HashMap<>(obj);
-            return NodeResult.success(outputs);
+            Map<String, Object> traceInputs = new LinkedHashMap<>();
+            traceInputs.put("query", truncate(query, 500));
+            WorkflowTraceMetaSupport.enrichTraceInputs(
+                traceInputs, "parameter-extractor", callResult.tokenUsage(), Map.of());
+            return NodeResult.successWithTrace(outputs, traceInputs);
         } catch (Exception ex) {
             return NodeResult.failed("参数抽取失败: " + ex.getMessage());
         }
@@ -66,6 +75,13 @@ public class ParameterExtractorNodeHandler implements NodeHandler {
             return text.substring(start, end + 1);
         }
         return text;
+    }
+
+    private String truncate(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        return text.length() <= max ? text : text.substring(0, max) + "…";
     }
 
     private Long workflowId(WorkflowContext context) {

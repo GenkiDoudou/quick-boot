@@ -74,17 +74,11 @@
               </el-collapse-item>
             </el-collapse>
           </template>
-          <div v-else-if="lastRunStep && lastRunStep.nodeId === node.id" class="wf-config__run-io">
-            <div class="wf-config__io-block">
-              <div class="wf-config__io-title">输入</div>
-              <pre class="wf-config__io-pre">{{ formatIo(lastRunStep.inputs) }}</pre>
-            </div>
-            <div class="wf-config__io-block">
-              <div class="wf-config__io-title">输出</div>
-              <pre class="wf-config__io-pre">{{ formatIo(lastRunStep.outputs) }}</pre>
-            </div>
-            <div v-if="lastRunStep.durationMs != null" class="wf-config__dur">
-              耗时 {{ lastRunStep.durationMs }} ms · {{ lastRunStep.status }}
+          <div v-else-if="nodeRunTrace" class="wf-config__run-io">
+            <CopyableCodeBlock :content="formatIo(nodeRunTrace.inputs)" label="输入" />
+            <CopyableCodeBlock :content="formatIo(nodeRunTrace.outputs)" label="输出" />
+            <div v-if="nodeRunTrace.durationMs != null" class="wf-config__dur">
+              耗时 {{ nodeRunTrace.durationMs }} ms · {{ nodeRunTrace.status }}
             </div>
           </div>
           <el-empty v-else description="运行后在此查看该节点 I/O" :image-size="64" />
@@ -123,6 +117,7 @@ import ContinueLoopForm from './forms/ContinueLoopForm.vue'
 import CodeForm from './forms/CodeForm.vue'
 import JsonSerializeForm from './forms/JsonSerializeForm.vue'
 import JsonDeserializeForm from './forms/JsonDeserializeForm.vue'
+import CopyableCodeBlock from './CopyableCodeBlock.vue'
 
 defineOptions({ name: 'NodeConfigPanel' })
 
@@ -168,6 +163,13 @@ const FORM_MAP = {
 const nodeLabel = computed(() => getNodeLabel(props.node?.data?.wfType))
 const formComponent = computed(() => FORM_MAP[props.node?.data?.wfType] || null)
 const deletable = computed(() => !isFixedWorkflowNode(props.node))
+
+/** 当前节点画布上的运行 Trace（优先 node.data.runTrace） */
+const nodeRunTrace = computed(() => {
+  if (props.node?.data?.runTrace) return props.node.data.runTrace
+  if (props.lastRunStep?.nodeId === props.node?.id) return props.lastRunStep
+  return null
+})
 
 const loopIterationTraces = computed(() => {
   if (props.node?.data?.wfType !== 'loop') return []

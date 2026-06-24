@@ -1006,6 +1006,15 @@ export function getNodeColor(type) {
 }
 
 /**
+ * 获取节点图标名（Element Plus 图标组件名）。
+ * @param {string} type 节点类型
+ * @returns {string}
+ */
+export function getNodeIcon(type) {
+  return NODE_META_MAP[type]?.icon || 'Box'
+}
+
+/**
  * 获取节点摘要文本。
  * @param {string} type 节点类型
  * @param {object} data 节点 data

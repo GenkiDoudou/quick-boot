@@ -86,27 +86,35 @@ public class WorkflowStreamEmitter {
     /**
      * 推送步骤结束事件。
      */
-    public void emitStepEnd(Long runId, String nodeId, String status, long durationMs,
-                            Map<String, Object> inputsSummary, Map<String, Object> outputsSummary) {
-        publish(runId, "step_end", Map.of(
-            "runId", runId,
-            "nodeId", nodeId,
-            "status", status,
-            "durationMs", durationMs,
-            "inputs", inputsSummary == null ? Map.of() : inputsSummary,
-            "outputs", outputsSummary == null ? Map.of() : outputsSummary
-        ));
+    public void emitStepEnd(Long runId, String nodeId, String nodeType, String status, long durationMs,
+                            Map<String, Object> inputsSummary, Map<String, Object> outputsSummary,
+                            String errorMsg) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("runId", runId);
+        payload.put("nodeId", nodeId);
+        payload.put("nodeType", nodeType == null ? "" : nodeType);
+        payload.put("status", status);
+        payload.put("durationMs", durationMs);
+        payload.put("inputs", inputsSummary == null ? Map.of() : inputsSummary);
+        payload.put("outputs", outputsSummary == null ? Map.of() : outputsSummary);
+        if (errorMsg != null && !errorMsg.isBlank()) {
+            payload.put("errorMsg", errorMsg);
+        }
+        publish(runId, "step_end", payload);
     }
 
     /**
      * 推送运行完成事件。
      */
-    public void emitDone(Long runId, String status, Map<String, Object> outputs) {
-        publish(runId, "done", Map.of(
-            "runId", runId,
-            "status", status,
-            "outputs", outputs == null ? Map.of() : outputs
-        ));
+    public void emitDone(Long runId, String status, Map<String, Object> outputs, Long durationMs) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("runId", runId);
+        payload.put("status", status);
+        payload.put("outputs", outputs == null ? Map.of() : outputs);
+        if (durationMs != null) {
+            payload.put("durationMs", durationMs);
+        }
+        publish(runId, "done", payload);
         close(runId);
     }
 

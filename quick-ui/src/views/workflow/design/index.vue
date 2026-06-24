@@ -47,25 +47,64 @@
         <CanvasNodeAddBar :container-kind="containerKind" @add-node="addNodeByType" />
       </main>
 
-      <div
-        class="wf-design__resize-handle"
-        :class="{ 'wf-design__resize-handle--active': configResizing }"
-        title="拖动调整配置面板宽度"
-        @mousedown="startConfigResize"
-      />
+      <template v-if="isTemplateMode">
+        <div
+          class="wf-design__resize-handle"
+          :class="{ 'wf-design__resize-handle--active': configResizing }"
+          title="拖动调整配置面板宽度"
+          @mousedown="startConfigResize"
+        />
+        <NodeConfigPanel
+          class="wf-design__config"
+          :style="{ width: `${configPanelWidth}px` }"
+          :node="selectedNode"
+          :variable-tree="variableTree"
+          :canvas-nodes="canvasNodeSummaries"
+          :last-run-step="lastRunStep"
+          :trace-steps="traceSteps"
+          :field-errors="fieldErrors"
+          @update:node="onNodeUpdate"
+          @delete-node="handleDeleteSelectedNode"
+        />
+      </template>
 
-      <NodeConfigPanel
-        class="wf-design__config"
-        :style="{ width: `${configPanelWidth}px` }"
-        :node="selectedNode"
-        :variable-tree="variableTree"
-        :canvas-nodes="canvasNodeSummaries"
-        :last-run-step="lastRunStep"
-        :trace-steps="traceSteps"
-        :field-errors="fieldErrors"
-        @update:node="onNodeUpdate"
-        @delete-node="handleDeleteSelectedNode"
-      />
+      <template v-else>
+        <div
+          class="wf-design__resize-handle"
+          :class="{ 'wf-design__resize-handle--active': configResizing }"
+          :title="runPanelVisible ? '拖动调整试运行面板宽度' : '拖动调整配置面板宽度'"
+          @mousedown="startConfigResize"
+        />
+
+        <RunPanel
+          v-if="runPanelVisible"
+          v-model:visible="runPanelVisible"
+          v-model:stream-enabled="streamEnabled"
+          class="wf-design__config"
+          :style="{ width: `${configPanelWidth}px` }"
+          :start-inputs="startInputs"
+          :running="running"
+          :trace-steps="traceSteps"
+          :stream-text="streamText"
+          :run-info="runInfo"
+          :last-run-inputs="lastRunInputs"
+          @run="handleRunTest"
+        />
+
+        <NodeConfigPanel
+          v-else
+          class="wf-design__config"
+          :style="{ width: `${configPanelWidth}px` }"
+          :node="selectedNode"
+          :variable-tree="variableTree"
+          :canvas-nodes="canvasNodeSummaries"
+          :last-run-step="lastRunStep"
+          :trace-steps="traceSteps"
+          :field-errors="fieldErrors"
+          @update:node="onNodeUpdate"
+          @delete-node="handleDeleteSelectedNode"
+        />
+      </template>
     </div>
 
       <NodeContextMenu
@@ -87,18 +126,6 @@
       :y="edgeContextMenu.y"
       @close="closeEdgeContextMenu"
       @delete="handleEdgeContextMenuDelete"
-    />
-
-    <RunPanel
-      v-if="!isTemplateMode"
-      v-model:visible="runPanelVisible"
-      v-model:stream-enabled="streamEnabled"
-      :start-inputs="startInputs"
-      :running="running"
-      :trace-steps="traceSteps"
-      :stream-text="streamText"
-      @run="handleRunTest"
-      @focus-step="onFocusTraceStep"
     />
 
     <c7-dialog v-model="exportVisible" title="导出为模板" :on-confirm="submitExportTemplate" width="520px">
@@ -307,14 +334,30 @@ const {
   traceSteps,
   streamText,
   lastRunStep,
+  lastRunInputs,
   streamEnabled,
+  runInfo,
   runTest,
-  focusTraceStep
+  focusTraceStep,
+  toggleNodeTraceExpanded,
+  clearAllRunStatus
 } = useWorkflowRun({
   workflowId,
   nodes,
   focusNode,
   getGraph: currentGraph
+})
+
+provide('wfToggleNodeTrace', toggleNodeTraceExpanded)
+provide(
+  'wfRunDebugActive',
+  computed(() => runPanelVisible.value)
+)
+
+watch(runPanelVisible, (visible) => {
+  if (!visible) {
+    clearAllRunStatus()
+  }
 })
 
 function loadWorkflow() {

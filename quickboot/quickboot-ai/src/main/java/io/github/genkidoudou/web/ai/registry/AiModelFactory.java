@@ -8,6 +8,7 @@ import io.github.genkidoudou.web.ai.constants.AiModelType;
 import io.github.genkidoudou.web.ai.constants.AiProvider;
 import io.github.genkidoudou.web.ai.domain.AiModel;
 import io.github.genkidoudou.web.ai.support.AiSecretSupport;
+import io.github.genkidoudou.web.ai.support.DeepSeekThinkingDisableInterceptor;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -87,9 +88,13 @@ public class AiModelFactory {
     }
 
     private ChatModel buildOpenAiChatModel(AiModel config, String apiKey, int timeoutMs) {
+        RestClient.Builder restBuilder = restClientBuilder(timeoutMs);
+        if (AiProvider.DEEPSEEK.equals(config.getProvider())) {
+            restBuilder = restBuilder.requestInterceptor(new DeepSeekThinkingDisableInterceptor());
+        }
         OpenAiApi.Builder apiBuilder = OpenAiApi.builder()
             .baseUrl(config.getBaseUrl())
-            .restClientBuilder(restClientBuilder(timeoutMs));
+            .restClientBuilder(restBuilder);
         if (StrUtil.isNotBlank(apiKey)) {
             apiBuilder.apiKey(apiKey);
         }

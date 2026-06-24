@@ -11,6 +11,8 @@ import io.github.genkidoudou.web.workflow.engine.NodeResult;
 import io.github.genkidoudou.web.workflow.engine.TemplateRenderer;
 import io.github.genkidoudou.web.workflow.engine.WorkflowContext;
 import io.github.genkidoudou.web.workflow.support.WorkflowAiGuard;
+import io.github.genkidoudou.web.workflow.support.WorkflowTokenUsageSupport;
+import io.github.genkidoudou.web.workflow.support.WorkflowTraceMetaSupport;
 import io.github.genkidoudou.web.workflow.util.QuestionClassifierDataUtil;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -69,7 +71,11 @@ public class QuestionClassifierNodeHandler implements NodeHandler {
         String prompt = buildPrompt(intents, query, systemPrompt);
         try {
             ChatClient client = ChatClient.builder(chatModel).build();
-            String json = client.prompt().user(prompt).call().content();
+            WorkflowTokenUsageSupport.CallTextAndUsage callResult =
+                WorkflowTokenUsageSupport.resolveCall(client.prompt().user(prompt).call());
+            String json = callResult.text();
+            Map<String, Object> tokenUsage = callResult.tokenUsage();
+            WorkflowTraceMetaSupport.enrichTraceInputs(traceInputs, "classifier", tokenUsage, Map.of());
             return buildSuccessResult(parseModelResponse(json, intents), traceInputs);
         } catch (Exception ex) {
             return buildFallbackResult("模型调用失败: " + ex.getMessage(), traceInputs);

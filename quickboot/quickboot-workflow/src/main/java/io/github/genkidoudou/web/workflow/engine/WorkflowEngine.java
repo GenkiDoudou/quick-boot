@@ -129,9 +129,10 @@ public class WorkflowEngine {
                 if (result.isSuccess()) {
                     context.putNodeOutputs(nodeId, result.getOutputs());
                     Map<String, Object> traceInputs = result.getTraceInputs();
-                    stepRecorder.insert(context, orderNo, node, "SUCCESS", traceInputs, result.getOutputs(), null, stepDuration);
-                    streamEmitter.emitStepEnd(runId, nodeId, "SUCCESS", stepDuration,
-                        traceInputs, traceSanitizer.sanitizeMap(result.getOutputs()));
+                    Map<String, Object> safeInputs = traceInputs == null ? Map.of() : traceInputs;
+                    stepRecorder.insert(context, orderNo, node, "SUCCESS", safeInputs, result.getOutputs(), null, stepDuration);
+                    streamEmitter.emitStepEnd(runId, nodeId, node.getType(), "SUCCESS", stepDuration,
+                        traceSanitizer.sanitizeMap(safeInputs), traceSanitizer.sanitizeMap(result.getOutputs()), null);
                     executed.add(nodeId);
 
                     if (WfNodeType.ANSWER.equals(node.getType()) || WfNodeType.END.equals(node.getType())) {
@@ -142,7 +143,8 @@ public class WorkflowEngine {
                 } else {
                     errorMsg = result.getErrorMessage();
                     stepRecorder.insert(context, orderNo, node, "FAILED", Map.of(), Map.of(), errorMsg, stepDuration);
-                    streamEmitter.emitStepEnd(runId, nodeId, "FAILED", stepDuration, Map.of(), Map.of());
+                    streamEmitter.emitStepEnd(runId, nodeId, node.getType(), "FAILED", stepDuration,
+                        Map.of(), Map.of(), errorMsg);
                     streamEmitter.emitError(runId, errorMsg, nodeId);
                     markRunFailed(run, runStart, errorMsg);
                     return Map.of();
@@ -150,7 +152,7 @@ public class WorkflowEngine {
             }
             markRunSuccess(run, runStart, finalOutputs, context.isStreamEnabled());
             if (context.isStreamEnabled()) {
-                streamEmitter.emitDone(runId, WfRunStatus.SUCCESS, finalOutputs);
+                streamEmitter.emitDone(runId, WfRunStatus.SUCCESS, finalOutputs, System.currentTimeMillis() - runStart);
             }
             return finalOutputs;
         } catch (Exception ex) {
