@@ -1,12 +1,12 @@
 package io.github.genkidoudou.common.cache;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.lang.Nullable;
@@ -28,14 +28,18 @@ public class DynamicTtlRedisCacheManager extends RedisCacheManager {
         super(
                 RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory),
                 defaultConfiguration(objectMapper),
-                Collections.emptyMap(),
-                true);
-        this.objectMapper = objectMapper.copy();
+                true,
+                Collections.emptyMap());
+        this.objectMapper = cloneMapper(objectMapper);
+    }
+
+    private static ObjectMapper cloneMapper(ObjectMapper objectMapper) {
+        return objectMapper.rebuild().build();
     }
 
     private static RedisCacheConfiguration defaultConfiguration(ObjectMapper objectMapper) {
-        GenericJackson2JsonRedisSerializer valueSerializer =
-                new GenericJackson2JsonRedisSerializer(objectMapper.copy());
+        GenericJacksonJsonRedisSerializer valueSerializer =
+                new GenericJacksonJsonRedisSerializer(cloneMapper(objectMapper));
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofSeconds(QuickbootCacheDefaults.DEFAULT_TTL_SECONDS))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(StringRedisSerializer.UTF_8))
