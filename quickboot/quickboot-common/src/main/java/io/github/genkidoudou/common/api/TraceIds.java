@@ -1,5 +1,6 @@
 package io.github.genkidoudou.common.api;
 
+import cn.hutool.crypto.SmUtil;
 import org.slf4j.MDC;
 
 /**
@@ -14,21 +15,23 @@ import org.slf4j.MDC;
  */
 public final class TraceIds {
 
-    /** 与现有日志 pattern 中 {@code traceId=%X{traceId}} 对齐的 MDC 键名。 */
-    public static final String MDC_KEY = "traceId";
+  /**
+   * 与现有日志 pattern 中 {@code traceId=%X{traceId}} 对齐的 MDC 键名。
+   */
+  public static final String MDC_KEY = "traceId";
 
-    private TraceIds() {
-    }
+  private TraceIds() {
+  }
 
-    /**
-     * @return 非空白 traceId；否则 {@code null}
-     */
-    public static String current() {
-        String v = MDC.get(MDC_KEY);
-        if (v == null) {
-            return null;
-        }
-        String t = v.trim();
-        return t.isEmpty() ? null : t;
+  /**
+   * @return 非空白 traceId；否则 {@code null}
+   */
+  public static String current() {
+    String v = MDC.get(MDC_KEY);
+    if (v == null) {
+      return null;
     }
+    String t = v.trim();
+    return t.isEmpty() ? null : t;
+  }
 }

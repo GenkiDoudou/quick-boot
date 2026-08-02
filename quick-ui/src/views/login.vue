@@ -55,7 +55,7 @@
           <div
               class="tab-item"
               :class="{ active: activeTab === 'qrcode' }"
-              @click="activeTab = 'qrcode'"
+              @click="switchToQrcode"
           >
             扫码登录
           </div>
@@ -228,8 +228,8 @@ import { ref, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Cookies from 'js-cookie'
 import { ElMessage } from 'element-plus'
-import { getLoginCaptchaConfig, phoneLogin, sendSms as sendSmsApi, getQRCode } from '@/api/login'
-import { listLoginProviders } from '@/api/oauth/authorize'
+import { getLoginCaptchaConfig, listOauthProviders, phoneLogin, sendSms as sendSmsApi } from '@/api/login'
+import { getCaptchaTacUrls } from '@/api/captcha'
 import { getToken, setToken } from '@/utils/auth'
 import useUserStore from '@/store/modules/user'
 import { appConfig } from '@/config/env'
@@ -247,9 +247,9 @@ const activeTab = ref('password')
 // 账号密码登录
 const passwordForm = ref({
   username: 'admin',
-  password: 'admin',
+  password: 'admin123',
   rememberMe: false,
-  captchaId: '',
+  uuid: '',
 })
 
 const passwordRules = {
@@ -260,8 +260,8 @@ const passwordRules = {
 const passwordLoading = ref(false)
 const oauthProviders = ref([])
 const captchaVisible = ref(false)
-/** 与后端 qc.login.captcha-enabled 一致；未拉取前默认 true，避免短暂放开校验 */
-const loginCaptchaEnabled = ref(true)
+/** 新认证栈：以 /api/captcha/config（qc.captcha.enabled）为准 */
+const loginCaptchaEnabled = ref(false)
 let tacInstance = null
 
 onMounted(() => {
@@ -271,42 +271,25 @@ onMounted(() => {
         router.push({ path: route.query.redirect || '/' })
         return
     }
+    listOauthProviders().then((body) => {
+        oauthProviders.value = body?.data || []
+    }).catch(() => {
+        oauthProviders.value = []
+    })
     getLoginCaptchaConfig()
         .then((body) => {
-            const v = body?.data?.captchaEnabled
-            loginCaptchaEnabled.value = v !== false
+            loginCaptchaEnabled.value = body?.data?.captchaEnabled === true
         })
         .catch(() => {
-            loginCaptchaEnabled.value = true
-        })
-    listLoginProviders()
-        .then((res) => {
-            oauthProviders.value = res.data || []
-        })
-        .catch(() => {
-            oauthProviders.value = []
+            loginCaptchaEnabled.value = false
         })
 })
 
 function goOauthProvider(p) {
   const base = import.meta.env.VITE_APP_BASE_API || ''
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
-  const path = p.authorizePath || `/oauth2/client/authorize/${p.providerCode}`
+  const path = p.authorizePath || `/oauth2/authorization/${p.providerCode}`
   window.location.href = `${prefix.startsWith('http') ? prefix : window.location.origin + (prefix.startsWith('/') ? prefix : '/' + prefix)}${path}`
-}
-
-/** 与 axios baseURL 一致，供 TAC 内 fetch 使用绝对地址 */
-function captchaApiBase() {
-  const base = import.meta.env.VITE_APP_BASE_API || ''
-  const normalized = base.endsWith('/') ? base.slice(0, -1) : base
-  if (!normalized) {
-    return window.location.origin
-  }
-  if (normalized.startsWith('http')) {
-    return normalized
-  }
-  const prefix = normalized.startsWith('/') ? normalized : `/${normalized}`
-  return `${window.location.origin}${prefix}`
 }
 
 function closeCaptcha() {
@@ -321,17 +304,17 @@ function openCaptcha() {
   closeCaptcha()
   captchaVisible.value = true
   nextTick(() => {
-    const base = captchaApiBase()
+    const { generateUrl, validateUrl } = getCaptchaTacUrls()
     const config = {
-      requestCaptchaDataUrl: `${base}/api/captcha/generate`,
-      validCaptchaUrl: `${base}/api/captcha/validate`,
+      requestCaptchaDataUrl: generateUrl,
+      validCaptchaUrl: validateUrl,
       bindEl: '#tianai-captcha-box',
       validSuccess: (res, _c, tac) => {
         tac.destroyWindow()
         tacInstance = null
         captchaVisible.value = false
         const id = res?.data?.id ?? res?.id
-        passwordForm.value.captchaId = id || ''
+        passwordForm.value.uuid = id || ''
         doLogin()
       },
       validFail: (_res, _c, tac) => {
@@ -351,13 +334,15 @@ function openCaptcha() {
       captchaVisible.value = false
       return
     }
+    // 使用站点根路径 /tac，避免 Vite hash/路由下 ./tac 解析失败
     window
-      .initTAC('./tac', config, style)
+      .initTAC('/tac', config, style)
       .then((tac) => {
         tacInstance = tac
         tac.init()
       })
-      .catch(() => {
+      .catch((e) => {
+        console.error('initTAC failed', e)
         ElMessage.error('验证码初始化失败')
         captchaVisible.value = false
       })
@@ -389,7 +374,7 @@ function handlePasswordLogin() {
   passwordFormRef.value?.validate((valid) => {
     if (!valid) return
     if (!loginCaptchaEnabled.value) {
-      passwordForm.value.captchaId = ''
+      passwordForm.value.uuid = ''
       doLogin()
       return
     }
@@ -424,7 +409,7 @@ function doLogin() {
     })
     .catch(() => {
       passwordLoading.value = false
-      passwordForm.value.captchaId = ''
+      passwordForm.value.uuid = ''
     })
 }
 
@@ -476,14 +461,12 @@ function handlePhoneLogin() {
   })
 }
 
-// 生成二维码
-function generateQRCode() {
-  getQRCode().then(res => {
-    qrcodeUrl.value = res.data.img
-  }).catch(() => {
-    // 如果获取失败，使用默认二维码
+// 扫码登录尚未接后端：仅切 tab 时展示占位图，避免刷新登录页就打 /qrcodeImage 404
+function switchToQrcode() {
+  activeTab.value = 'qrcode'
+  if (!qrcodeUrl.value) {
     qrcodeUrl.value = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0id2hpdGUiLz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iYmxhY2siLz48cmVjdCB4PSIxNTAiIHk9IjEwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9ImJsYWNrIi8+PHJlY3QgeD0iMTAiIHk9IjE1MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSJibGFjayIvPjwvc3ZnPg=='
-  })
+  }
 }
 
 // 获取保存的账号密码
@@ -500,9 +483,7 @@ function getCookie() {
 }
 
 // 初始化
-getCookie()
-generateQRCode()
-</script>
+getCookie()</script>
 
 <style lang="scss" scoped>
 .login-container {

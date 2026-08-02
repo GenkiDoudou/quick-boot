@@ -1,14 +1,11 @@
-package io.github.genkidoudou.core.exception;
+package io.github.genkidoudou.web.exception;
 
-import cn.dev33.satoken.exception.NotLoginException;
+import io.github.genkidoudou.common.api.HttpCodes;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.file.FileStorageException;
 import io.github.genkidoudou.common.i18n.I18nUtil;
-import io.github.genkidoudou.common.security.firewall.idempotent.IdempotentException;
-import io.github.genkidoudou.common.security.firewall.sensitiveword.SensitiveWordException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -20,12 +17,16 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
 
 import java.util.Objects;
 
 /**
  * 全局异常处理：统一将异常映射为 {@link R}，并设置合适 HTTP 状态。
-
  */
 @Slf4j
 @RestControllerAdvice
@@ -42,7 +43,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(WarningException.class)
   public ResponseEntity<R<Void>> handleWarningException(WarningException ex) {
-    int code = ex.getCode();
+    int code = normalizeCode(ex.getCode());
     String message = resolveMessage(code, ex.getArgs(), ex.getMsg());
     HttpStatus status = resolveWarningStatus(ex);
     log.warn("warning exception, status={}, code={}, msg={}", status.value(), code, message, ex);
@@ -63,9 +64,8 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(R.error(code, message));
   }
 
-
   /**
-   * 数据库唯一约束冲突（含 MyBatis 包装的 {@link DuplicateKeyException}），映射为 400 与可读文案。
+   * 数据库唯一约束冲突，映射为 400 与可读文案。
    */
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<R<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
@@ -79,6 +79,45 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(R.error(code, message));
   }
 
+  /**
+   * 无匹配 Handler / 静态资源不存在：应返回 HTTP 404，而不是落入兜底 500。
+   * <p>
+   * Spring Boot 3+ 在请求落到 {@code ResourceHttpRequestHandler} 且资源缺失时抛
+   * {@link NoResourceFoundException}；未开启默认 Servlet 时也可能出现 {@link NoHandlerFoundException}。
+   */
+  @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+  public ResponseEntity<R<Void>> handleNotFound(Exception ex) {
+    int code = HttpCodes.NOT_FOUND;
+    String message = resolveMessage(code, null, "访问资源不存在");
+    if (ex instanceof NoResourceFoundException nrf) {
+      log.warn("resource not found, path={}, code={}", nrf.getResourcePath(), code);
+    } else if (ex instanceof NoHandlerFoundException nhf) {
+      log.warn("handler not found, {} {}, code={}", nhf.getHttpMethod(), nhf.getRequestURL(), code);
+    } else {
+      log.warn("not found, code={}, msg={}", code, ex.getMessage());
+    }
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(R.error(code, message));
+  }
+
+  /**
+   * sa-token 未登录 / token 失效。
+   */
+  @ExceptionHandler(NotLoginException.class)
+  public ResponseEntity<R<Void>> handleNotLogin(NotLoginException ex) {
+    log.warn("not login: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+      .body(R.error(HttpCodes.UNAUTHORIZED, "登录状态已过期，请重新登录"));
+  }
+
+  /**
+   * sa-token 无权限 / 无角色。
+   */
+  @ExceptionHandler({NotPermissionException.class, NotRoleException.class})
+  public ResponseEntity<R<Void>> handleNotPermission(RuntimeException ex) {
+    log.warn("not permission: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+      .body(R.error(HttpCodes.FORBIDDEN, "无权限访问"));
+  }
 
   /**
    * 兜底未捕获异常。
@@ -112,6 +151,47 @@ public class GlobalExceptionHandler {
     String message = ex.getMessage() != null ? ex.getMessage() : "请求参数不合法";
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
       .body(R.error(ErrorCodes.Common.INVALID_PARAM, message));
+  }
+
+  private HttpStatus resolveWarningStatus(WarningException ex) {
+    Integer code = ex.getCode();
+    if (Objects.equals(code, HttpCodes.UNAUTHORIZED)) {
+      return HttpStatus.UNAUTHORIZED;
+    }
+    if (Objects.equals(code, HttpCodes.FORBIDDEN)) {
+      return HttpStatus.FORBIDDEN;
+    }
+    // ErrorCodes.Auth（3xxxx）：登录/验证码失败统一 401
+    if (code != null && code >= 30000 && code < 40000) {
+      return HttpStatus.UNAUTHORIZED;
+    }
+    // 系统级 Warning 按 500
+    if (Objects.equals(code, ErrorCodes.System.INTERNAL_ERROR)
+      || Objects.equals(code, ErrorCodes.System.DEPENDENCY_UNAVAILABLE)) {
+      return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+    return HttpStatus.BAD_REQUEST;
+  }
+
+  private int normalizeCode(Integer code) {
+    if (code == null) {
+      return ErrorCodes.System.INTERNAL_ERROR;
+    }
+    return code;
+  }
+
+  /**
+   * 优先用异常自带文案；否则走 i18n；再不行用统一兜底。
+   */
+  private String resolveMessage(int code, Object[] args, String defaultMsg) {
+    if (defaultMsg != null && !defaultMsg.isBlank()) {
+      return defaultMsg;
+    }
+    String fromI18n = I18nUtil.getMessage(code, args, null);
+    if (fromI18n != null && !fromI18n.isBlank()) {
+      return fromI18n;
+    }
+    return DEFAULT_FALLBACK_MESSAGE;
   }
 
   /**

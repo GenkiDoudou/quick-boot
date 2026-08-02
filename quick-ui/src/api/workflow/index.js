@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
-import { buildSignedFetchHeaders } from '@/utils/clientSign'
+import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'
 
 /**
  * 工作流分页列表。
@@ -143,18 +143,20 @@ export function createRunStreamUrl(runId) {
 export function subscribeRunStream(runId, handlers = {}) {
   const controller = new AbortController()
   const url = createRunStreamUrl(runId)
-  const path = '/workflow/run/stream'
 
   ;(async () => {
     try {
-      const signHeaders = await buildSignedFetchHeaders('GET', path)
       const headers = {
-        Accept: 'text/event-stream',
-        ...signHeaders
+        Accept: 'text/event-stream'
       }
       const token = getToken()
       if (token) {
         headers.Authorization = 'Bearer ' + token
+      } else {
+        const basic = buildObfuscatedBasicAuthorization()
+        if (basic) {
+          headers.Authorization = basic
+        }
       }
 
       const response = await fetch(url, {

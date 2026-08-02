@@ -12,6 +12,8 @@ export default defineConfig({
     base: "/docs",
     title: "QuickBoot",
     description: "基于 ElementPlus 的组件生成器",
+    ignoreDeadLinks: true,
+    srcExclude: ["**/superpowers/**"],
     head: [
         ['link', {rel: 'icon', href: 'logo.png'}],
         ["meta", {name: 'referrer', content: 'no-referrer'}]

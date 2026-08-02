@@ -1,0 +1,5 @@
+io.github.genkidoudou.common.cache.CacheAutoConfiguration
+io.github.genkidoudou.common.crypto.PasswordCodecAutoConfiguration
+io.github.genkidoudou.common.oauth.OauthClientAutoConfiguration
+io.github.genkidoudou.common.captcha.CaptchaPropertiesAutoConfiguration
+io.github.genkidoudou.common.captcha.TianaiCacheStoreAutoConfiguration

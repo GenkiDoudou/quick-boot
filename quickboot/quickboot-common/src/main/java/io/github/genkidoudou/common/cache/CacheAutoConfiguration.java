@@ -17,26 +17,23 @@ import tools.jackson.databind.ObjectMapper;
  * <p>
  * 应用模块需自行启用 {@link EnableCaching}（例如在启动类上）；本自动配置仅注册 {@link CacheManager}。
  */
-@AutoConfiguration(
-        beforeName = "org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration"
-)
+@AutoConfiguration(beforeName = "org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration")
 @ConditionalOnClass(CacheManager.class)
 public class CacheAutoConfiguration {
 
-    @Bean
-    @Primary
-    @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "caffeine", matchIfMissing = true)
-    public CacheManager quickbootCaffeineCacheManager() {
-        return new TransactionAwareCacheManagerProxy(new DynamicTtlCaffeineCacheManager());
-    }
+  @Bean
+  @Primary
+  @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "caffeine", matchIfMissing = true)
+  public CacheManager quickbootCaffeineCacheManager() {
+    return new TransactionAwareCacheManagerProxy(new DynamicTtlCaffeineCacheManager());
+  }
 
-    @Bean
-    @Primary
-    @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "redis")
-    @ConditionalOnBean({RedisConnectionFactory.class, ObjectMapper.class})
-    public CacheManager quickbootRedisCacheManager(RedisConnectionFactory redisConnectionFactory,
-                                                   ObjectMapper objectMapper) {
-        DynamicTtlRedisCacheManager delegate = new DynamicTtlRedisCacheManager(redisConnectionFactory, objectMapper);
-        return new TransactionAwareCacheManagerProxy(delegate);
-    }
+  @Bean
+  @Primary
+  @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "redis")
+  @ConditionalOnBean({RedisConnectionFactory.class, ObjectMapper.class})
+  public CacheManager quickbootRedisCacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+    DynamicTtlRedisCacheManager delegate = new DynamicTtlRedisCacheManager(redisConnectionFactory, objectMapper);
+    return new TransactionAwareCacheManagerProxy(delegate);
+  }
 }

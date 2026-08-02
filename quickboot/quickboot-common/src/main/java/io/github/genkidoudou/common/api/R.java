@@ -30,12 +30,7 @@ public final class R<T> {
         return ok(null, null);
     }
 
-    /**
-     * 成功，仅带提示信息。
-     */
-    public static <T> R<T> ok(String msg) {
-        return ok(msg, null);
-    }
+
 
     /**
      * 成功，仅带业务数据；提示信息为 {@code null}。
@@ -134,8 +129,5 @@ public final class R<T> {
         return code == HttpCodes.OK;
     }
 
-    /** @return {@code !isSuccess()} */
-    public boolean isError() {
-        return !isSuccess();
-    }
+
 }

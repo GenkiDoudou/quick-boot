@@ -38,14 +38,10 @@
 
     <div v-if="lastResult" class="c7-excel-upload__result">
       <div>
-        导入结果：{{ lastResult.mode === 'async' ? '异步已提交' : '同步完成' }}；
-        总条数 {{ lastResult.total }}，成功 {{ lastResult.successCount }}，失败 {{ lastResult.failCount }}
-      </div>
-      <div v-if="lastResult.mode === 'sync'" class="c7-excel-upload__mode-hint">
-        当前为同步导入（Excel 行数 ≤ {{ syncMaxRowsHint }} 或未指定异步时）。超出行数将自动走后台任务。
+        导入结果：同步完成；总条数 {{ lastResult.total }}，成功 {{ lastResult.successCount }}，失败 {{ lastResult.failCount }}
       </div>
       <el-button
-        v-if="lastResult.failCount > 0 && (lastResult.errorFileId || lastResult.errorFileBase64)"
+        v-if="lastResult.failCount > 0 && lastResult.errorFileBase64"
         type="danger"
         link
         @click="downloadErrorFile(lastResult)"
@@ -66,32 +62,26 @@ import { computed, ref, useAttrs } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { saveAs } from 'file-saver'
-import { downloadImportErrorFile } from '@/api/import/task'
-import { mapImportPayload, resolveImportErrorDownloadName } from '@/utils/excelImport'
 import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 
 defineOptions({ name: 'C7ExcelUpload', inheritAttrs: false })
 
+/**
+ * 精简同步导入：无导入导出中心 / 异步任务依赖。
+ * uploadFn(file, strategy) → Promise&lt;result|R&gt;，strategy 为 overwrite|ignore。
+ */
 const props = defineProps({
   accept: { type: String, default: '.xls,.xlsx' },
-  maxSizeMb: { type: Number, required: true },
+  maxSizeMb: { type: Number, default: 10 },
   uploadFn: { type: Function, default: undefined },
   notify: { type: Function, default: undefined },
   templateDownloadFn: { type: Function, default: undefined },
   templateFileName: { type: String, default: 'import-template.xlsx' },
-  /** 覆盖本次同步行数上限（传给后端 syncMaxRows） */
-  syncMaxRows: { type: Number, default: undefined },
-  /** 为 true 时强制异步导入 */
-  forceAsync: { type: Boolean, default: false },
-  /** 同步行数上限提示（与后端 qc.import.sync-max-rows 对齐，默认 500） */
-  syncMaxRowsHint: { type: Number, default: 500 },
-  /** 失败明细下载默认文件名 */
   errorFileName: { type: String, default: 'import-error.xlsx' },
 })
 
-const emit = defineEmits(['success', 'error', 'cancel', 'async-submitted'])
+const emit = defineEmits(['success', 'error', 'cancel'])
 
-const duplicateStrategy = defineModel('duplicateStrategy', { type: String, default: 'ignore' })
 const uploading = defineModel('uploading', { type: Boolean, default: false })
 
 const attrs = useAttrs()
@@ -101,7 +91,6 @@ const lastResult = ref(null)
 const dragOver = ref(false)
 const updateSupport = ref(false)
 
-const syncMaxRowsHint = computed(() => props.syncMaxRowsHint)
 const selectedFileName = computed(() => selectedFile.value?.name ?? '')
 const hasTemplateFn = computed(() => typeof props.templateDownloadFn === 'function')
 const rootBindAttrs = computed(() => ({ class: attrs.class, style: attrs.style }))
@@ -117,10 +106,6 @@ function isAllowedExcelFileName(fileName) {
   return n.endsWith('.xls') || n.endsWith('.xlsx')
 }
 
-function maxSizeMbToBytes(maxSizeMb) {
-  return maxSizeMb * 1024 * 1024
-}
-
 function applyFile(file) {
   if (!file) return
   if (!isAllowedExcelFileName(file.name)) {
@@ -128,7 +113,7 @@ function applyFile(file) {
     pushNotify('error', '仅支持 .xls 或 .xlsx 文件')
     return
   }
-  if (file.size > maxSizeMbToBytes(props.maxSizeMb)) {
+  if (file.size > props.maxSizeMb * 1024 * 1024) {
     selectedFile.value = null
     pushNotify('error', `文件大小不能超过 ${props.maxSizeMb} MB`)
     return
@@ -157,28 +142,49 @@ function onDragLeave() {
 
 function onDrop(e) {
   dragOver.value = false
-  const file = e.dataTransfer?.files?.[0]
-  applyFile(file || null)
+  applyFile(e.dataTransfer?.files?.[0] || null)
+}
+
+function unwrapPayload(raw) {
+  if (!raw || typeof raw !== 'object') throw new Error('uploadFn 返回值必须为对象')
+  if (raw.data != null && typeof raw.data === 'object' && ('total' in raw.data || 'successCount' in raw.data)) {
+    return raw.data
+  }
+  return raw
+}
+
+function normalizeUploadResult(raw) {
+  const mapped = unwrapPayload(raw)
+  return {
+    mode: mapped.mode || 'sync',
+    total: Number(mapped.total) || 0,
+    successCount: Number(mapped.successCount) || 0,
+    failCount: Number(mapped.failCount) || 0,
+    errorFileName: mapped.errorFileName || props.errorFileName,
+    errorFileBase64: mapped.errorFileBase64 || '',
+  }
 }
 
 async function handleImportClick() {
   if (uploading.value) return
-  if (typeof props.uploadFn !== 'function') return
+  if (typeof props.uploadFn !== 'function') {
+    pushNotify('error', '未配置 uploadFn')
+    return
+  }
   if (!selectedFile.value) {
     pushNotify('error', '请先选择文件')
     return
   }
   uploading.value = true
-  duplicateStrategy.value = updateSupport.value ? 'overwrite' : 'ignore'
+  const strategy = updateSupport.value ? 'overwrite' : 'ignore'
   try {
-    const raw = await props.uploadFn(selectedFile.value, duplicateStrategy.value, {
-      syncMaxRows: props.syncMaxRows,
-      forceAsync: props.forceAsync,
-    })
+    const raw = await props.uploadFn(selectedFile.value, strategy)
     const result = normalizeUploadResult(raw)
     lastResult.value = result
-    if (result.mode === 'async') {
-      emit('async-submitted', { taskId: result.taskId, ...result })
+    if (result.failCount > 0) {
+      pushNotify('success', `导入完成：成功 ${result.successCount}，失败 ${result.failCount}`)
+    } else {
+      pushNotify('success', `导入成功：共 ${result.successCount} 条`)
     }
     emit('success', result)
   } catch (err) {
@@ -189,37 +195,22 @@ async function handleImportClick() {
   }
 }
 
-function normalizeUploadResult(raw) {
-  if (!raw || typeof raw !== 'object') throw new Error('uploadFn 返回值必须为对象')
-  const mapped = mapImportPayload(raw)
-  return {
-    mode: mapped.mode || 'sync',
-    taskId: mapped.taskId,
-    total: mapped.total,
-    successCount: mapped.successCount,
-    failCount: mapped.failCount,
-    errorKey: mapped.errorKey,
-    errorFileId: mapped.errorFileId,
-    errorFileName: resolveImportErrorDownloadName(props.errorFileName, mapped.errorFileName),
-    errorFileBase64: mapped.errorFileBase64 || '',
+function downloadErrorFile(result) {
+  const b64 = result?.errorFileBase64
+  if (!b64) {
+    pushNotify('error', '无失败明细文件')
+    return
   }
-}
-
-async function downloadErrorFile(result) {
-  const fileId = result?.errorFileId != null ? String(result.errorFileId) : ''
-  const name = resolveImportErrorDownloadName(props.errorFileName, result?.errorFileName)
-  if (fileId) {
-    try {
-      const { data } = await downloadImportErrorFile(fileId)
-      saveAs(data, name)
-      return
-    } catch {
-      pushNotify('error', '失败明细文件下载失败，请稍后在「导入导出中心」重试')
-      return
-    }
-  }
-  if (result?.errorFileBase64) {
-    pushNotify('error', '当前为旧版文本失败明细，请重新执行导入以获取 xlsx 失败明细')
+  try {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    saveAs(blob, result.errorFileName || props.errorFileName)
+  } catch {
+    pushNotify('error', '失败明细解析失败')
   }
 }
 
@@ -262,5 +253,4 @@ defineExpose({ uploading, reset })
 .tip-row { margin-top: 4px; }
 .c7-excel-upload__actions { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
 .c7-excel-upload__result { font-size: 13px; color: #303133; line-height: 1.8; }
-.c7-excel-upload__mode-hint { font-size: 12px; color: #909399; margin-top: 2px; }
 </style>

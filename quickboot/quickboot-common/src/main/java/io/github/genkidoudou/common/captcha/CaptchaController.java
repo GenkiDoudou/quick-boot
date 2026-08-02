@@ -4,9 +4,6 @@ import cloud.tianai.captcha.application.ImageCaptchaApplication;
 import cloud.tianai.captcha.application.vo.ImageCaptchaVO;
 import cloud.tianai.captcha.common.response.ApiResponse;
 import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
-import cn.dev33.satoken.annotation.SaIgnore;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,45 +23,41 @@ import java.util.Collections;
 @RequestMapping("/api/captcha")
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "qc.captcha", name = "enabled", havingValue = "true", matchIfMissing = true)
-@Tag(name = "验证码管理", description = "验证码生成和验证接口")
 public class CaptchaController {
 
-    private final ImageCaptchaApplication application;
+  private final ImageCaptchaApplication application;
 
-    private final CaptchaProperties captchaProperties;
+  private final CaptchaProperties captchaProperties;
 
-    /**
-     * 生成验证码实例。
-     *
-     * @return tianai 标准载荷
-     */
-    @SaIgnore
-    @RequestMapping("/generate")
-    @Operation(summary = "生成验证码", description = "生成指定类型的行为验证码")
-    public ApiResponse<ImageCaptchaVO> generate() {
-        return application.generateCaptcha(captchaProperties.getType());
+  /**
+   * 生成验证码实例。
+   *
+   * @return tianai 标准载荷
+   */
+  @RequestMapping("/generate")
+  public ApiResponse<ImageCaptchaVO> generate() {
+    return application.generateCaptcha(captchaProperties.getType());
+  }
+
+  /**
+   * 校验滑动轨迹等；成功时在 data 中回传 {@code id} 供登录二次校验。
+   *
+   * @param body id + 轨迹
+   * @return 校验结果
+   */
+  @PostMapping("/validate")
+  public ApiResponse<?> validate(@RequestBody Data body) {
+    ApiResponse<?> response = application.matching(body.getId(), body.getData());
+    if (response.isSuccess()) {
+      return ApiResponse.ofSuccess(Collections.singletonMap("id", body.getId()));
     }
+    return response;
+  }
 
-    /**
-     * 校验滑动轨迹等；成功时在 data 中回传 {@code id} 供登录二次校验。
-     *
-     * @param body id + 轨迹
-     * @return 校验结果
-     */
-    @SaIgnore
-    @PostMapping("/validate")
-    @Operation(summary = "验证验证码", description = "校验用户提交的轨迹数据")
-    public ApiResponse<?> validate(@RequestBody Data body) {
-        ApiResponse<?> response = application.matching(body.getId(), body.getData());
-        if (response.isSuccess()) {
-            return ApiResponse.ofSuccess(Collections.singletonMap("id", body.getId()));
-        }
-        return response;
-    }
-
-    @lombok.Data
-    public static class Data {
-        private String id;
-        private ImageCaptchaTrack data;
-    }
+  @lombok.Data
+  public static class Data {
+    private String id;
+    private ImageCaptchaTrack data;
+  }
 }
+

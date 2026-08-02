@@ -10,93 +10,142 @@ import io.github.genkidoudou.common.api.HttpCodes;
  */
 public final class ErrorCodes {
 
-    private ErrorCodes() {
+  private ErrorCodes() {
+  }
+
+  /**
+   * 通用错误码。
+   */
+  public static final class Common {
+    public static final int INVALID_PARAM = 10001;
+    public static final int REQUEST_BODY_INVALID = 10002;
+
+    private Common() {
     }
+  }
 
-    /** 通用错误码。 */
-    public static final class Common {
-        public static final int INVALID_PARAM = 10001;
-        public static final int REQUEST_BODY_INVALID = 10002;
 
-        private Common() {
-        }
+  /**
+   * 认证 / 登录安全（3xxxx）。
+   */
+  public static final class Auth {
+    /**
+     * 验证码服务 Bean 不可用
+     */
+    public static final int CAPTCHA_SERVICE_UNAVAILABLE = 30010;
+    /**
+     * 未装配二次校验
+     */
+    public static final int CAPTCHA_SECONDARY_NOT_CONFIGURED = 30011;
+    /**
+     * 未完成行为验证码
+     */
+    public static final int CAPTCHA_REQUIRED = 30012;
+    /**
+     * 验证码失效或错误
+     */
+    public static final int CAPTCHA_INVALID = 30013;
+    /**
+     * 账号临时锁定（带剩余秒数占位 {0}）
+     */
+    public static final int ACCOUNT_LOCKED = 30014;
+    /**
+     * 账号临时锁定（无剩余秒数）
+     */
+    public static final int ACCOUNT_LOCKED_GENERIC = 30015;
+    /**
+     * 用户名或密码错误
+     */
+    public static final int CREDENTIALS_INVALID = 30016;
+    /**
+     * 账号停用
+     */
+    public static final int ACCOUNT_DISABLED = 30017;
+    /**
+     * 失败次数过多已锁定
+     */
+    public static final int ACCOUNT_LOCKED_BY_RETRY = 30018;
+
+    private Auth() {
     }
+  }
 
-    /** 业务错误码。 */
-    public static final class Biz {
-        public static final int STATE_NOT_ALLOWED = 20001;
-        public static final int IDEMPOTENT_REPEAT = HttpCodes.IDEMPOTENT_REPEAT;
-        /** 文件存储：后缀/大小/路径非法或读写失败等 */
-        public static final int FILE_STORAGE = 20024;
-        /** 知识库：AI 运行时不可用（Ollama/PGVector 等） */
-        public static final int KNOWLEDGE_AI_UNAVAILABLE = 20025;
-        /** 知识库：入库/索引状态不允许当前操作 */
-        public static final int KNOWLEDGE_STATE_NOT_ALLOWED = 20026;
-        /** 工作流：图结构或节点配置校验失败 */
-        public static final int WORKFLOW_GRAPH_INVALID = 20027;
-        /** 工作流：定义不存在或已删除 */
-        public static final int WORKFLOW_NOT_FOUND = 20028;
-        /** 工作流：运行执行失败 */
-        public static final int WORKFLOW_RUN_FAILED = 20029;
-        /** 工作流：AI 运行时不可用 */
-        public static final int WORKFLOW_AI_UNAVAILABLE = 20030;
-        /** 工作流：用户并发运行数超限 */
-        public static final int WORKFLOW_CONCURRENT_LIMIT = 20031;
-        /** 工作流：模板不存在或已删除 */
-        public static final int WORKFLOW_TEMPLATE_NOT_FOUND = 20032;
-        /** AI 应用：不存在或已删除 */
-        public static final int AI_APP_NOT_FOUND = 20033;
+  /**
+   * 系统错误码。
+   */
+  public static final class System {
+    public static final int INTERNAL_ERROR = 40000;
+    public static final int DEPENDENCY_UNAVAILABLE = 40001;
 
-        private Biz() {
-        }
+    private System() {
     }
+  }
 
-    /** 安全错误码。 */
-    public static final class Security {
-        public static final int UNAUTHORIZED = HttpCodes.UNAUTHORIZED;
-        public static final int FORBIDDEN = HttpCodes.FORBIDDEN;
-        public static final int RATE_LIMITED = 30001;
-        public static final int HOST_NOT_ALLOWED = HttpCodes.HOST_NOT_ALLOWED;
-        public static final int SENSITIVE_WORD = HttpCodes.SENSITIVE_WORD;
-        public static final int SQL_INJECTION_DETECTED = HttpCodes.SQL_INJECTION_DETECTED;
-        public static final int XSS_SCRIPT_DETECTED = HttpCodes.XSS_SCRIPT_DETECTED;
-        /** Client HMAC 签名校验失败 */
-        public static final int CLIENT_SIGN_INVALID = 30002;
+  /**
+   * 菜单管理错误码（2xxxx 段）。
+   */
+  public static final class Menu {
+    /** 参数非法（占位 {0}） */
+    public static final int INVALID_PARAM = 20040;
+    /** 菜单不存在（占位 {0}=menuId） */
+    public static final int NOT_FOUND = 20041;
+    /** 存在子菜单，不允许删除 */
+    public static final int HAS_CHILDREN = 20042;
+    /** 上级菜单不能是自己 */
+    public static final int PARENT_SELF = 20043;
+    /** menuType 非法 */
+    public static final int TYPE_INVALID = 20044;
 
-        private Security() {
-        }
+    private Menu() {
     }
+  }
 
-    /** 系统错误码。 */
-    public static final class System {
-        public static final int INTERNAL_ERROR = 40000;
-        public static final int DEPENDENCY_UNAVAILABLE = 40001;
+  /**
+   * 角色管理错误码（2xxxx 段）。
+   */
+  public static final class Role {
+    /** 参数非法（占位 {0} 为字段或说明） */
+    public static final int INVALID_PARAM = 20030;
+    /** 角色不存在（占位 {0}=roleId） */
+    public static final int NOT_FOUND = 20031;
+    /** 权限字符已存在（占位 {0}=roleKey） */
+    public static final int ROLE_KEY_EXISTS = 20032;
+    /** 不允许删除超级管理员角色 */
+    public static final int SUPER_ROLE_FORBIDDEN = 20033;
+    /** 角色已分配用户，无法删除（占位 {0}=roleId） */
+    public static final int HAS_USERS = 20034;
+    /** status 仅支持 0/1 */
+    public static final int STATUS_INVALID = 20035;
 
-        private System() {
-        }
+    private Role() {
     }
+  }
 
-    /** 定时任务错误码（2xxxx 段）。 */
-    public static final class Job {
-        public static final int CRON_INVALID = 20020;
-        public static final int INVOKE_TARGET_NOT_FOUND = 20021;
-        public static final int INVOKE_TARGET_NOT_TASK = 20022;
-        public static final int JOB_NOT_IN_SCHEDULER = 20023;
+  /**
+   * 定时任务错误码（2xxxx 段）。
+   */
+  public static final class Job {
+    public static final int CRON_INVALID = 20020;
+    public static final int INVOKE_TARGET_NOT_FOUND = 20021;
+    public static final int INVOKE_TARGET_NOT_TASK = 20022;
+    public static final int JOB_NOT_IN_SCHEDULER = 20023;
 
-        private Job() {
-        }
+    private Job() {
     }
+  }
 
-    /** 代码生成错误码（2xxxx 段）。 */
-    public static final class Gen {
-        public static final int TABLE_ALREADY_IMPORTED = 20010;
-        public static final int TABLE_NOT_FOUND = 20011;
-        public static final int SQL_INVALID = 20012;
-        public static final int IMPORT_TABLES_EMPTY = 20013;
-        public static final int TREE_TEMPLATE_NOT_SUPPORTED = 20014;
-        public static final int CUSTOM_PATH_NOT_SUPPORTED = 20015;
+  /**
+   * 代码生成错误码（2xxxx 段）。
+   */
+  public static final class Gen {
+    public static final int TABLE_ALREADY_IMPORTED = 20010;
+    public static final int TABLE_NOT_FOUND = 20011;
+    public static final int SQL_INVALID = 20012;
+    public static final int IMPORT_TABLES_EMPTY = 20013;
+    public static final int TREE_TEMPLATE_NOT_SUPPORTED = 20014;
+    public static final int CUSTOM_PATH_NOT_SUPPORTED = 20015;
 
-        private Gen() {
-        }
+    private Gen() {
     }
+  }
 }

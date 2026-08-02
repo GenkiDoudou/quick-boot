@@ -1,0 +1,2 @@
+-- 已迁移至 Flyway：classpath:db/migration/V1__init_schema_and_seed.sql
+-- 勿再挂到 spring.sql.init

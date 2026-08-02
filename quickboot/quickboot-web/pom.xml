@@ -2,20 +2,152 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>io.github.genkidoudou</groupId>
-        <artifactId>quickboot</artifactId>
-        <version>1.0-SNAPSHOT</version>
-    </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.genkidoudou</groupId>
+    <artifactId>quickboot</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
 
-    <groupId>io.github.genkidoudou.web</groupId>
-    <artifactId>quickboot-web</artifactId>
+  <groupId>io.github.genkidoudou.web</groupId>
+  <artifactId>quickboot-web</artifactId>
+  <description>启动模块</description>
 
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 
+  <dependencies>
+
+
+    <dependency>
+      <groupId>io.github.genkidoudou.system</groupId>
+      <artifactId>quickboot-system</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <!-- Boot 4：须用 starter 才会自动配置 Flyway；版本化迁移只执行一次 -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <!-- Flyway 10+ MySQL 支持模块（BOM 已管理版本）；H2 仍由 flyway-core 内置 -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- Spring Boot 4：H2 Console 自动配置已拆到独立模块，仅有 h2 驱动不会注册 /h2-console -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-h2console</artifactId>
+    </dependency>
+    <!--
+      进程内嵌入式 Redis 协议服务（Luban-RDS）。
+      不用官方 spring-boot-starter（面向 Boot 3.4，在 Boot 4 易失败）；
+      由 DevLubanEmbeddedRedisConfiguration 启停。
+    -->
+    <dependency>
+      <groupId>com.janeluo</groupId>
+      <artifactId>luban-rds-server</artifactId>
+      <version>1.0.7</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.ulisesbocchio</groupId>
+      <artifactId>jasypt-spring-boot-starter</artifactId>
+      <version>4.0.4</version>
+    </dependency>
+
+    <!-- Sa-Token（Boot4）+ Redis 持久化（StringRedisTemplate，避开 Jackson 版本冲突） -->
+    <dependency>
+      <groupId>cn.dev33</groupId>
+      <artifactId>sa-token-spring-boot4-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.dev33</groupId>
+      <artifactId>sa-token-redis-template</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-pool2</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring-boot.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Git 信息读取插件 -->
+      <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+        <version>9.0.2</version>
+        <executions>
+          <execution>
+            <id>get-the-git-infos</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>initialize</phase> <!-- 在项目初始化阶段执行 -->
+          </execution>
+        </executions>
+        <configuration>
+          <!-- 生成 git.properties 文件 -->
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <!-- 指定生成路径（默认 target/classes） -->
+          <!-- 包含的 Git 信息（按需配置） -->
+          <includeOnlyProperties>
+            <includeOnlyProperty>^git\.tag$</includeOnlyProperty> <!-- 仅读取 Tag -->
+            <includeOnlyProperty>^git\.commit\.time$</includeOnlyProperty> <!-- 提交时间 -->
+            <includeOnlyProperty>^git\.branch$</includeOnlyProperty> <!-- 分支名 -->
+          </includeOnlyProperties>
+          <commitIdGenerationMode>full</commitIdGenerationMode>
+          <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties
+          </generateGitPropertiesFilename>
+          <!-- 当无 Tag 时的默认值 -->
+          <failOnNoGitDirectory>false</failOnNoGitDirectory>
+          <skipPoms>true</skipPoms>
+          <prefix>git</prefix>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>

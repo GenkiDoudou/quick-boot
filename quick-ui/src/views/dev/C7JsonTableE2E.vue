@@ -54,20 +54,20 @@ const columns = [
 ]
 
 /**
- * @param {Record<string, unknown>} params
+ * @param {{ current?: number, size?: number, param?: Record<string, unknown> }} pageRequest
  */
-async function listFn(params) {
+async function listFn(pageRequest) {
   await new Promise((r) => setTimeout(r, 120))
-  const pageNum = Number(params.pageNum) || 1
-  const pageSize = Number(params.pageSize) || 10
-  const kw = String(params.kw || '')
+  const current = Number(pageRequest?.current) || 1
+  const size = Number(pageRequest?.size) || 10
+  const kw = String(pageRequest?.param?.kw || '')
   const all = Array.from({length: 37}, (_, i) => ({
     id: i + 1,
     name: `行-${i + 1}${kw ? `(${kw})` : ''}`,
     status: i % 2 === 0 ? '1' : '0',
   }))
-  const start = (pageNum - 1) * pageSize
-  const records = all.slice(start, start + pageSize)
+  const start = (current - 1) * size
+  const records = all.slice(start, start + size)
   return {data: {records, total: all.length}}
 }
 

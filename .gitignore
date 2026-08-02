@@ -35,3 +35,6 @@ node_modules
 *.lock.db
 /docs/.vitepress/dist/
 /docs/.vitepress/dist/
+
+# AI personal preferences (do not commit)
+AGENTS.local.md

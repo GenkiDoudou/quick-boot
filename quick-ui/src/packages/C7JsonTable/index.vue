@@ -60,11 +60,13 @@
             <el-button
                 v-if="showSearchButton"
                 type="primary"
+                :icon="Search"
                 v-bind="searchButtonProps"
                 @click="handleSearchSubmit"
             >{{ searchButtonText }}</el-button>
             <el-button
                 v-if="showResetButton"
+                :icon="Refresh"
                 v-bind="resetButtonProps"
                 @click="handleSearchReset"
             >{{ resetButtonText }}</el-button>
@@ -88,6 +90,7 @@
             v-if="showAddButtonResolved"
             type="primary"
             plain
+            :icon="Plus"
             v-bind="addButtonProps"
             @click="handleBuiltInAddClick"
         >{{ addButtonText }}</el-button>
@@ -95,6 +98,7 @@
             v-if="showEditButtonResolved"
             type="success"
             plain
+            :icon="Edit"
             :disabled="selectedRows.length !== 1"
             v-bind="editButtonProps"
             @click="handleBuiltInEditClick"
@@ -103,27 +107,27 @@
             v-if="showDeleteButtonResolved"
             type="danger"
             plain
+            :icon="Delete"
             :disabled="!selectedRows.length"
             v-bind="deleteButtonProps"
             @click="handleBatchDelete"
         >{{ deleteButtonText }}</el-button>
+        <el-button
+            v-if="showImportButtonResolved"
+            type="info"
+            plain
+            :icon="Upload"
+            @click="importDialogVisible = true"
+        >{{ importButtonText }}</el-button>
         <C7ExcelDownload
             v-if="showExportButtonResolved"
-            type="primary"
+            type="warning"
             plain
+            :icon="Download"
             :download-fn="exportDownloadFn"
             :default-file-name="exportDefaultFileName"
             @success="onExportBlobSuccess"
-        >
-          {{ exportButtonText }}
-        </C7ExcelDownload>
-        <el-button
-            v-if="showImportButtonResolved"
-            type="warning"
-            plain
-            v-bind="importButtonProps"
-            @click="openImportDialog"
-        >{{ importButtonText }}</el-button>
+        >{{ exportButtonText }}</C7ExcelDownload>
       </el-col>
       <el-col :span="12" style="text-align: right">
         <slot name="toolbar-right"/>
@@ -139,26 +143,6 @@
         </el-button>
       </el-col>
     </el-row>
-
-    <el-dialog v-model="importDialogVisible" :title="importDialogTitle" width="620px" append-to-body>
-      <C7ExcelUpload
-          ref="importUploadRef"
-          v-if="showImportButtonResolved"
-          :key="importDialogKey"
-          :max-size-mb="importMaxSizeMb"
-          :upload-fn="importUploadFn"
-          :template-download-fn="importTemplateFunction"
-          :template-file-name="importTemplateFileName"
-          :sync-max-rows="importSyncMaxRows"
-          :sync-max-rows-hint="importSyncMaxRows ?? 500"
-          :force-async="importForceAsync"
-          :error-file-name="importErrorFileName"
-          @success="onImportSuccess"
-          @error="onImportError"
-          @cancel="onImportCancel"
-          @async-submitted="onImportAsyncSubmitted"
-      />
-    </el-dialog>
 
     <el-drawer v-model="columnPopoverVisible" title="列设置" direction="rtl" size="280px">
       <div v-for="c in columnSettingItems" :key="c.prop" class="c7-json-table__col-setting-row">
@@ -209,13 +193,31 @@
           @change="onPaginationChange"
       />
     </div>
+
+    <el-dialog
+        v-model="importDialogVisible"
+        :title="importButtonText"
+        width="560px"
+        destroy-on-close
+        append-to-body
+    >
+      <C7ExcelUpload
+          v-if="importDialogVisible"
+          :max-size-mb="importMaxSizeMb"
+          :upload-fn="runImportFunction"
+          :template-download-fn="importTemplateDownloadFn"
+          :template-file-name="importTemplateFileName"
+          @success="onImportSuccess"
+          @cancel="importDialogVisible = false"
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import {computed, onMounted, reactive, ref, useSlots, watch} from 'vue'
 import {ElLoading, ElMessage, ElMessageBox} from 'element-plus'
-import {Refresh, Setting} from '@element-plus/icons-vue'
+import {Delete, Download, Edit, Plus, Refresh, Search, Setting, Upload} from '@element-plus/icons-vue'
 import cloneDeep from 'lodash/cloneDeep'
 import get from 'lodash/get'
 import C7Pagination from '../C7Pagination/index.vue'
@@ -226,28 +228,20 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 import {checkPermission} from '@/directive/permission/permissionUtils'
 import useUserStore from '@/store/modules/user'
-import {
-  createBizImportFunction,
-  IMPORT_EXPORT_CENTER_PATH,
-  mapImportPayload,
-  promptAsyncImportSubmitted,
-  promptImportErrorDownload,
-} from '@/utils/excelImport'
-import {runPlatformExport} from '@/utils/excelExport'
-import {useRouter} from 'vue-router'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
 const RESERVED_SLOTS = new Set(['search-extra', 'toolbar-left', 'toolbar-right', 'table-columns'])
 
 /**
- * 一体化 JSON 配置表格：包含搜索区、工具栏、表格、分页、列设置、删除、导出、导入等能力。
+ * 一体化 JSON 配置表格：包含搜索区、工具栏、表格、分页、列设置、删除等能力。
  *
  * 取消列表请求请使用 `beforeFetch` 属性，返回 `false` 或 `Promise<false>` 可阻止调用 `listFunction`。
  * `before-fetch` 事件仅用于监听参数，返回值不会参与拦截。
  *
  * @prop {function(object): Promise<unknown>} listFunction 列表请求函数，
- * 入参包含 `...searchParam`、`pageNum`、`pageSize`、`orderByColumn`、`isAsc`。
+ * 入参对齐后端 {@code PageRequest}：`{ current, size, param }`；
+ * `param` 为搜索条件，并在有排序时附带 `orderByColumn`、`isAsc`。
  */
 const props = defineProps({
   /** 列表请求函数 */
@@ -272,19 +266,25 @@ const props = defineProps({
   columnSettingKey: {type: String, default: ''},
   /** 批量删除 API：入参为 id 数组 */
   deleteFunction: {type: Function, default: undefined},
-  /** 导出函数：返回 Blob 或 `{ data, headers }` */
+  /**
+   * 导出：返回 Blob 或 `{ data, headers }`。
+   * 入参为搜索条件快照；有勾选时附带 `ids`（rowKey 数组）。
+   */
   exportFunction: {type: Function, default: undefined},
+  /** 导出默认文件名（响应头无 Content-Disposition 时） */
+  exportDefaultFileName: {type: String, default: 'export.xlsx'},
+  /** 为 false 时不启用全屏 ElLoading，仅保留下载按钮 loading */
+  exportLoadingOptions: {type: [Boolean, Object], default: true},
+  /** 导入：uploadFn(file, strategy) */
+  importFunction: {type: Function, default: undefined},
+  /** 导入模板下载 */
+  importTemplateDownloadFn: {type: Function, default: undefined},
+  importTemplateFileName: {type: String, default: 'import-template.xlsx'},
+  importMaxSizeMb: {type: Number, default: 10},
   /** 删除前钩子，返回 `false` 可取消 */
   beforeDelete: {type: Function, default: undefined},
   /** 自定义删除成功判定 */
   checkDeleteSuccess: {type: Function, default: undefined},
-  /** 导出默认文件名（响应头无 Content-Disposition 时使用） */
-  exportDefaultFileName: {type: String, default: 'export.xlsx'},
-  /**
-   * 为 `false` 时不启用全屏 `ElLoading`，仅保留下载按钮 loading。
-   * 非 `false` 时导出期间叠加全屏 Loading。
-   */
-  exportLoadingOptions: {type: [Boolean, Object], default: true},
   deleteConfirmMessage: {type: String, default: '确认删除选中记录吗？'},
   /** 透传给 C7JsonTableColumn 的表格空文案 */
   emptyText: {type: String, default: undefined},
@@ -310,7 +310,7 @@ const props = defineProps({
   showEditButton: {type: Boolean, default: false},
   showDeleteButton: {type: Boolean, default: undefined},
   showExportButton: {type: Boolean, default: undefined},
-  showImportButton: {type: Boolean, default: false},
+  showImportButton: {type: Boolean, default: undefined},
   /** 工具栏「新增」所需权限（与 v-hasPermi 一致）；非空时无权限则不展示 */
   addButtonPermi: {type: Array, default: () => []},
   editButtonPermi: {type: Array, default: () => []},
@@ -325,30 +325,8 @@ const props = defineProps({
   addButtonProps: {type: Object, default: () => ({})},
   editButtonProps: {type: Object, default: () => ({})},
   deleteButtonProps: {type: Object, default: () => ({})},
-  importButtonProps: {type: Object, default: () => ({})},
   onAdd: {type: Function, default: undefined},
   onEdit: {type: Function, default: undefined},
-  importFunction: {type: Function, default: undefined},
-  /** 平台导入 bizType（如 system:user）；设置后优先于 importFunction */
-  importBizType: {type: String, default: ''},
-  /** 返回 contextJson 对象（如字典数据页提供 dictType） */
-  importContextProvider: {type: Function, default: undefined},
-  importDialogTitle: {type: String, default: '导入数据'},
-  importMaxSizeMb: {type: Number, default: 10},
-  importTemplateFunction: {type: Function, default: undefined},
-  importTemplateFileName: {type: String, default: 'import-template.xlsx'},
-  /** 同步导入失败明细默认文件名（fileId / errorKey 下载） */
-  importErrorFileName: {type: String, default: 'import-error.xlsx'},
-  /** 按 errorKey 下载失败明细（如用户模块 /system/user/importError） */
-  importErrorDownloadFn: {type: Function, default: undefined},
-  /** 传给后端的 syncMaxRows（覆盖全局默认） */
-  importSyncMaxRows: {type: Number, default: undefined},
-  /** 强制走异步导入 */
-  importForceAsync: {type: Boolean, default: false},
-  /** 平台导出 bizType（如 monitor:logininfor）；设置后走 /export/submit */
-  exportBizType: {type: String, default: ''},
-  /** 导出前规范化查询参数（如日期范围字段映射） */
-  exportQueryNormalizer: {type: Function, default: undefined},
 })
 
 const emit = defineEmits([
@@ -360,13 +338,11 @@ const emit = defineEmits([
   'sort-change',
   'delete-success',
   'export-success',
+  'import-success',
   'add-click',
   'edit-click',
   'search-submit',
   'search-reset',
-  'import-success',
-  'import-error',
-  'import-async-submitted',
 ])
 
 const slots = useSlots()
@@ -377,7 +353,6 @@ const forwardedSlotNames = computed(() =>
 )
 
 const tableRef = ref(null)
-const exportBtnRef = ref(null)
 const listLoading = ref(false)
 const tableRows = ref([])
 const total = ref(0)
@@ -388,15 +363,14 @@ const searchParam = reactive({})
 const orderByColumn = ref('')
 const isAsc = ref('')
 const columnPopoverVisible = ref(false)
-const router = useRouter()
-const importDialogVisible = ref(false)
-const importDialogKey = ref(0)
-const importUploadRef = ref(null)
 /** 列设置勾选：prop -> 是否显示 */
 const columnCheck = reactive({})
+const importDialogVisible = ref(false)
 
 const STORAGE_PREFIX = 'c7-json-table:columns:'
 const userStore = useUserStore()
+/** 列显隐已从 storage/默认值同步前，禁止把空 columnCheck 写回 localStorage */
+const columnSettingsReady = ref(false)
 
 /**
  * 结合开关与权限标识决定是否展示内置工具栏按钮（对齐 RuoYi v-hasPermi）。
@@ -431,24 +405,15 @@ const showDeleteButtonResolved = computed(() => {
 })
 const showExportButtonResolved = computed(() => {
   void userStore.permissions
-  const hasExport = typeof props.exportFunction === 'function' || !!(props.exportBizType || '').trim()
+  const hasExport = typeof props.exportFunction === 'function'
   const enabled = props.showExportButton === undefined ? hasExport : !!props.showExportButton
   return resolveToolbarButtonVisible(enabled && hasExport, props.exportButtonPermi)
 })
 const showImportButtonResolved = computed(() => {
   void userStore.permissions
-  const hasImport = !!(props.importBizType || '').trim() || typeof props.importFunction === 'function'
-  const enabled = !!props.showImportButton && hasImport
-  return resolveToolbarButtonVisible(enabled, props.importButtonPermi)
-})
-
-/** 解析后的导入上传函数（bizType 优先）。 */
-const resolvedImportFunction = computed(() => {
-  const biz = (props.importBizType || '').trim()
-  if (biz) {
-    return createBizImportFunction(biz, props.importContextProvider)
-  }
-  return props.importFunction
+  const hasImport = typeof props.importFunction === 'function'
+  const enabled = props.showImportButton === undefined ? hasImport : !!props.showImportButton
+  return resolveToolbarButtonVisible(enabled && hasImport, props.importButtonPermi)
 })
 
 function warnDev(msg) {
@@ -523,11 +488,13 @@ function syncColumnCheckFromStorage() {
       columnCheck[prop] = def
     }
   }
+  columnSettingsReady.value = true
 }
 
 watch(
     () => props.columnSettingKey,
     () => {
+      columnSettingsReady.value = false
       syncColumnCheckFromStorage()
     },
 )
@@ -541,7 +508,7 @@ watch(
 )
 
 watch(columnCheck, () => {
-  if (!props.columnSettingKey) return
+  if (!props.columnSettingKey || !columnSettingsReady.value) return
   const map = {}
   for (const c of columnSettingItems.value) {
     map[c.prop] = !!columnCheck[c.prop]
@@ -565,12 +532,15 @@ const effectiveTableColumns = computed(() => {
 })
 
 function buildListParams() {
+  const param = {...searchParam}
+  if (orderByColumn.value) {
+    param.orderByColumn = orderByColumn.value
+    param.isAsc = isAsc.value
+  }
   return {
-    ...searchParam,
-    pageNum: currentPage.value,
-    pageSize: currentPageSize.value,
-    orderByColumn: orderByColumn.value,
-    isAsc: isAsc.value,
+    current: currentPage.value,
+    size: currentPageSize.value,
+    param,
   }
 }
 
@@ -695,6 +665,56 @@ async function handleBatchDelete() {
   }
 }
 
+/**
+ * 供 C7ExcelDownload：固定 searchParam 快照；有勾选时附加 ids。
+ */
+function exportDownloadFn() {
+  const snapshot = cloneDeep(searchParam)
+  const key = props.rowKey
+  const rows = selectedRows.value || []
+  if (rows.length) {
+    snapshot.ids = rows.map((r) => r[key]).filter((v) => v != null)
+  }
+  const run = async () => {
+    if (typeof props.exportFunction !== 'function') {
+      throw new Error('缺少 exportFunction')
+    }
+    return props.exportFunction(snapshot)
+  }
+  if (props.exportLoadingOptions === false) {
+    return run()
+  }
+  const loadingOpts =
+      typeof props.exportLoadingOptions === 'object' && props.exportLoadingOptions
+          ? props.exportLoadingOptions
+          : {fullscreen: true, text: '导出中…'}
+  const inst = ElLoading.service(loadingOpts)
+  return run().finally(() => {
+    inst.close()
+  })
+}
+
+function onExportBlobSuccess(fileName) {
+  emit('export-success', fileName)
+}
+
+function runImportFunction(file, strategy) {
+  if (typeof props.importFunction !== 'function') {
+    return Promise.reject(new Error('缺少 importFunction'))
+  }
+  return props.importFunction(file, strategy)
+}
+
+async function onImportSuccess(result) {
+  emit('import-success', result)
+  const failCount = Number(result?.failCount) || 0
+  // 有失败明细时保留对话框，便于下载错误文件；全部成功再关闭
+  if (failCount === 0) {
+    importDialogVisible.value = false
+  }
+  await refreshData()
+}
+
 function resetColumnSettings() {
   if (props.columnSettingKey) {
     try {
@@ -710,43 +730,6 @@ function resetColumnSettings() {
   ElMessage.success('已重置列设置')
 }
 
-/**
- * 提供给 `C7ExcelDownload` 使用：点击时固定 `searchParam` 快照再调用 `exportFunction(snapshot)`。
- * 当 `exportLoadingOptions !== false` 时，额外叠加全屏 `ElLoading`。
- */
-function exportDownloadFn() {
-  const snapshot = cloneDeep(searchParam)
-  const run = async () => {
-    const bizType = (props.exportBizType || '').trim()
-    if (bizType) {
-      let query = snapshot
-      if (typeof props.exportQueryNormalizer === 'function') {
-        query = props.exportQueryNormalizer(cloneDeep(snapshot))
-      }
-      delete query.pageNum
-      delete query.pageSize
-      delete query.orderByColumn
-      delete query.isAsc
-      return runPlatformExport(bizType, query, props.exportDefaultFileName)
-    }
-    if (typeof props.exportFunction !== 'function') {
-      throw new Error('缺少 exportFunction 或 exportBizType')
-    }
-    return props.exportFunction(snapshot)
-  }
-  if (props.exportLoadingOptions === false) {
-    return run()
-  }
-  const inst = ElLoading.service({fullscreen: true, text: '导出中...'})
-  return run().finally(() => {
-    inst.close()
-  })
-}
-
-function onExportBlobSuccess() {
-  emit('export-success')
-}
-
 function handleBuiltInAddClick() {
   emit('add-click')
   if (typeof props.onAdd === 'function') props.onAdd()
@@ -758,75 +741,6 @@ function handleBuiltInEditClick() {
   emit('edit-click', row)
   if (typeof props.onEdit === 'function') props.onEdit(row)
 }
-
-function openImportDialog() {
-  importDialogKey.value += 1
-  importDialogVisible.value = true
-}
-
-/**
- * 调用页面 importFunction 并统一映射编排结果（同步统计 / 异步 taskId / 失败 fileId）。
- * @param {File} file
- * @param {string} strategy overwrite | ignore
- * @param {{ syncMaxRows?: number, forceAsync?: boolean }} [uploadOpts]
- */
-function importUploadFn(file, strategy, uploadOpts = {}) {
-  const fn = resolvedImportFunction.value
-  if (typeof fn !== 'function') {
-    return Promise.reject(new Error('缺少 importBizType 或 importFunction'))
-  }
-  const mergedOpts = {
-    ...uploadOpts,
-    syncMaxRows: uploadOpts.syncMaxRows ?? props.importSyncMaxRows,
-    forceAsync: uploadOpts.forceAsync ?? props.importForceAsync,
-  }
-  return fn(file, strategy, mergedOpts).then((res) => {
-    const mapped = mapImportPayload(res)
-    if (mapped.mode !== 'async') {
-      promptImportErrorDownload(mapped, {
-        errorFileName: props.importErrorFileName,
-        downloadByErrorKey: props.importErrorDownloadFn,
-      })
-    }
-    return mapped
-  })
-}
-
-/** 关闭导入弹窗并重置上传组件。 */
-function closeImportDialog() {
-  importDialogVisible.value = false
-  importUploadRef.value?.reset?.()
-}
-
-async function onImportAsyncSubmitted(payload) {
-  emit('import-async-submitted', payload)
-  closeImportDialog()
-  const action = await promptAsyncImportSubmitted(payload)
-  if (action === 'center') {
-    router.push({ path: IMPORT_EXPORT_CENTER_PATH })
-  }
-}
-
-function onImportSuccess(result) {
-  emit('import-success', result)
-  if (result?.mode !== 'async') {
-    refreshData()
-  }
-}
-
-function onImportError(err) {
-  emit('import-error', err)
-}
-
-function onImportCancel() {
-  importDialogVisible.value = false
-}
-
-watch(importDialogVisible, (visible) => {
-  if (!visible) {
-    importUploadRef.value?.reset?.()
-  }
-})
 
 watch(
     searchParam,

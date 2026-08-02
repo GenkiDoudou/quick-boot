@@ -1,163 +1,217 @@
-import request, { downloadRequest, importRequest } from '@/utils/request'
-import { appendImportFormFields } from '@/utils/excelImportForm'
+import request from '@/utils/request'
 
 /**
- * 角色分页列表。
- * @param {Record<string, any>} params 查询参数（含 pageNum、pageSize）
- * @returns {Promise<any>}
+ * 角色分页。
+ * @param {object} pageRequest { current, size, param }
  */
-export function listRole(params) {
-  return request({ url: '/system/role/list', method: 'get', params })
-}
-
-/**
- * 角色详情。
- * @param {number|string} roleId 角色ID
- * @returns {Promise<any>}
- */
-export function getRole(roleId) {
-  return request({ url: '/system/role/' + roleId, method: 'get' })
-}
-
-/**
- * 新增角色。
- * @param {Record<string, any>} data 表单
- * @returns {Promise<any>}
- */
-export function addRole(data) {
-  return request({ url: '/system/role/create', method: 'post', data })
-}
-
-/**
- * 修改角色。
- * @param {Record<string, any>} data 表单
- * @returns {Promise<any>}
- */
-export function updateRole(data) {
-  return request({ url: '/system/role/update', method: 'post', data })
-}
-
-/**
- * 删除角色（批量）。
- * @param {Array<number|string>} roleIds 角色ID
- * @returns {Promise<any>}
- */
-export function removeRole(roleIds) {
-  return request({ url: '/system/role/remove', method: 'post', data: roleIds })
-}
-
-/**
- * 修改角色状态。
- * @param {{ roleId: number, status: string }} data 入参
- * @returns {Promise<any>}
- */
-export function changeRoleStatus(data) {
-  return request({ url: '/system/role/changeStatus', method: 'post', data })
-}
-
-/**
- * 保存数据权限。
- * @param {{ roleId: number, dataScope: string, deptIds?: number[] }} data 入参
- * @returns {Promise<any>}
- */
-export function updateRoleDataScope(data) {
-  return request({ url: '/system/role/dataScope', method: 'post', data })
-}
-
-/**
- * 保存角色菜单。
- * @param {{ roleId: number, menuIds: number[] }} data 入参
- * @returns {Promise<any>}
- */
-export function updateRoleMenu(data) {
-  return request({ url: '/system/role/menu', method: 'post', data })
-}
-
-/**
- * 角色菜单树（含已勾选 keys）。
- * @param {number|string} roleId 角色ID
- * @returns {Promise<any>}
- */
-export function roleMenuTreeselect(roleId) {
-  return request({ url: '/system/menu/roleMenuTreeselect/' + roleId, method: 'get' })
-}
-
-/**
- * 已分配用户分页。
- * @param {Record<string, any>} params 查询参数
- * @returns {Promise<any>}
- */
-export function listRoleAllocatedUsers(params) {
-  return request({ url: '/system/role/authUser/allocatedList', method: 'get', params })
-}
-
-/**
- * 未分配用户分页。
- * @param {Record<string, any>} params 查询参数
- * @returns {Promise<any>}
- */
-export function listRoleUnallocatedUsers(params) {
-  return request({ url: '/system/role/authUser/unallocatedList', method: 'get', params })
-}
-
-/**
- * 批量授权用户到角色。
- * @param {{ roleId: number, userIds: number[] }} data 入参
- * @returns {Promise<any>}
- */
-export function grantRoleUsers(data) {
-  return request({ url: '/system/role/authUser/selectAll', method: 'post', data })
-}
-
-/**
- * 取消单个用户角色。
- * @param {{ roleId: number, userId: number }} data 入参
- * @returns {Promise<any>}
- */
-export function cancelRoleUser(data) {
-  return request({ url: '/system/role/authUser/cancel', method: 'post', data })
-}
-
-/**
- * 批量取消用户角色。
- * @param {{ roleId: number, userIds: number[] }} data 入参
- * @returns {Promise<any>}
- */
-export function cancelRoleUsers(data) {
-  return request({ url: '/system/role/authUser/cancelAll', method: 'post', data })
-}
-
-/**
- * 导入角色。
- * @param {File} file 上传文件
- * @param {boolean} [updateSupport=false] 是否更新已存在（按权限字符）
- * @returns {Promise<any>}
- */
-export function importRole(file, updateSupport = false, opts = {}) {
-  const formData = new FormData()
-  formData.append('file', file)
-  appendImportFormFields(formData, updateSupport, opts)
-  return importRequest({
-    url: '/system/role/import',
+export function pageRole(pageRequest) {
+  return request({
+    url: '/sys/role/page',
     method: 'post',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' },
+    data: pageRequest
+  })
+}
+
+/** @deprecated 使用 pageRole */
+export function listRole(params) {
+  return pageRole({
+    current: params?.pageNum || params?.current || 1,
+    size: params?.pageSize || params?.size || 10,
+    param: params
   })
 }
 
 /**
- * 下载角色导入模板。
- * @returns {Promise<{ data: Blob, headers: import('axios').AxiosResponse['headers'] }>}
+ * 角色详情。对应 `GET /sys/role/{roleId}`。
+ * @param {number|string} roleId
  */
-export function importRoleTemplate() {
-  return downloadRequest('/system/role/import/template', {}, { returnBlobWithHeaders: true })
+export function getRole(roleId) {
+  return request({
+    url: `/sys/role/${encodeURIComponent(String(roleId))}`,
+    method: 'get'
+  })
 }
 
 /**
- * 导出角色。
- * @param {Record<string, any>} data 筛选条件
- * @returns {Promise<{ data: Blob, headers: import('axios').AxiosResponse['headers'] }>}
+ * 新增角色。
+ * @param {Record<string, any>} data
  */
-export function exportRole(data) {
-  return downloadRequest('/system/role/export', data, { returnBlobWithHeaders: true })
+export function addRole(data) {
+  return request({
+    url: '/sys/role/add',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 修改角色。
+ * @param {Record<string, any>} data
+ */
+export function updateRole(data) {
+  return request({
+    url: '/sys/role/update',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 批量删除。请求体为主键 roleId 数组。
+ * @param {Array<string|number>|string|number} roleIds
+ */
+export function removeRole(roleIds) {
+  const list = (Array.isArray(roleIds) ? roleIds : [roleIds]).map((id) => String(id))
+  return request({
+    url: '/sys/role/remove',
+    method: 'post',
+    data: list
+  })
+}
+
+/**
+ * 修改角色状态。
+ * @param {{ roleId: number, status: string }} data
+ */
+export function changeRoleStatus(data) {
+  return request({
+    url: '/sys/role/changeStatus',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 保存角色菜单。
+ * @param {{ roleId: number, menuIds: number[] }} data
+ */
+export function updateRoleMenu(data) {
+  return request({
+    url: '/sys/role/menu',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 角色菜单树（含已勾选 keys）。
+ * @param {number|string} roleId
+ */
+export function roleMenuTreeselect(roleId) {
+  return request({
+    url: '/sys/role/menuTree',
+    method: 'get',
+    params: { roleId }
+  })
+}
+
+/**
+ * 已分配用户分页。
+ * @param {{ roleId: number, current?: number, size?: number, param?: object }} data
+ */
+export function allocatedUserList(data) {
+  return request({
+    url: '/sys/role/authUser/allocatedPage',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 未分配用户分页。
+ * @param {{ roleId: number, current?: number, size?: number, param?: object }} data
+ */
+export function unallocatedUserList(data) {
+  return request({
+    url: '/sys/role/authUser/unallocatedPage',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 批量授权用户。
+ * @param {{ roleId: number, userIds: Array<string|number> }} data
+ */
+export function authUserSelectAll(data) {
+  return request({
+    url: '/sys/role/authUser/grant',
+    method: 'post',
+    data: {
+      roleId: data.roleId,
+      userIds: (data.userIds || []).map((id) => String(id))
+    }
+  })
+}
+
+/**
+ * 取消用户授权。
+ * @param {{ roleId: number, userIds: Array<string|number> }} data
+ */
+export function authUserCancel(data) {
+  return request({
+    url: '/sys/role/authUser/cancel',
+    method: 'post',
+    data: {
+      roleId: data.roleId,
+      userIds: (data.userIds || []).map((id) => String(id))
+    }
+  })
+}
+
+/**
+ * 批量取消用户授权。
+ * @param {{ roleId: number, userIds: Array<string|number> }} data
+ */
+export function authUserCancelAll(data) {
+  return request({
+    url: '/sys/role/authUser/cancelAll',
+    method: 'post',
+    data: {
+      roleId: data.roleId,
+      userIds: (data.userIds || []).map((id) => String(id))
+    }
+  })
+}
+
+/**
+ * 同步导出 xlsx。
+ * @param {Record<string, unknown>} snapshot
+ */
+export function exportRole(snapshot) {
+  return request({
+    url: '/sys/role/export',
+    method: 'post',
+    data: snapshot || {},
+    responseType: 'blob',
+    returnBlobWithHeaders: true,
+    timeout: 120000
+  })
+}
+
+/** 下载导入模板 */
+export function downloadRoleImportTemplate() {
+  return request({
+    url: '/sys/role/import/template',
+    method: 'get',
+    responseType: 'blob',
+    returnBlobWithHeaders: true
+  })
+}
+
+/**
+ * 同步导入。
+ * @param {File} file
+ * @param {string} strategy overwrite|ignore
+ */
+export function importRole(file, strategy) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('updateSupport', strategy === 'overwrite' ? 'true' : 'false')
+  return request({
+    url: '/sys/role/import',
+    method: 'post',
+    data: form,
+    timeout: 120000
+  })
 }

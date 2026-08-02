@@ -1,6 +1,5 @@
 package io.github.genkidoudou.common.cache;
 
-import tools.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
@@ -10,6 +9,7 @@ import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializ
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.lang.Nullable;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -41,7 +41,7 @@ public class DynamicTtlRedisCacheManager extends RedisCacheManager {
         GenericJacksonJsonRedisSerializer valueSerializer =
                 new GenericJacksonJsonRedisSerializer(cloneMapper(objectMapper));
         return RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofSeconds(QuickbootCacheDefaults.DEFAULT_TTL_SECONDS))
+                .entryTtl(Duration.ofSeconds(CacheDefaults.DEFAULT_TTL_SECONDS))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(StringRedisSerializer.UTF_8))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer))
                 .disableCachingNullValues();

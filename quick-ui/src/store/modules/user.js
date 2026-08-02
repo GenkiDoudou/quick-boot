@@ -4,11 +4,10 @@
  * - login：调用 /login，写入 Cookie token（见 utils/auth.js）
  * - getInfo：/getInfo 映射 userId/userName/avatar；roles 为空时兜底 ROLE_DEFAULT
  * - avatar：空则默认头像；否则拼接 VITE_APP_BASE_API + 相对路径
- * - permissions：供 v-hasPermi、$auth 校验；超级权限 *:*:*
+ * - permissions：供 v-hasPermi、$auth 校验（按角色菜单授权汇总）
  */
 import { login, logout, getInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
-import { clearSessionId } from '@/monitor/sessionContext'
 import defAva from '@/assets/images/profile.jpg'
 
 const useUserStore = defineStore(
@@ -25,16 +24,17 @@ const useUserStore = defineStore(
     actions: {
       /**
        * 登录并持久化 token。
-       * @param {{ username: string, password: string, captchaId?: string }} userInfo
+       * @param {{ username: string, password: string, uuid?: string, captchaId?: string }} userInfo
        */
       login(userInfo) {
         const username = userInfo.username.trim()
         const password = userInfo.password
-        const captchaId = userInfo.captchaId
+        const uuid = userInfo.uuid || userInfo.captchaId
         return new Promise((resolve, reject) => {
-          login(username, password, captchaId).then(res => {
-            setToken(res.data.access_token)
-            this.token = res.data.access_token
+          login(username, password, uuid).then(res => {
+            const token = res.data.accessToken || res.data.access_token
+            setToken(token)
+            this.token = token
             resolve()
           }).catch(error => {
             reject(error)
@@ -80,7 +80,6 @@ const useUserStore = defineStore(
             this.roles = []
             this.permissions = []
             removeToken()
-            clearSessionId()
           })
       }
     }

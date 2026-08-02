@@ -1,4 +1,4 @@
-import request, { downloadRequest } from '@/utils/request'
+import request from '@/utils/request'
 
 /**
  * 查询参数列表。
@@ -51,13 +51,4 @@ export function removeConfig(configIds) {
  */
 export function refreshConfigCache() {
   return request({ url: '/system/config/refreshCache', method: 'post' })
-}
-
-/**
- * 导出参数。
- * @param {Record<string, any>} data 查询参数
- * @returns {Promise<any>}
- */
-export function exportConfig(data) {
-  return downloadRequest('/system/config/export', data, { returnBlobWithHeaders: true })
 }

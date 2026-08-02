@@ -1,7 +1,6 @@
-package io.github.genkidoudou.common.excel;
+package io.github.genkidoudou.common.excel.listener;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Excel 读取结果。
@@ -60,5 +59,12 @@ public interface ExcelResult<T> {
   String getAnalysis();
 
 
+  /**
+   * 写入错误的文件
+   *
+   * @return
+   * @since 2026/8/2
+   */
+  void writeErrorFile();
 }
 

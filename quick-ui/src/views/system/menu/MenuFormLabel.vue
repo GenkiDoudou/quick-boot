@@ -14,7 +14,7 @@ defineProps({
   /** 标签文字 */
   text: { type: String, required: true },
   /** 悬停说明；为空则不显示问号图标 */
-  tip: { type: String, default: '' },
+  tip: { type: String, default: '' }
 })
 </script>
 

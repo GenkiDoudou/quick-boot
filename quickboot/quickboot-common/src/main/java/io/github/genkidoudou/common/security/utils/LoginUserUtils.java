@@ -1,8 +1,8 @@
-package io.github.genkidoudou.auth.utils;
+package io.github.genkidoudou.common.security.utils;
 
 import cn.hutool.extra.spring.SpringUtil;
-import io.github.genkidoudou.auth.service.LoginUserService;
-import io.github.genkidoudou.auth.vo.LoginUser;
+import io.github.genkidoudou.common.security.service.LoginUserService;
+import io.github.genkidoudou.common.security.vo.LoginUser;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -15,7 +15,9 @@ public class LoginUserUtils {
    */
 
   public static final String TOKEN_HEADER = "Authorization";
+  public static final String LOGIN_USER_KEY = "loginUser";
 
+  public static final String BASIC = "Basic ";
 
   /**
    * 获取登录用户
@@ -24,6 +26,14 @@ public class LoginUserUtils {
    * @since 2026/7/29
    */
   public LoginUser getLoginUser() {
-    return SpringUtil.getBean(LoginUserService.class).getLoginUser();
+    try {
+      LoginUserService loginUserService = SpringUtil.getBean(LoginUserService.class);
+      return loginUserService == null ? null : loginUserService.getLoginUser();
+    } catch (Throwable ignored) {
+      // 尚未接入登录实现（如 sa-token）时视为未登录
+      return null;
+    }
   }
+
+
 }

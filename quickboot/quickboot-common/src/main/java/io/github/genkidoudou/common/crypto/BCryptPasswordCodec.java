@@ -2,20 +2,19 @@ package io.github.genkidoudou.common.crypto;
 
 import cn.hutool.crypto.digest.BCrypt;
 
-public class BCryptPasswordCodec  extends  AbstractValidatingPasswordCodec{
+public class BCryptPasswordCodec extends AbstractValidatingPasswordCodec {
   @Override
   protected String encryptNonNullPassword(String rawPassword) {
-    BCrypt.
-    return "";
+    return BCrypt.hashpw(rawPassword, BCrypt.gensalt());
   }
 
   @Override
   protected boolean matchesNonNull(String rawPassword, String encodedPassword) {
-    return false;
+    return BCrypt.checkpw(rawPassword, encodedPassword);
   }
 
   @Override
   protected String decryptNonNullPassword(String encodedPassword) {
-    return "";
+    throw new UnsupportedOperationException("不支持的方法");
   }
 }

@@ -1,13 +1,14 @@
-package io.github.genkidoudou.common.excel;
+package io.github.genkidoudou.common.excel.listener;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import lombok.Setter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 默认 Excel 读取结果。
@@ -15,17 +16,21 @@ import java.util.Map;
 @Data
 public class DefaultExcelResult<T> implements ExcelResult<T> {
 
-  @Schema(description = "总条数")
   private Long total;
-  @Schema(description = "成功条数")
   private Long successCount;
-  @Schema(description = "失败条数")
   private Long failCount;
-  @Schema(description = "失败行号（逗号分隔）")
   private String failRows;
 
+  /**
+   * 错误文件内容Base64
+   *
+   * @since 2026/8/2
+   */
+
+  private String errorFileBase64;
 
 
+  private String errorFileName;
   private List<String> errorList = new ArrayList<>();
 
   @Override
@@ -35,5 +40,15 @@ public class DefaultExcelResult<T> implements ExcelResult<T> {
     }
     return StrUtil.format("读取完成，成功{}条，失败{}条", successCount, failCount);
   }
+
+  @Override
+  public void writeErrorFile() {
+    if (CollectionUtil.isNotEmpty(this.errorList)) {
+      String string = String.join("\n", this.errorList);
+      this.errorFileBase64 = Base64.getEncoder().encodeToString(string.getBytes(StandardCharsets.UTF_8));
+      this.errorFileName = "失败明细.txt";
+    }
+  }
+
 }
 

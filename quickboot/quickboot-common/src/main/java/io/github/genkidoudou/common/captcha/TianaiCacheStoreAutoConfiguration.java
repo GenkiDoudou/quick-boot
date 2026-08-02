@@ -3,6 +3,7 @@ package io.github.genkidoudou.common.captcha;
 import cloud.tianai.captcha.cache.CacheStore;
 import cloud.tianai.captcha.cache.impl.LocalCacheStore;
 import cloud.tianai.captcha.common.constant.CaptchaTypeConstant;
+import cloud.tianai.captcha.resource.DefaultBuiltInResources;
 import cloud.tianai.captcha.resource.ResourceStore;
 import cloud.tianai.captcha.resource.common.model.dto.Resource;
 import cloud.tianai.captcha.resource.impl.LocalMemoryResourceStore;
@@ -14,10 +15,11 @@ import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -44,6 +46,7 @@ import java.util.List;
 @AutoConfiguration
 @AutoConfigureBefore(ImageCaptchaAutoConfiguration.class)
 @AutoConfigureAfter(DataRedisAutoConfiguration.class)
+@Import(CaptchaController.class)
 public class TianaiCacheStoreAutoConfiguration {
 
     /**
@@ -77,13 +80,19 @@ public class TianaiCacheStoreAutoConfiguration {
     }
 
     /**
-     * 背景图等资源（classpath:bgimages）。
+     * 背景图（classpath:bgimages）+ tianai 内置滑块/旋转模板（META-INF/cut-image/template）。
+     * <p>
+     * 仅 {@link ResourceStore#addResource} 不够：SLIDER/ROTATE 还依赖 {@code addTemplate}，
+     * 否则生成时报「store中模板为空」。
      *
      * @return 资源存储
      */
     @Bean
     public ResourceStore resourceStore() {
         LocalMemoryResourceStore resourceStore = new LocalMemoryResourceStore();
+        // jar 内置 active/fixed 模板
+        new DefaultBuiltInResources(DefaultBuiltInResources.PATH_PREFIX).addDefaultTemplate(resourceStore);
+
         List<String> files = new ArrayList<>();
         files.add("bgimages/bg1.png");
         files.add("bgimages/bg2.png");

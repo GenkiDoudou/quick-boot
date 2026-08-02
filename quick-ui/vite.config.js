@@ -31,7 +31,7 @@ export default defineConfig(({mode, command}) => {
             proxy: {
                 // https://cn.vitejs.dev/config/#server-proxy
                 '/dev-api': {
-                    target: 'http://localhost:9992',
+                    target: 'http://localhost:9993',
                     changeOrigin: true,
                     rewrite: (p) => p.replace(/^\/dev-api/, '')
                 }
@@ -80,14 +80,8 @@ export default defineConfig(({mode, command}) => {
                         if (!id.includes('node_modules')) {
                             return undefined
                         }
-                        if (id.includes('monaco-editor') || id.includes('@guolao/vue-monaco-editor')) {
-                            return 'monaco'
-                        }
                         if (id.includes('echarts')) {
                             return 'echarts'
-                        }
-                        if (id.includes('@vue-flow') || id.includes('@dagrejs/dagre')) {
-                            return 'workflow-flow'
                         }
                         if (id.includes('element-plus')) {
                             return 'element-plus'

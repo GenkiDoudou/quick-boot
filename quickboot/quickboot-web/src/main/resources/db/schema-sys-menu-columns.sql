@@ -1,0 +1,2 @@
+-- 已并入 Flyway V1（sys_menu 建表即含 query/is_frame/is_cache/visible/perms 长度）
+-- 勿再挂到 spring.sql.init

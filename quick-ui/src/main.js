@@ -17,7 +17,6 @@ import SvgIcon from '@/components/SvgIcon'
 import { installPackages } from '@/packages'
 import './permission'
 import { initMobileEnvironment } from '@/utils/mobile'
-import { setupUserMonitor } from '@/monitor'
 import { useDict } from '@/utils/dict'
 import { parseTime, resetForm, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi'
 import { checkPermission } from '@/directive/permission/permissionUtils'
@@ -38,10 +37,6 @@ app.config.globalProperties.checkPermission = checkPermission
 
 app.use(store)
 app.use(router)
-const userMonitor = setupUserMonitor()
-if (userMonitor) {
-  app.use(userMonitor, { router })
-}
 app.use(plugins)
 app.use(directive)
 

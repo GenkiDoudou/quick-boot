@@ -1,0 +1,79 @@
+qc:
+  oauth:
+    # 是否开启
+    enable: true
+    # XOR 盐，须与前端 oauthClientBasic.js 的 QuickBootOAuth1 一致
+    key: QuickBootOAuth1
+    ignore-url:
+      - /h2-console/**
+      - /actuator/**
+      - /api/captcha/generate
+      - /api/captcha/validate
+  login:
+    max-retry: 5
+    lock-minutes: 10
+  dev:
+    embedded-redis:
+      # 进程内 Luban-RDS；关闭后请自行提供外部 Redis
+      enabled: true
+      port: 6379
+  captcha:
+    enabled: true
+    store: redis
+    type: SLIDER
+# 天爱官方前缀：登录二次校验依赖 SecondaryVerificationApplication
+captcha:
+  secondary:
+    enabled: true
+sa-token:
+  # 与前端 Authorization: Bearer 对齐
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 604800
+  # 30 分钟无请求则失效；有请求则续期。观测：登录后停满 active-timeout 再带 token 调需登录接口，应 401
+  active-timeout: 1800
+  is-concurrent: true
+  is-share: false
+  is-read-header: true
+  is-read-cookie: false
+spring:
+  application:
+    name: quickboot-web
+  datasource:
+    # 本地文件型 H2（重启可保留数据）；库文件在进程工作目录下 ./data/quickboot.mv.db
+    # 注意：H2 不支持 AUTO_SERVER=TRUE 与 DB_CLOSE_ON_EXIT=FALSE 同时开启
+    url: jdbc:h2:file:./data/quickboot;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    # 本地 H2：过滤器按 MySQL 解析易与 H2 DDL 打架，关闭 Wall / merge-sql
+    druid:
+      db-type: mysql
+      filter:
+        wall:
+          enabled: false
+        stat:
+          merge-sql: false
+          enabled: true
+  sql:
+    init:
+      # 已改用 Flyway（classpath:db/migration），禁止 always 重复执行种子
+      mode: never
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 已有本地 H2（表已由旧 sql.init 建好）首次接入时：将 V1 记为已应用，只跑 V2+
+    baseline-on-migrate: true
+    baseline-version: 1
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false
+  data:
+    redis:
+      host: 127.0.0.1
+      # 须与 qc.dev.embedded-redis.port 一致
+      port: 6379
+      timeout: 10000ms

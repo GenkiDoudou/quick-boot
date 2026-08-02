@@ -1,5 +1,4 @@
-import request, { downloadRequest, importRequest } from '@/utils/request'
-import { appendImportFormFields } from '@/utils/excelImportForm'
+import request from '@/utils/request'
 import { parseStrEmpty } from '@/utils/ruoyi'
 
 /**
@@ -105,58 +104,5 @@ export function uploadAvatar(data) {
     method: 'post',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     data
-  })
-}
-
-/**
- * 导出用户。
- * @param {Record<string, any>} data 筛选条件
- * @returns {Promise<{ data: Blob, headers: import('axios').AxiosResponse['headers'] }>}
- */
-export function exportUser(data) {
-  return downloadRequest('/system/user/export', data, { returnBlobWithHeaders: true })
-}
-
-/**
- * 导入用户。
- * @param {File} file 文件
- * @param {boolean} updateSupport 是否更新已存在用户
- * @returns {Promise<any>}
- */
-export function importUser(file, updateSupport, opts = {}) {
-  const formData = new FormData()
-  formData.append('file', file)
-  appendImportFormFields(formData, updateSupport, opts)
-  return importRequest({
-    url: '/system/user/importData',
-    method: 'post',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-}
-
-/**
- * 下载导入模板。
- * @returns {Promise<Blob>}
- */
-export function importTemplate() {
-  return request({
-    url: '/system/user/importTemplate',
-    method: 'get',
-    responseType: 'blob'
-  })
-}
-
-/**
- * 下载导入失败明细。
- * @param {string} errorKey 导入结果返回的键
- * @returns {Promise<Blob>}
- */
-export function importError(errorKey) {
-  return request({
-    url: '/system/user/importError',
-    method: 'get',
-    params: { errorKey },
-    responseType: 'blob'
   })
 }

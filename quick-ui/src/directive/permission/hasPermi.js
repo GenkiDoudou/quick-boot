@@ -1,9 +1,8 @@
 /**
- * v-hasPermi 权限指令：无权限时隐藏 DOM（display:none）。
+ * v-hasPermi 权限指令：无权限时从 DOM 移除（隐藏按钮）。
  *
  * 用法：v-hasPermi="['system:user:add']"
  * 校验逻辑与 plugins/auth.js 一致：permissions 含 *:*:* 或包含任一指定字符即通过。
- * 与路由级权限（后端菜单）互补：路由控制页面可见，指令控制按钮可见。
  */
 import useUserStore from '@/store/modules/user'
 
@@ -27,15 +26,13 @@ function checkPermission(el, binding) {
 
   if (value && value instanceof Array && value.length > 0) {
     const permissionFlag = value
-    const hasPermissions = permissions.some(permission => {
+    const hasPermissions = permissions.some((permission) => {
       return all_permission === permission || permissionFlag.includes(permission)
     })
     if (!hasPermissions) {
-      el.style.display = 'none'
-    } else {
-      el.style.display = ''
+      el.parentNode && el.parentNode.removeChild(el)
     }
   } else {
-    el.style.display = 'none'
+    el.parentNode && el.parentNode.removeChild(el)
   }
 }

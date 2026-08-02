@@ -1,0 +1,4 @@
+-- 已迁移至 Flyway：
+--   V1__init_schema_and_seed.sql（角色/菜单/用户角色）
+--   V2__admin_default_button_perms.sql（超级管理员默认按钮授权，只跑一次）
+-- 勿再挂到 spring.sql.init；以后一次性变更请新增 Vn__描述.sql

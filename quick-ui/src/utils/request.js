@@ -5,19 +5,10 @@ import errorCode from '@/utils/errorCode'
 import {tansParams, blobValidate} from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import {saveAs} from 'file-saver'
-import {applyClientSignHeaders} from '@/utils/clientSign'
-import { isMonitorEnabled } from '@/monitor/config'
-import {
-  beginRequestObservation,
-  finalizeRequestObservationSuccess,
-  finalizeRequestObservationError
-} from '@/monitor/requestObservation'
+import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'
 
 let downloadLoadingInstance;
 let isShowReloginDialog = false;
-
-/** 模块加载时读取一次，避免每个请求重复解析 env */
-const monitorEnabled = isMonitorEnabled()
 
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 
@@ -26,10 +17,7 @@ const service = axios.create({
     timeout: 10000
 })
 
-service.interceptors.request.use(async (config) => {
-    if (monitorEnabled) {
-        beginRequestObservation(config)
-    }
+service.interceptors.request.use((config) => {
     // FormData：去掉 application/json（否则 axios 会转成 {"file":{}}）；勿手写 multipart/form-data（无 boundary 后端解析不到 file 部件）
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
         const headers = AxiosHeaders.from(config.headers)
@@ -39,13 +27,18 @@ service.interceptors.request.use(async (config) => {
     const isToken = (config.headers || {}).isToken === false
     if (getToken() && !isToken) {
         config.headers['Authorization'] = 'Bearer ' + getToken()
+    } else {
+        // 无用户 JWT：注入混淆后的 OAuth client Basic（与后端 ClientBasicAuthenticationFilter 对齐）
+        const basic = buildObfuscatedBasicAuthorization()
+        if (basic) {
+            config.headers['Authorization'] = basic
+        }
     }
-    return applyClientSignHeaders(config)
+    return config
 }, error => {
     console.error('请求拦截器错误:', error)
     return Promise.reject(error)
 })
-
 function handleUnauthorized(msg = '登录状态已过期，请重新登录') {
     if (window.location.pathname === '/login' || window.location.pathname.endsWith('/login')) {
         // 登录页：展示后端业务文案（如「用户名或密码错误」），不再静默 reject
@@ -145,9 +138,6 @@ function tryHandleAxiosErrorResponseBody(error) {
 }
 
 service.interceptors.response.use(async (res) => {
-        if (monitorEnabled) {
-            finalizeRequestObservationSuccess(res)
-        }
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
             // 导出等二进制场景：若后端返回的是 JSON 错误体，需要提前识别 401 并跳转登录。
             if (res.data && res.data.type && String(res.data.type).includes('application/json')) {
@@ -196,9 +186,6 @@ service.interceptors.response.use(async (res) => {
     },
     error => {
         console.error('响应拦截器错误:', error)
-        if (monitorEnabled) {
-            finalizeRequestObservationError(error)
-        }
         const fromBody = tryHandleAxiosErrorResponseBody(error)
         if (fromBody != null) {
             return fromBody
@@ -217,11 +204,11 @@ service.interceptors.response.use(async (res) => {
 )
 
 /**
- * 表单 POST 导出：响应体为 **Blob**（`responseType: 'blob'`）。
+ * 表单 POST 下载：响应体为 **Blob**（`responseType: 'blob'`）。
  *
  * - **默认**：Promise resolve 值为 **`Blob`**（与历史行为一致）。
  * - **`config.returnBlobWithHeaders === true`**：resolve 值为 **`{ data: Blob, headers }`**，
- *   便于解析 **`Content-Disposition`**（如 **`C7ExcelDownload`** 与 **`filename*`**）。
+ *   便于解析 **`Content-Disposition`**（含 **`filename*`**）。
  *
  * @param {string} url 相对 `baseURL` 的路径
  * @param {Record<string, unknown>} [params] 查询/表单参数（经 `tansParams` 序列化）
@@ -269,28 +256,6 @@ export function download(url, params, filename, config) {
         console.error(r)
         ElMessage.error('下载文件出现错误，请联系管理员！')
         downloadLoadingInstance.close();
-    })
-}
-
-/** Excel 导入专用请求（默认 120s，不修改全局 10s）。生产 nginx 建议 proxy_read_timeout ≥ 120s。 */
-const IMPORT_DEFAULT_TIMEOUT_MS = 120000
-
-/**
- * @param {import('axios').AxiosRequestConfig} config
- * @returns {Promise<any>}
- */
-export function importRequest(config) {
-    return service({
-        timeout: IMPORT_DEFAULT_TIMEOUT_MS,
-        ...config
-    })
-}
-
-/** Excel 导出编排请求（默认 120s）。 */
-export function exportRequest(config) {
-    return service({
-        timeout: IMPORT_DEFAULT_TIMEOUT_MS,
-        ...config
     })
 }
 

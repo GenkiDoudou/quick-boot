@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickBoot · OAuth2 方案说明书（静态原型）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --panel: #fff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --ok: #059669;
+      --warn: #d97706;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #dbeafe 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #e0e7ff 0%, transparent 50%),
+        var(--bg);
+    }
+    #app { min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.9); position: sticky; top: 0; z-index: 20;
+    }
+    .brand { font-weight: 700; }
+    .brand span { color: var(--accent); font-weight: 500; margin-left: 8px; font-size: 13px; }
+    .shell { max-width: 1040px; margin: 0 auto; padding: 20px 16px 56px; }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 24px; box-shadow: 0 10px 30px rgba(15,23,42,.06); margin-bottom: 16px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 20px; }
+    .panel h3 { margin: 18px 0 8px; font-size: 16px; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .sub { margin: 0 0 16px; }
+    .callout {
+      border-radius: 10px; padding: 12px 14px; margin: 12px 0; font-size: 13px; line-height: 1.65;
+      border: 1px solid var(--line); background: #f8fafc;
+    }
+    .callout.ok { border-color: #a7f3d0; background: #ecfdf5; }
+    .callout.warn { border-color: #fde68a; background: #fffbeb; }
+    .callout.info { border-color: #bfdbfe; background: #eff6ff; }
+    .role-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0 8px;
+    }
+    .role-card {
+      border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: #fafafa;
+    }
+    .role-card b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .flow {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.55;
+      background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 14px; overflow-x: auto;
+      white-space: pre; margin: 8px 0 0;
+    }
+    .token-box {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+      background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px;
+      word-break: break-all; line-height: 1.5;
+    }
+    .social-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .divider {
+      display: flex; align-items: center; gap: 12px; margin: 18px 0;
+      color: var(--muted); font-size: 12px;
+    }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .step-note {
+      margin: 10px 0 16px; padding: 10px 12px; border-left: 3px solid var(--accent);
+      background: #f8fafc; font-size: 13px; line-height: 1.6; color: #334155;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .client-card {
+      border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+      background: #f8fafc; margin-bottom: 16px;
+    }
+    .log-list { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: #334155; }
+    @media (max-width: 800px) {
+      .role-grid, .grid-2 { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">QuickBoot Auth<span>方案说明书 + 可点演示</span></div>
+      <el-radio-group v-model="scene" size="small" @change="onSceneChange">
+        <el-radio-button label="concept">1. 先看懂方案</el-radio-button>
+        <el-radio-button label="login">2. 管理端登录</el-radio-button>
+        <el-radio-button label="consent">3. 外部 App 授权</el-radio-button>
+        <el-radio-button label="clients">4. 客户端一览</el-radio-button>
+      </el-radio-group>
+    </div>
+
+    <div class="shell">
+
+      <!-- ==================== 概念页 ==================== -->
+      <template v-if="scene === 'concept'">
+        <div class="panel">
+          <h2>一句话</h2>
+          <p class="sub" style="margin-bottom: 0">
+            你们自己搭一台「发通行证的柜台」（Authorization Server）。
+            员工用<strong>账号密码</strong>或<strong>GitHub 等</strong>在柜台证明身份；
+            柜台只发一种通行证：<strong>JWT</strong>。
+            业务 API 只认这张通行证。外部合作 App 也来同一柜台申请通行证。
+          </p>
+        </div>
+
+        <div class="panel">
+          <h2>三个角色（同一套后端里）</h2>
+          <div class="role-grid">
+            <div class="role-card">
+              <b>① 授权服务器 AS</b>
+              对外提供 <code>/oauth2/authorize</code>、<code>/oauth2/token</code>。
+              <strong>只有它发 JWT</strong>。管理端、外部 App 都找它要 token。
+            </div>
+            <div class="role-card">
+              <b>② OAuth2 Client（社交）</b>
+              用户点「用 GitHub 登录」时，<strong>你们去 GitHub 当客户端</strong>，
+              换到第三方用户信息后，再映射成你们本地用户。
+            </div>
+            <div class="role-card">
+              <b>③ Resource Server</b>
+              业务 API：看请求头 <code>Authorization: Bearer …</code>，
+              用 AS 公钥验签，通过才执行业务。
+            </div>
+          </div>
+          <div class="callout info">
+            别和「用 GitHub 登录你们」搞混：那是你们当 <strong>Client</strong>。
+            「外部报表系统用你们的用户登录」时，你们当 <strong>AS</strong>。两套方向相反。
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>账号密码怎么登录？（你问的 password 模式）</h2>
+          <p class="sub">
+            OAuth2 里有一种叫 <strong>Resource Owner Password Credentials</strong>
+            （常说 <code>grant_type=password</code>）：前端把用户名密码直接交给
+            <code>POST /oauth2/token</code>，柜台校验后立刻返回 access_token。
+          </p>
+
+          <div class="flow">POST /oauth2/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password
+&amp;username=admin
+&amp;password=admin123
+&amp;client_id=quick-ui
+&amp;scope=openid profile api.read</div>
+
+          <div class="callout ok">
+            <strong>能用吗？能，而且很适合「自家管理端 JSON 登录」。 </strong><br>
+            流程短：一次 POST 就拿到 JWT，和现在很多后台习惯一致。
+          </div>
+          <div class="callout warn">
+            <strong>注意：</strong>OAuth 2.1 已废弃该模式；
+            <strong>Spring Authorization Server 默认不提供</strong> password grant，
+            需要按「扩展 grant」自己加（官方 how-to 可参考）。
+            只建议给<strong>第一方、可信客户端</strong>（如 quick-ui），不要开放给任意第三方 App。
+          </div>
+
+          <h3>三种「密码登录」对比</h3>
+          <el-table :data="passwordOptions" stripe style="width: 100%">
+            <el-table-column prop="name" label="方式" min-width="150"></el-table-column>
+            <el-table-column prop="how" label="怎么拿 JWT" min-width="220"></el-table-column>
+            <el-table-column prop="pros" label="优点" min-width="160"></el-table-column>
+            <el-table-column prop="cons" label="代价" min-width="180"></el-table-column>
+          </el-table>
+          <p class="meta" style="margin-top: 10px">
+            建议：管理端用 <strong>password 扩展 grant</strong>（或封装成 POST /auth/login 内部调 token）；
+            外部第三方 App 只用 <strong>authorization_code</strong>，绝不给 password。
+          </p>
+        </div>
+
+        <div class="panel">
+          <h2>社交登录在整体里站哪一步</h2>
+          <div class="flow">用户点 GitHub
+  → 跳到 GitHub 授权（你们是 Client）
+  → 回调你们后端，拿到第三方用户 ID
+  → 查绑定表：已绑则登录；未绑则「自动建号 / 绑已有账号」
+  → SecurityContext 里已是「本地用户」
+  → 再向 AS 要 JWT（password 或 code 流程）
+  → 前端带 Bearer 调 API</div>
+        </div>
+
+        <div class="panel">
+          <h2>本页怎么点</h2>
+          <ol class="log-list">
+            <li>切到「2. 管理端登录」：试 <code>admin / admin123</code>，可选「password grant」或「封装 /auth/login」。</li>
+            <li>点 Gitee：走「首次未绑定」决策（自动建号 / 绑定）。</li>
+            <li>点 GitHub：mock 成已绑定，直接出 JWT。</li>
+            <li>切到「3. 外部 App 授权」：看合作方走 code 流程（不能用 password）。</li>
+            <li>「4. 客户端一览」：谁允许哪种 grant。</li>
+          </ol>
+          <el-button type="primary" @click="scene = 'login'">去管理端登录演示</el-button>
+        </div>
+      </template>
+
+      <!-- ==================== 管理端登录 ==================== -->
+      <template v-else-if="scene === 'login'">
+        <div class="panel" v-if="view === 'login'">
+          <h2>管理端登录演示</h2>
+          <p class="sub">模拟第一方 SPA；发牌仍视为来自 AS 的 /oauth2/token。</p>
+
+          <div class="step-note">
+            <strong>当前选择的发牌方式：</strong>{{ grantModeLabel }}<br>
+            {{ grantModeHint }}
+          </div>
+
+          <el-form label-position="top" @submit.prevent>
+            <el-form-item label="发牌方式（对照方案）">
+              <el-radio-group v-model="grantMode">
+                <el-radio label="password">OAuth password grant（账号密码模式）</el-radio>
+                <el-radio label="wrapper">封装 POST /auth/login（内部仍调 token）</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="用户名">
+              <el-input v-model="loginForm.username" placeholder="admin" clearable></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input v-model="loginForm.password" type="password" show-password clearable></el-input>
+            </el-form-item>
+            <el-button type="primary" style="width: 100%" :loading="loading" @click="doPasswordLogin">
+              {{ grantMode === 'password' ? 'POST /oauth2/token (password)' : 'POST /auth/login' }}
+            </el-button>
+          </el-form>
+
+          <div v-if="lastRequest" style="margin-top: 16px">
+            <p class="meta" style="margin: 0 0 6px">刚才模拟发出的请求</p>
+            <div class="flow">{{ lastRequest }}</div>
+          </div>
+
+          <div class="divider">或第三方登录（你们当 Client 去 GitHub）</div>
+          <div class="social-row">
+            <el-button v-for="p in providers" :key="p.id" @click="startSocial(p)">{{ p.name }}</el-button>
+          </div>
+          <div class="callout info" style="margin-top: 14px">
+            GitHub = mock 已绑定用户，点完直接出 JWT。<br>
+            Gitee / 企业微信 = mock 新用户，进入「自动建号 / 绑定已有」。
+          </div>
+
+          <el-collapse style="margin-top: 8px">
+            <el-collapse-item title="逐步说明（密码登录）" name="1">
+              <ol class="log-list">
+                <li>用户在表单输入账号密码（密码只应发给你们自己的后端，不要发给第三方 App）。</li>
+                <li>若选 password grant：浏览器或 BFF 调用 <code>/oauth2/token</code>，带上 grant_type=password。</li>
+                <li>AS 用 UserDetailsService 校验用户，确认 client_id=quick-ui 允许该 grant。</li>
+                <li>签发 access_token（JWT），可选 refresh_token。</li>
+                <li>前端存 token，之后请求头带 <code>Authorization: Bearer …</code>。</li>
+              </ol>
+            </el-collapse-item>
+            <el-collapse-item title="逐步说明（社交）" name="2">
+              <ol class="log-list">
+                <li>跳转 <code>/oauth2/authorization/gitee</code>（Spring Security 内置入口）。</li>
+                <li>用户在 Gitee 同意后，回调你们的 <code>/login/oauth2/code/gitee</code>。</li>
+                <li>取出第三方 subject，查 <code>sys_oauth_user_bind</code>。</li>
+                <li>未绑定 → 本页「关联账号」；绑定完成后本地用户已认证。</li>
+                <li>再对 quick-ui 发 JWT（可用 password 扩展、或已登录会话换 code）。</li>
+              </ol>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
+
+        <div class="panel" v-else-if="view === 'bind'">
+          <h2>首次社交登录：关联账号</h2>
+          <p class="sub">
+            平台 <strong>{{ pendingProvider && pendingProvider.name }}</strong>
+            · subject <code>{{ pendingSubject }}</code> 尚未绑定本地用户。
+          </p>
+          <div class="step-note">
+            这是业务决策，不是 OAuth 协议步骤。协议只负责「证明你是 Gitee 上的某某」；
+            「某某对应你们库里的谁」由绑定表决定。
+          </div>
+          <div class="grid-2">
+            <el-button type="primary" plain style="height: 96px" @click="autoCreate">
+              A. 自动创建本地账号并登录
+            </el-button>
+            <el-button style="height: 96px" @click="showBindForm = true">
+              B. 绑定已有账号
+            </el-button>
+          </div>
+          <el-form v-if="showBindForm" style="margin-top: 20px" :model="bindForm" label-position="top">
+            <el-form-item label="已有用户名">
+              <el-input v-model="bindForm.username"></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input v-model="bindForm.password" type="password" show-password></el-input>
+            </el-form-item>
+            <el-button type="primary" @click="bindExisting">确认绑定并登录</el-button>
+            <el-button @click="view = 'login'; showBindForm = false">返回</el-button>
+          </el-form>
+          <div style="margin-top: 12px" v-if="!showBindForm">
+            <el-button text type="info" @click="view = 'login'">返回登录</el-button>
+          </div>
+        </div>
+
+        <div class="panel" v-else-if="view === 'home'">
+          <h2>已拿到通行证（JWT）</h2>
+          <p class="sub">后面所有业务 API 都带这个 Bearer；Resource Server 只验签、不看你怎么登录的。</p>
+
+          <el-timeline style="margin-bottom: 8px">
+            <el-timeline-item v-for="(e, i) in session.events" :key="i" :timestamp="e.t" placement="top">
+              {{ e.text }}
+            </el-timeline-item>
+          </el-timeline>
+
+          <el-descriptions :column="1" border style="margin-bottom: 16px">
+            <el-descriptions-item label="用户">{{ session.userName }}</el-descriptions-item>
+            <el-descriptions-item label="userId (JWT sub)">{{ session.userId }}</el-descriptions-item>
+            <el-descriptions-item label="登录方式">{{ session.loginType }}</el-descriptions-item>
+            <el-descriptions-item label="绑定">
+              <el-tag v-for="b in session.bindings" :key="b" size="small" style="margin-right: 6px">{{ b }}</el-tag>
+              <span v-if="!session.bindings.length" class="meta">无</span>
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <p class="meta" style="margin: 0 0 8px">access_token（mock JWT，可复制）</p>
+          <div class="token-box">{{ session.accessToken }}</div>
+
+          <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap">
+            <el-button type="primary" @click="callMe">模拟 GET /auth/me</el-button>
+            <el-button @click="logout">退出</el-button>
+            <el-button @click="scene = 'consent'">去看外部 App 怎么要 token →</el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- ==================== 外部授权 ==================== -->
+      <template v-else-if="scene === 'consent'">
+        <div class="panel">
+          <div class="callout warn" style="margin-top: 0">
+            外部 App <strong>不能</strong>用 password grant 收用户密码。
+            只能走 authorization_code：用户在你们域名上登录并点「同意」。
+          </div>
+          <el-steps :active="consentStep" finish-status="success" align-center style="margin: 8px 0 20px">
+            <el-step title="App 发起"></el-step>
+            <el-step title="用户登录"></el-step>
+            <el-step title="同意授权"></el-step>
+            <el-step title="换 code"></el-step>
+          </el-steps>
+
+          <template v-if="consentStep === 0">
+            <h2>步骤 0：外部 App 把用户送来</h2>
+            <div class="client-card">
+              <strong>{{ externalApp.name }}</strong>
+              <div class="meta">client_id: {{ externalApp.clientId }}</div>
+              <div class="meta">redirect_uri: {{ externalApp.redirectUri }}</div>
+              <div class="meta">scope: {{ externalApp.scopes.join(' ') }}</div>
+            </div>
+            <div class="flow">GET /oauth2/authorize?response_type=code
+  &amp;client_id=acme-report
+  &amp;redirect_uri=https://acme.example.com/oauth/callback
+  &amp;scope=openid profile api.read
+  &amp;state=xyz
+  &amp;code_challenge=...&amp;code_challenge_method=S256</div>
+            <el-button type="primary" style="margin-top: 14px" @click="beginExternalAuth">模拟用户被跳到 AS</el-button>
+          </template>
+
+          <template v-else-if="consentStep === 1">
+            <h2>步骤 1：用户尚未登录 AS</h2>
+            <p class="sub">这里可以用密码表单（页面登录），或社交；登录后继续授权，不是直接把密码给 Acme。</p>
+            <el-form :model="loginForm" label-position="top">
+              <el-form-item label="用户名">
+                <el-input v-model="loginForm.username"></el-input>
+              </el-form-item>
+              <el-form-item label="密码">
+                <el-input v-model="loginForm.password" type="password" show-password></el-input>
+              </el-form-item>
+              <el-button type="primary" @click="consentLogin">登录并继续授权</el-button>
+            </el-form>
+          </template>
+
+          <template v-else-if="consentStep === 2">
+            <h2>步骤 2：同意授权</h2>
+            <p class="sub">问的是：「是否允许 Acme 以你的身份访问这些 scope？」不是再问一遍密码给 Acme。</p>
+            <el-checkbox-group v-model="selectedScopes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+              <el-checkbox v-for="s in externalApp.scopes" :key="s" :label="s">{{ scopeLabel(s) }}</el-checkbox>
+            </el-checkbox-group>
+            <el-button type="primary" @click="approveConsent">同意</el-button>
+            <el-button @click="denyConsent">拒绝</el-button>
+          </template>
+
+          <template v-else>
+            <h2>步骤 3：浏览器带回 code</h2>
+            <p class="sub">Acme 后端拿 code + client_secret 调 /oauth2/token，换自己的 access_token。</p>
+            <div class="token-box">{{ externalApp.redirectUri }}?code={{ issuedCode }}&amp;state={{ issuedState }}</div>
+            <div class="flow" style="margin-top: 12px">POST /oauth2/token
+grant_type=authorization_code
+&amp;code={{ issuedCode }}
+&amp;redirect_uri={{ externalApp.redirectUri }}
+&amp;client_id=acme-report
+&amp;client_secret=******
+&amp;code_verifier=...</div>
+            <el-button style="margin-top: 12px" @click="resetConsent">再演示一遍</el-button>
+          </template>
+        </div>
+      </template>
+
+      <!-- ==================== 客户端 ==================== -->
+      <template v-else>
+        <div class="panel">
+          <h2>Registered Clients（谁允许哪种模式）</h2>
+          <p class="sub">password 只给第一方 quick-ui；外部 App 只有 authorization_code。</p>
+          <el-table :data="clients" stripe style="width: 100%">
+            <el-table-column prop="clientId" label="clientId" min-width="120"></el-table-column>
+            <el-table-column prop="name" label="名称" min-width="120"></el-table-column>
+            <el-table-column prop="type" label="类型" width="110"></el-table-column>
+            <el-table-column prop="authMethods" label="允许的 grant" min-width="200"></el-table-column>
+            <el-table-column prop="note" label="说明" min-width="180"></el-table-column>
+          </el-table>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed } = Vue;
+
+    const MOCK_USERS = [
+      { userId: '10001', userName: 'admin', password: 'admin123', bindings: ['github'] },
+      { userId: '10002', userName: 'demo', password: 'demo123', bindings: [] },
+    ];
+
+    const PROVIDERS = [
+      { id: 'github', name: 'GitHub', knownSubjects: { gh_u_88: '10001' } },
+      { id: 'gitee', name: 'Gitee', knownSubjects: {} },
+      { id: 'wechat', name: '企业微信', knownSubjects: {} },
+    ];
+
+    function fakeJwt(payload) {
+      const h = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g, '');
+      const b = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/=/g, '');
+      return h + '.' + b + '.mock-signature';
+    }
+
+    function nowStr() {
+      const d = new Date();
+      return d.toTimeString().slice(0, 8);
+    }
+
+    createApp({
+      setup() {
+        const scene = ref('concept');
+        const view = ref('login');
+        const loading = ref(false);
+        const grantMode = ref('password');
+        const lastRequest = ref('');
+        const loginForm = reactive({ username: 'admin', password: 'admin123' });
+        const providers = PROVIDERS;
+        const pendingProvider = ref(null);
+        const pendingSubject = ref('');
+        const showBindForm = ref(false);
+        const bindForm = reactive({ username: 'admin', password: 'admin123' });
+        const session = reactive({
+          userId: '', userName: '', loginType: '', bindings: [], accessToken: '', events: [],
+        });
+
+        const consentStep = ref(0);
+        const externalApp = {
+          name: 'Acme 报表中心',
+          clientId: 'acme-report',
+          redirectUri: 'https://acme.example.com/oauth/callback',
+          scopes: ['openid', 'profile', 'api.read'],
+        };
+        const selectedScopes = ref([...externalApp.scopes]);
+        const issuedCode = ref('');
+        const issuedState = ref('xyz');
+
+        const clients = [
+          {
+            clientId: 'quick-ui', name: '管理端 SPA', type: '第一方',
+            authMethods: 'password（扩展）+ refresh_token',
+            note: '可收用户密码；仅自家前端',
+          },
+          {
+            clientId: 'acme-report', name: 'Acme 报表中心', type: '第三方',
+            authMethods: 'authorization_code + refresh',
+            note: '禁止 password',
+          },
+          {
+            clientId: 'job-runner', name: '批处理服务', type: '机机',
+            authMethods: 'client_credentials',
+            note: '无用户，只有 client 密钥',
+          },
+        ];
+
+        const passwordOptions = [
+          {
+            name: 'password grant',
+            how: 'POST /oauth2/token，grant_type=password',
+            pros: '一次请求出 JWT，对接简单',
+            cons: 'OAuth2.1 废弃；SAS 需自定义扩展',
+          },
+          {
+            name: '封装 /auth/login',
+            how: '业务接口收密码，内部调同一 Token 签发',
+            pros: 'API 好看；可加验证码等',
+            cons: '仍建议内部走同一套发牌逻辑',
+          },
+          {
+            name: 'authorization_code',
+            how: '跳转 AS 登录页再换 code',
+            pros: '标准、安全，适合第三方',
+            cons: '管理端 SPA 体验绕，要落地页',
+          },
+        ];
+
+        const grantModeLabel = computed(() =>
+          grantMode.value === 'password' ? 'OAuth password grant' : '封装 /auth/login'
+        );
+        const grantModeHint = computed(() =>
+          grantMode.value === 'password'
+            ? '直接打向 AS 的 token 端点；演示里会显示完整表单字段。'
+            : '前端只调业务登录接口；后端校验后仍由 AS 发同一格式 JWT。'
+        );
+
+        function issueSession(user, loginType, extraBinding, events) {
+          const bindings = [...(user.bindings || [])];
+          if (extraBinding && !bindings.includes(extraBinding)) bindings.push(extraBinding);
+          session.userId = user.userId;
+          session.userName = user.userName;
+          session.loginType = loginType;
+          session.bindings = bindings;
+          session.accessToken = fakeJwt({
+            sub: user.userId,
+            preferred_username: user.userName,
+            iss: 'http://localhost:9993',
+            aud: 'quickboot-api',
+            scope: 'openid profile api.read',
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 3600,
+          });
+          session.events = events || [
+            { t: nowStr(), text: '身份校验通过' },
+            { t: nowStr(), text: 'AS 签发 access_token（JWT）' },
+            { t: nowStr(), text: '前端保存 Bearer，后续调业务 API' },
+          ];
+          view.value = 'home';
+        }
+
+        function doPasswordLogin() {
+          loading.value = true;
+          if (grantMode.value === 'password') {
+            lastRequest.value =
+              'POST /oauth2/token\n' +
+              'Content-Type: application/x-www-form-urlencoded\n\n' +
+              'grant_type=password\n' +
+              '&username=' + loginForm.username + '\n' +
+              '&password=******\n' +
+              '&client_id=quick-ui\n' +
+              '&scope=openid profile api.read';
+          } else {
+            lastRequest.value =
+              'POST /auth/login\n' +
+              'Content-Type: application/json\n\n' +
+              JSON.stringify({ username: loginForm.username, password: '******' }, null, 2) +
+              '\n\n// 服务端内部等价于调用同一套 Token 签发（可实现为 password grant）';
+          }
+          setTimeout(() => {
+            const user = MOCK_USERS.find(
+              (u) => u.userName === loginForm.username && u.password === loginForm.password
+            );
+            loading.value = false;
+            if (!user) {
+              ElementPlus.ElMessage.error('用户名或密码错误（试 admin / admin123）');
+              return;
+            }
+            issueSession(
+              user,
+              grantMode.value === 'password' ? 'password grant → JWT' : '/auth/login → 内部发 JWT',
+              null,
+              [
+                { t: nowStr(), text: grantMode.value === 'password' ? '收到 grant_type=password' : '收到 /auth/login' },
+                { t: nowStr(), text: '校验 sys_user 密码哈希' },
+                { t: nowStr(), text: '确认 client quick-ui 允许该模式' },
+                { t: nowStr(), text: '签发 JWT（sub=userId）' },
+              ]
+            );
+            ElementPlus.ElMessage.success('登录成功');
+          }, 350);
+        }
+
+        function startSocial(p) {
+          pendingProvider.value = p;
+          const subject = p.id === 'github' ? 'gh_u_88' : p.id + '_new_' + Date.now().toString().slice(-4);
+          pendingSubject.value = subject;
+          const boundUserId = p.knownSubjects[subject];
+          if (boundUserId) {
+            const user = MOCK_USERS.find((u) => u.userId === boundUserId);
+            issueSession(user, '社交已绑定 · ' + p.name, p.id, [
+              { t: nowStr(), text: '从 ' + p.name + ' 回调拿到 subject=' + subject },
+              { t: nowStr(), text: '绑定表命中 userId=' + boundUserId },
+              { t: nowStr(), text: '签发 JWT' },
+            ]);
+            ElementPlus.ElMessage.success('已绑定，直接登录');
+            return;
+          }
+          view.value = 'bind';
+          showBindForm.value = false;
+          ElementPlus.ElMessage.info('首次授权，请选择建号或绑定');
+        }
+
+        function autoCreate() {
+          const name = (pendingProvider.value.id + '_user_' + pendingSubject.value.slice(-4)).toLowerCase();
+          const user = {
+            userId: String(20000 + Math.floor(Math.random() * 1000)),
+            userName: name,
+            password: '',
+            bindings: [pendingProvider.value.id],
+          };
+          MOCK_USERS.push(user);
+          issueSession(user, '社交自动建号 · ' + pendingProvider.value.name, pendingProvider.value.id, [
+            { t: nowStr(), text: '绑定表未命中' },
+            { t: nowStr(), text: '创建 sys_user + 写 sys_oauth_user_bind' },
+            { t: nowStr(), text: '签发 JWT' },
+          ]);
+          ElementPlus.ElMessage.success('已建号并登录');
+        }
+
+        function bindExisting() {
+          const user = MOCK_USERS.find(
+            (u) => u.userName === bindForm.username && u.password === bindForm.password
+          );
+          if (!user) {
+            ElementPlus.ElMessage.error('账号校验失败');
+            return;
+          }
+          if (!user.bindings.includes(pendingProvider.value.id)) user.bindings.push(pendingProvider.value.id);
+          pendingProvider.value.knownSubjects[pendingSubject.value] = user.userId;
+          issueSession(user, '社交绑定已有 · ' + pendingProvider.value.name, pendingProvider.value.id, [
+            { t: nowStr(), text: '校验已有账号密码' },
+            { t: nowStr(), text: '写入绑定：' + pendingProvider.value.id + ' → ' + user.userId },
+            { t: nowStr(), text: '签发 JWT' },
+          ]);
+          showBindForm.value = false;
+          ElementPlus.ElMessage.success('绑定成功');
+        }
+
+        function callMe() {
+          ElementPlus.ElMessage.success(
+            'Authorization: Bearer … → { userId: ' + session.userId + ', userName: ' + session.userName + ' }'
+          );
+        }
+
+        function logout() {
+          Object.assign(session, { userId: '', userName: '', loginType: '', bindings: [], accessToken: '', events: [] });
+          view.value = 'login';
+          lastRequest.value = '';
+          ElementPlus.ElMessage.success('已退出');
+        }
+
+        function onSceneChange() {
+          if (scene.value === 'consent') resetConsent();
+        }
+
+        function beginExternalAuth() {
+          consentStep.value = session.userId ? 2 : 1;
+        }
+
+        function consentLogin() {
+          const user = MOCK_USERS.find(
+            (u) => u.userName === loginForm.username && u.password === loginForm.password
+          );
+          if (!user) {
+            ElementPlus.ElMessage.error('登录失败');
+            return;
+          }
+          issueSession(user, '授权页登录', null, [{ t: nowStr(), text: 'AS 登录页校验通过' }]);
+          view.value = 'login';
+          scene.value = 'consent';
+          consentStep.value = 2;
+          ElementPlus.ElMessage.success('已登录，进入同意页');
+        }
+
+        function scopeLabel(s) {
+          return ({ openid: 'OpenID 标识', profile: '基本资料', 'api.read': '读取业务 API' })[s] || s;
+        }
+
+        function approveConsent() {
+          if (!selectedScopes.value.length) {
+            ElementPlus.ElMessage.warning('请至少选择一个 scope');
+            return;
+          }
+          issuedCode.value = 'auth_' + Math.random().toString(36).slice(2, 10);
+          consentStep.value = 3;
+          ElementPlus.ElMessage.success('已生成 authorization_code');
+        }
+
+        function denyConsent() {
+          ElementPlus.ElMessage.warning('用户拒绝');
+          resetConsent();
+        }
+
+        function resetConsent() {
+          consentStep.value = 0;
+          selectedScopes.value = [...externalApp.scopes];
+          issuedCode.value = '';
+        }
+
+        return {
+          scene, view, loading, grantMode, grantModeLabel, grantModeHint, lastRequest,
+          loginForm, providers, pendingProvider, pendingSubject, showBindForm, bindForm,
+          session, consentStep, externalApp, selectedScopes, issuedCode, issuedState,
+          clients, passwordOptions,
+          doPasswordLogin, startSocial, autoCreate, bindExisting, callMe, logout,
+          onSceneChange, beginExternalAuth, consentLogin, scopeLabel, approveConsent, denyConsent, resetConsent,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

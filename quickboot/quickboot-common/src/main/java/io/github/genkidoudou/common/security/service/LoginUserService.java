@@ -1,6 +1,6 @@
-package io.github.genkidoudou.auth.service;
+package io.github.genkidoudou.common.security.service;
 
-import io.github.genkidoudou.auth.vo.LoginUser;
+import io.github.genkidoudou.common.security.vo.LoginUser;
 
 public interface LoginUserService {
 
@@ -12,5 +12,8 @@ public interface LoginUserService {
    * @since 2026/7/29
    */
   LoginUser getLoginUser();
+
+
+
 
 }

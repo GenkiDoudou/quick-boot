@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
-import { buildSignedFetchHeaders } from '@/utils/clientSign'
+import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'
 
 const EMBED_VISITOR_KEY = 'ai_app_embed_visitor_id'
 
@@ -222,20 +222,22 @@ export function subscribeAiAppChatStream(body, handlers = {}) {
   const base = import.meta.env.VITE_APP_BASE_API || ''
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
   const url = `${prefix}/ai/app/chat/stream`
-  const path = '/ai/app/chat/stream'
   const bodyStr = JSON.stringify(body)
 
   ;(async () => {
     try {
-      const signHeaders = await buildSignedFetchHeaders('POST', path, bodyStr)
       const headers = {
         Accept: 'text/event-stream',
-        'Content-Type': 'application/json',
-        ...signHeaders
+        'Content-Type': 'application/json'
       }
       const token = getToken()
       if (token) {
         headers.Authorization = 'Bearer ' + token
+      } else {
+        const basic = buildObfuscatedBasicAuthorization()
+        if (basic) {
+          headers.Authorization = basic
+        }
       }
       const response = await fetch(url, {
         method: 'POST',
@@ -275,17 +277,23 @@ export function subscribeEmbedChatStream(embedToken, visitorId, body, handlers =
   const base = import.meta.env.VITE_APP_BASE_API || ''
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
   const url = `${prefix}/ai/embed/${embedToken}/chat/stream`
-  const path = `/ai/embed/${embedToken}/chat/stream`
   const bodyStr = JSON.stringify(body)
 
   ;(async () => {
     try {
-      const signHeaders = await buildSignedFetchHeaders('POST', path, bodyStr)
       const headers = {
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
-        'X-Embed-Visitor-Id': visitorId,
-        ...signHeaders
+        'X-Embed-Visitor-Id': visitorId
+      }
+      const token = getToken()
+      if (token) {
+        headers.Authorization = 'Bearer ' + token
+      } else {
+        const basic = buildObfuscatedBasicAuthorization()
+        if (basic) {
+          headers.Authorization = basic
+        }
       }
       const response = await fetch(url, {
         method: 'POST',

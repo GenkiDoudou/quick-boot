@@ -1,11 +1,14 @@
 <template>
   <section class="app-main" :class="{ 'app-main--fullscreen': route.meta?.fullScreen }">
     <router-view v-slot="{ Component, route }">
-      <transition name="fade-transform" mode="out-in">
-        <keep-alive :include="tagsViewStore.cachedViews">
-          <component v-if="!route.meta.link" :is="Component" :key="route.path" />
-        </keep-alive>
-      </transition>
+      <!--
+        不用 transition：HMR / keep-alive 组合下 fade-transform 偶发残留 enter-from（opacity:0），
+        表现为侧栏还在、接口仍请求、中间内容却全白。
+        key 用 name 以配合 keep-alive include。
+      -->
+      <keep-alive :include="tagsViewStore.cachedViews">
+        <component v-if="!route.meta.link" :is="Component" :key="route.name || route.path" />
+      </keep-alive>
     </router-view>
     <iframe-toggle />
   </section>
