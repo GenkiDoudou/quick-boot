@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickBoot · 配置 / 操作日志 / 登录日志（静态原型）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    /* 假设：对齐 bak 管理页布局；仅 CDN mock，不请求后端 */
+    body { margin: 0; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #303133; }
+    #app { min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 20px; background: #fff; border-bottom: 1px solid #ebeef5;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .brand { font-weight: 700; font-size: 15px; }
+    .brand span { color: #909399; font-weight: 400; margin-left: 8px; font-size: 13px; }
+    .shell { padding: 16px 20px 40px; max-width: 1400px; margin: 0 auto; }
+    .panel {
+      background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 16px;
+      margin-bottom: 12px;
+    }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pager { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .hint { color: #909399; font-size: 12px; margin: 0 0 12px; line-height: 1.5; }
+    .oper-pre {
+      margin: 0; white-space: pre-wrap; word-break: break-all;
+      max-height: 180px; overflow: auto; font-size: 12px; line-height: 1.5;
+      background: #f8fafc; padding: 8px; border-radius: 4px;
+    }
+    .oper-pre--error { color: #f56c6c; background: #fef0f0; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">QuickBoot 管理原型<span>参数配置 · 操作日志 · 登录日志（mock）</span></div>
+      <el-tag type="info" effect="plain">静态页 · 浏览器直接打开</el-tag>
+    </div>
+
+    <div class="shell">
+      <el-tabs v-model="activeTab" type="border-card">
+        <!-- ========== 参数配置 ========== -->
+        <el-tab-pane label="参数配置" name="config">
+          <p class="hint">对应 API 前缀 <code>sys/config</code>：查询 / CRUD / 刷新缓存 / 同步导入导出（本页为 mock）。</p>
+          <div class="panel">
+            <el-form :inline="true" :model="configQuery" label-width="80px">
+              <el-form-item label="参数名称">
+                <el-input v-model="configQuery.configName" clearable placeholder="请输入参数名称" style="width: 180px"></el-input>
+              </el-form-item>
+              <el-form-item label="参数键名">
+                <el-input v-model="configQuery.configKey" clearable placeholder="请输入参数键名" style="width: 200px"></el-input>
+              </el-form-item>
+              <el-form-item label="系统内置">
+                <el-select v-model="configQuery.configType" clearable placeholder="请选择" style="width: 140px">
+                  <el-option label="是" value="1"></el-option>
+                  <el-option label="否" value="0"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="configPage = 1">搜索</el-button>
+                <el-button @click="resetConfigQuery">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div class="panel">
+            <div class="toolbar">
+              <el-button type="primary" @click="openConfigForm()">新增</el-button>
+              <el-button type="danger" plain :disabled="!configSelection.length" @click="batchRemoveConfig">删除</el-button>
+              <el-button type="warning" plain @click="mockRefreshCache">刷新缓存</el-button>
+              <el-button @click="mockToast('已触发导出（mock）')">导出</el-button>
+              <el-button @click="mockToast('已打开导入（mock）')">导入</el-button>
+            </div>
+            <el-table :data="pagedConfigs" border stripe @selection-change="(rows) => (configSelection = rows)">
+              <el-table-column type="selection" width="48"></el-table-column>
+              <el-table-column prop="configId" label="参数主键" width="120"></el-table-column>
+              <el-table-column prop="configName" label="参数名称" min-width="140"></el-table-column>
+              <el-table-column prop="configKey" label="参数键名" min-width="220" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="configValue" label="参数键值" min-width="180" show-overflow-tooltip></el-table-column>
+              <el-table-column label="系统内置" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.configType === '1' ? 'warning' : 'info'" size="small">
+                    {{ row.configType === '1' ? '是' : '否' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="createTime" label="创建时间" width="170"></el-table-column>
+              <el-table-column label="操作" width="140" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="openConfigForm(row)">修改</el-button>
+                  <el-button link type="danger" @click="removeConfig(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pager">
+              <el-pagination
+                v-model:current-page="configPage"
+                v-model:page-size="configPageSize"
+                :total="filteredConfigs.length"
+                layout="total, sizes, prev, pager, next"
+                :page-sizes="[5, 10, 20]"
+              ></el-pagination>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- ========== 操作日志 ========== -->
+        <el-tab-pane label="操作日志" name="operlog">
+          <p class="hint">对应 API 前缀 <code>monitor/operlog</code>：宽切面自动采集；导出接口可用 <code>@IgnoreLogger(RESULT)</code> 忽略响应体。</p>
+          <div class="panel">
+            <el-form :inline="true" :model="operQuery" label-width="80px">
+              <el-form-item label="操作地址">
+                <el-input v-model="operQuery.operUrl" clearable placeholder="URI 片段" style="width: 160px"></el-input>
+              </el-form-item>
+              <el-form-item label="系统模块">
+                <el-input v-model="operQuery.title" clearable placeholder="模块/标题" style="width: 160px"></el-input>
+              </el-form-item>
+              <el-form-item label="操作人员">
+                <el-input v-model="operQuery.operName" clearable placeholder="用户名" style="width: 140px"></el-input>
+              </el-form-item>
+              <el-form-item label="业务类型">
+                <el-select v-model="operQuery.businessType" clearable placeholder="全部" style="width: 140px">
+                  <el-option v-for="o in businessTypeOptions" :key="o.value" :label="o.label" :value="o.value"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="状态">
+                <el-select v-model="operQuery.status" clearable placeholder="全部" style="width: 120px">
+                  <el-option label="成功" value="0"></el-option>
+                  <el-option label="失败" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="operPage = 1">搜索</el-button>
+                <el-button @click="resetOperQuery">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div class="panel">
+            <div class="toolbar">
+              <el-button type="danger" plain :disabled="!operSelection.length" @click="batchRemoveOper">删除</el-button>
+              <el-button type="warning" plain @click="cleanOper">清空</el-button>
+              <el-button @click="mockToast('已触发导出（mock，响应体不入库）')">导出</el-button>
+            </div>
+            <el-table :data="pagedOpers" border stripe @selection-change="(rows) => (operSelection = rows)">
+              <el-table-column type="selection" width="48"></el-table-column>
+              <el-table-column prop="operId" label="日志编号" width="100"></el-table-column>
+              <el-table-column prop="title" label="系统模块" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column label="业务类型" width="100">
+                <template #default="{ row }">
+                  <el-tag size="small">{{ businessTypeLabel(row.businessType) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="method" label="操作方法" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="operName" label="操作人员" width="110"></el-table-column>
+              <el-table-column prop="operIp" label="IP" width="130"></el-table-column>
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === '0' ? 'success' : 'danger'" size="small">
+                    {{ row.status === '0' ? '成功' : '失败' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="operTime" label="操作日期" width="170"></el-table-column>
+              <el-table-column prop="costTime" label="耗时(ms)" width="100"></el-table-column>
+              <el-table-column label="操作" width="90" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="openOperDetail(row)">详情</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pager">
+              <el-pagination
+                v-model:current-page="operPage"
+                v-model:page-size="operPageSize"
+                :total="filteredOpers.length"
+                layout="total, sizes, prev, pager, next"
+                :page-sizes="[5, 10, 20]"
+              ></el-pagination>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- ========== 登录日志 ========== -->
+        <el-tab-pane label="登录日志" name="logininfor">
+          <p class="hint">对应 API 前缀 <code>monitor/logininfor</code>：登录成功/失败写库；支持清空、解锁选中用户。</p>
+          <div class="panel">
+            <el-form :inline="true" :model="loginQuery" label-width="80px">
+              <el-form-item label="登录地址">
+                <el-input v-model="loginQuery.ipaddr" clearable placeholder="IP" style="width: 150px"></el-input>
+              </el-form-item>
+              <el-form-item label="用户名">
+                <el-input v-model="loginQuery.userName" clearable placeholder="用户名" style="width: 140px"></el-input>
+              </el-form-item>
+              <el-form-item label="客户端ID">
+                <el-input v-model="loginQuery.clientId" clearable placeholder="clientId" style="width: 140px"></el-input>
+              </el-form-item>
+              <el-form-item label="状态">
+                <el-select v-model="loginQuery.status" clearable placeholder="全部" style="width: 120px">
+                  <el-option label="成功" value="0"></el-option>
+                  <el-option label="失败" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="loginPage = 1">搜索</el-button>
+                <el-button @click="resetLoginQuery">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          <div class="panel">
+            <div class="toolbar">
+              <el-button type="danger" plain :disabled="!loginSelection.length" @click="batchRemoveLogin">删除</el-button>
+              <el-button type="warning" plain @click="cleanLogin">清空</el-button>
+              <el-button type="primary" plain :disabled="!loginSelection.length" @click="unlockSelected">解锁选中</el-button>
+              <el-button @click="mockToast('已触发导出（mock）')">导出</el-button>
+            </div>
+            <el-table :data="pagedLogins" border stripe @selection-change="(rows) => (loginSelection = rows)">
+              <el-table-column type="selection" width="48"></el-table-column>
+              <el-table-column prop="infoId" label="访问编号" width="100"></el-table-column>
+              <el-table-column prop="userName" label="用户名" min-width="120"></el-table-column>
+              <el-table-column prop="clientId" label="客户端ID" min-width="120"></el-table-column>
+              <el-table-column prop="ipaddr" label="IP" width="130"></el-table-column>
+              <el-table-column prop="loginLocation" label="登录地点" min-width="120"></el-table-column>
+              <el-table-column prop="os" label="操作系统" width="120"></el-table-column>
+              <el-table-column prop="browser" label="浏览器" width="120"></el-table-column>
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === '0' ? 'success' : 'danger'" size="small">
+                    {{ row.status === '0' ? '成功' : '失败' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="msg" label="描述" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="loginTime" label="访问时间" width="170"></el-table-column>
+            </el-table>
+            <div class="pager">
+              <el-pagination
+                v-model:current-page="loginPage"
+                v-model:page-size="loginPageSize"
+                :total="filteredLogins.length"
+                layout="total, sizes, prev, pager, next"
+                :page-sizes="[5, 10, 20]"
+              ></el-pagination>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+
+    <!-- 参数表单 -->
+    <el-dialog v-model="configDialogVisible" :title="configForm.configId ? '修改参数' : '新增参数'" width="560px" destroy-on-close>
+      <el-form ref="configFormRef" :model="configForm" :rules="configRules" label-width="100px">
+        <el-form-item label="参数名称" prop="configName">
+          <el-input v-model="configForm.configName" placeholder="请输入参数名称"></el-input>
+        </el-form-item>
+        <el-form-item label="参数键名" prop="configKey">
+          <el-input v-model="configForm.configKey" placeholder="如 qc.login.fail-lock-enabled" :disabled="isBuiltinEdit"></el-input>
+        </el-form-item>
+        <el-form-item label="参数键值" prop="configValue">
+          <el-input v-model="configForm.configValue" type="textarea" :rows="3" placeholder="请输入参数键值"></el-input>
+        </el-form-item>
+        <el-form-item label="系统内置" prop="configType">
+          <el-radio-group v-model="configForm.configType" :disabled="isBuiltinEdit">
+            <el-radio value="0">否</el-radio>
+            <el-radio value="1">是</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="configForm.remark" type="textarea" :rows="2" placeholder="请输入备注"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="configDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitConfig">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 操作日志详情 -->
+    <el-dialog v-model="operDetailVisible" title="操作日志详情" width="880px" destroy-on-close>
+      <el-descriptions v-if="operDetail" :column="2" border size="small">
+        <el-descriptions-item label="日志编号">{{ operDetail.operId }}</el-descriptions-item>
+        <el-descriptions-item label="链路ID">{{ operDetail.traceId || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="系统模块" :span="2">{{ operDetail.title || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="业务类型">{{ businessTypeLabel(operDetail.businessType) }}</el-descriptions-item>
+        <el-descriptions-item label="操作类别">后台用户</el-descriptions-item>
+        <el-descriptions-item label="方法" :span="2"><span class="mono">{{ operDetail.method || '—' }}</span></el-descriptions-item>
+        <el-descriptions-item label="请求地址" :span="2">{{ operDetail.operUrl || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="请求方式">{{ operDetail.requestMethod || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ operDetail.status === '0' ? '成功' : '失败' }}</el-descriptions-item>
+        <el-descriptions-item label="操作人员">{{ operDetail.operName || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="部门">{{ operDetail.deptName || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="IP">{{ operDetail.operIp || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="地点">{{ operDetail.operLocation || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="操作时间">{{ operDetail.operTime }}</el-descriptions-item>
+        <el-descriptions-item label="耗时(ms)">{{ operDetail.costTime ?? '—' }}</el-descriptions-item>
+        <el-descriptions-item label="请求参数" :span="2">
+          <pre class="oper-pre">{{ operDetail.operParam || '—' }}</pre>
+        </el-descriptions-item>
+        <el-descriptions-item label="返回参数" :span="2">
+          <pre class="oper-pre">{{ operDetail.jsonResult || '—' }}</pre>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="operDetail.errorMsg" label="异常信息" :span="2">
+          <pre class="oper-pre oper-pre--error">{{ operDetail.errorMsg }}</pre>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed } = Vue;
+    const { ElMessage, ElMessageBox } = ElementPlus;
+
+    const businessTypeOptions = [
+      { label: '其它', value: '0' },
+      { label: '新增', value: '1' },
+      { label: '修改', value: '2' },
+      { label: '删除', value: '3' },
+      { label: '授权', value: '4' },
+      { label: '导出', value: '5' },
+      { label: '导入', value: '6' },
+      { label: '强退', value: '7' },
+      { label: '清空', value: '9' },
+    ];
+
+    const MOCK_CONFIGS = [
+      { configId: '1001', configName: '主框架页-默认皮肤', configKey: 'sys.index.skinName', configValue: 'skin-blue', configType: '1', remark: '蓝色 skin-blue、绿色 skin-green', createTime: '2026-01-10 09:00:00' },
+      { configId: '1002', configName: '用户管理-账号初始密码', configKey: 'sys.user.initPassword', configValue: 'admin123', configType: '1', remark: '初始化密码', createTime: '2026-01-10 09:00:00' },
+      { configId: '1003', configName: '主框架页-侧边栏主题', configKey: 'sys.index.sideTheme', configValue: 'theme-dark', configType: '1', remark: '深色主题', createTime: '2026-01-10 09:00:00' },
+      { configId: '1004', configName: '账号自助-验证码开关', configKey: 'sys.account.captchaEnabled', configValue: 'true', configType: '1', remark: '是否开启验证码', createTime: '2026-02-01 10:12:00' },
+      { configId: '1005', configName: '账号自助-是否开启用户注册', configKey: 'sys.account.registerUser', configValue: 'false', configType: '1', remark: '是否开启注册用户功能', createTime: '2026-02-01 10:12:00' },
+      { configId: '1006', configName: '登录失败锁定开关', configKey: 'qc.login.fail-lock-enabled', configValue: 'true', configType: '0', remark: '失败次数过多锁定', createTime: '2026-07-15 14:22:00' },
+      { configId: '1007', configName: '登录失败锁定阈值', configKey: 'qc.login.fail-lock-threshold', configValue: '5', configType: '0', remark: '连续失败次数', createTime: '2026-07-15 14:22:00' },
+      { configId: '1008', configName: '操作日志采集开关', configKey: 'qc.monitor.operlog.capture-enabled', configValue: 'true', configType: '0', remark: '宽切面开关', createTime: '2026-08-03 11:00:00' },
+      { configId: '1009', configName: '用户导入更新支持', configKey: 'sys.user.import.updateSupport', configValue: 'true', configType: '0', remark: '导入时是否更新已存在用户', createTime: '2026-08-03 11:05:00' },
+      { configId: '1010', configName: '文件上传大小限制', configKey: 'sys.oss.maxSize', configValue: '50MB', configType: '0', remark: '单文件上限', createTime: '2026-08-03 11:10:00' },
+      { configId: '1011', configName: '默认分页大小', configKey: 'sys.page.defaultSize', configValue: '10', configType: '0', remark: '', createTime: '2026-08-03 11:15:00' },
+      { configId: '1012', configName: '导出最大行数', configKey: 'qc.monitor.operlog.export-max-rows', configValue: '10000', configType: '0', remark: '同步导出上限', createTime: '2026-08-03 11:20:00' },
+    ];
+
+    const MOCK_OPERS = [
+      { operId: 2001, title: '参数配置-新增参数', businessType: 1, method: 'SysConfigController.add()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/config/add', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-03 18:01:12', costTime: 86, traceId: 't-a1b2c3', operParam: '{"configKey":"qc.demo.flag","configValue":"1"}', jsonResult: '{"code":200,"msg":"操作成功"}', errorMsg: '' },
+      { operId: 2002, title: '用户管理-修改用户', businessType: 2, method: 'SysUserController.update()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/user/update', operIp: '10.0.0.12', operLocation: '内网IP', status: '0', operTime: '2026-08-03 17:45:03', costTime: 120, traceId: 't-d4e5f6', operParam: '{"userId":"1","nickName":"管理员"}', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2003, title: '角色管理-删除角色', businessType: 3, method: 'SysRoleController.remove()', requestMethod: 'POST', operName: 'ly', deptName: '测试部门', operUrl: '/sys/role/remove', operIp: '10.0.0.33', operLocation: '内网IP', status: '1', operTime: '2026-08-03 16:20:44', costTime: 45, traceId: 't-fail01', operParam: '[100]', jsonResult: '', errorMsg: '角色已分配，不能删除' },
+      { operId: 2004, title: '参数配置-导出参数', businessType: 5, method: 'SysConfigController.export()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/config/export', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-03 15:10:00', costTime: 320, traceId: 't-exp01', operParam: '{}', jsonResult: '（已忽略 RESULT）', errorMsg: '' },
+      { operId: 2005, title: '字典管理-刷新缓存', businessType: 2, method: 'SysDictTypeController.refresh()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/dict/type/refresh', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-03 14:02:18', costTime: 55, traceId: 't-dict1', operParam: '', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2006, title: '部门管理-新增部门', businessType: 1, method: 'SysDeptController.add()', requestMethod: 'POST', operName: 'ly', deptName: '测试部门', operUrl: '/sys/dept/add', operIp: '10.0.0.33', operLocation: '内网IP', status: '0', operTime: '2026-08-02 11:11:11', costTime: 70, traceId: 't-dept1', operParam: '{"deptName":"市场部"}', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2007, title: '菜单管理-修改菜单', businessType: 2, method: 'SysMenuController.update()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/menu/update', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-02 10:00:00', costTime: 90, traceId: 't-menu1', operParam: '{"menuId":2000}', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2008, title: 'OAuth客户端-导入', businessType: 6, method: 'SysOauthClientController.importData()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/oauth/client/import', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-01 19:30:00', costTime: 880, traceId: 't-imp1', operParam: 'file=clients.xlsx', jsonResult: '{"successCount":3,"failCount":0}', errorMsg: '' },
+      { operId: 2009, title: '登录管理-用户登录', businessType: 0, method: 'LoginController.login()', requestMethod: 'POST', operName: 'admin', deptName: '', operUrl: '/login', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-08-01 09:00:01', costTime: 200, traceId: 't-login', operParam: '{"username":"admin"}', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2010, title: '操作日志-清空', businessType: 9, method: 'SysOperLogController.clean()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/monitor/operlog/clean', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-07-30 08:00:00', costTime: 40, traceId: 't-clean', operParam: '', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2011, title: '用户管理-重置密码', businessType: 2, method: 'SysUserController.resetPwd()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/user/resetPwd', operIp: '10.0.0.12', operLocation: '内网IP', status: '0', operTime: '2026-07-29 16:40:00', costTime: 66, traceId: 't-pwd1', operParam: '{"userId":"2"}', jsonResult: '{"code":200}', errorMsg: '' },
+      { operId: 2012, title: '角色管理-分配菜单', businessType: 4, method: 'SysRoleController.dataScope()', requestMethod: 'POST', operName: 'admin', deptName: '研发部门', operUrl: '/sys/role/authMenu', operIp: '127.0.0.1', operLocation: '内网IP', status: '0', operTime: '2026-07-28 13:13:13', costTime: 110, traceId: 't-auth1', operParam: '{"roleId":1,"menuIds":[1,2,3]}', jsonResult: '{"code":200}', errorMsg: '' },
+    ];
+
+    const MOCK_LOGINS = [
+      { infoId: 3001, userName: 'admin', clientId: 'web', ipaddr: '127.0.0.1', loginLocation: '内网IP', os: 'Windows 10', browser: 'Chrome', status: '0', msg: '登录成功', loginTime: '2026-08-03 18:30:01' },
+      { infoId: 3002, userName: 'ly', clientId: 'web', ipaddr: '10.0.0.33', loginLocation: '内网IP', os: 'Windows 11', browser: 'Edge', status: '0', msg: '登录成功', loginTime: '2026-08-03 17:12:44' },
+      { infoId: 3003, userName: 'guest', clientId: 'web', ipaddr: '10.0.0.99', loginLocation: '内网IP', os: 'macOS', browser: 'Safari', status: '1', msg: '用户不存在/密码错误', loginTime: '2026-08-03 16:01:02' },
+      { infoId: 3004, userName: 'guest', clientId: 'web', ipaddr: '10.0.0.99', loginLocation: '内网IP', os: 'macOS', browser: 'Safari', status: '1', msg: '用户不存在/密码错误', loginTime: '2026-08-03 16:01:20' },
+      { infoId: 3005, userName: 'guest', clientId: 'web', ipaddr: '10.0.0.99', loginLocation: '内网IP', os: 'macOS', browser: 'Safari', status: '1', msg: '账户已锁定，请稍后再试', loginTime: '2026-08-03 16:01:45' },
+      { infoId: 3006, userName: 'admin', clientId: 'mp', ipaddr: '192.168.1.8', loginLocation: '局域网', os: 'Android', browser: '微信', status: '0', msg: '登录成功', loginTime: '2026-08-02 21:00:00' },
+      { infoId: 3007, userName: 'test', clientId: 'web', ipaddr: '10.0.0.55', loginLocation: '内网IP', os: 'Windows 10', browser: 'Firefox', status: '1', msg: '验证码错误', loginTime: '2026-08-02 09:30:11' },
+      { infoId: 3008, userName: 'test', clientId: 'web', ipaddr: '10.0.0.55', loginLocation: '内网IP', os: 'Windows 10', browser: 'Firefox', status: '0', msg: '登录成功', loginTime: '2026-08-02 09:30:40' },
+      { infoId: 3009, userName: 'admin', clientId: 'web', ipaddr: '127.0.0.1', loginLocation: '内网IP', os: 'Windows 10', browser: 'Chrome', status: '0', msg: '登录成功', loginTime: '2026-08-01 09:00:01' },
+      { infoId: 3010, userName: 'locked_user', clientId: 'web', ipaddr: '10.0.0.77', loginLocation: '内网IP', os: 'Linux', browser: 'Chrome', status: '1', msg: '账户已锁定，请稍后再试', loginTime: '2026-07-31 22:15:00' },
+      { infoId: 3011, userName: 'ly', clientId: 'web', ipaddr: '10.0.0.33', loginLocation: '内网IP', os: 'Windows 11', browser: 'Edge', status: '0', msg: '登录成功', loginTime: '2026-07-30 08:45:00' },
+      { infoId: 3012, userName: 'admin', clientId: 'web', ipaddr: '127.0.0.1', loginLocation: '内网IP', os: 'Windows 10', browser: 'Chrome', status: '0', msg: '退出成功', loginTime: '2026-07-29 18:00:00' },
+    ];
+
+    createApp({
+      setup() {
+        const activeTab = ref('config');
+
+        // —— config ——
+        const configs = ref(MOCK_CONFIGS.map((x) => ({ ...x })));
+        const configQuery = reactive({ configName: '', configKey: '', configType: '' });
+        const configPage = ref(1);
+        const configPageSize = ref(10);
+        const configSelection = ref([]);
+        const configDialogVisible = ref(false);
+        const configFormRef = ref(null);
+        const configForm = reactive({
+          configId: null, configName: '', configKey: '', configValue: '', configType: '0', remark: '',
+        });
+        const isBuiltinEdit = computed(() => !!configForm.configId && configForm.configType === '1');
+        const configRules = {
+          configName: [{ required: true, message: '请输入参数名称', trigger: 'blur' }],
+          configKey: [{ required: true, message: '请输入参数键名', trigger: 'blur' }],
+          configValue: [{ required: true, message: '请输入参数键值', trigger: 'blur' }],
+        };
+
+        const filteredConfigs = computed(() => {
+          return configs.value.filter((r) => {
+            if (configQuery.configName && !r.configName.includes(configQuery.configName)) return false;
+            if (configQuery.configKey && !r.configKey.includes(configQuery.configKey)) return false;
+            if (configQuery.configType !== '' && configQuery.configType != null && r.configType !== configQuery.configType) return false;
+            return true;
+          });
+        });
+        const pagedConfigs = computed(() => {
+          const start = (configPage.value - 1) * configPageSize.value;
+          return filteredConfigs.value.slice(start, start + configPageSize.value);
+        });
+
+        function resetConfigQuery() {
+          configQuery.configName = '';
+          configQuery.configKey = '';
+          configQuery.configType = '';
+          configPage.value = 1;
+        }
+        function openConfigForm(row) {
+          if (row) {
+            Object.assign(configForm, { ...row });
+          } else {
+            Object.assign(configForm, {
+              configId: null, configName: '', configKey: '', configValue: '', configType: '0', remark: '',
+            });
+          }
+          configDialogVisible.value = true;
+        }
+        function submitConfig() {
+          configFormRef.value.validate((valid) => {
+            if (!valid) return;
+            if (configForm.configId) {
+              const idx = configs.value.findIndex((c) => c.configId === configForm.configId);
+              if (idx >= 0) configs.value[idx] = { ...configs.value[idx], ...configForm };
+              ElMessage.success('修改成功（mock）');
+            } else {
+              configs.value.unshift({
+                ...configForm,
+                configId: String(Date.now()),
+                createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              });
+              ElMessage.success('新增成功（mock）');
+            }
+            configDialogVisible.value = false;
+          });
+        }
+        function removeConfig(row) {
+          if (row.configType === '1') {
+            ElMessage.warning('系统内置参数不允许删除');
+            return;
+          }
+          ElMessageBox.confirm(`确认删除「${row.configName}」吗？`, '提示', { type: 'warning' })
+            .then(() => {
+              configs.value = configs.value.filter((c) => c.configId !== row.configId);
+              ElMessage.success('删除成功（mock）');
+            })
+            .catch(() => {});
+        }
+        function batchRemoveConfig() {
+          const ids = configSelection.value.map((r) => r.configId);
+          const blocked = configSelection.value.some((r) => r.configType === '1');
+          if (blocked) {
+            ElMessage.warning('选中项含系统内置参数，无法删除');
+            return;
+          }
+          ElMessageBox.confirm(`确认删除选中的 ${ids.length} 条？`, '提示', { type: 'warning' })
+            .then(() => {
+              configs.value = configs.value.filter((c) => !ids.includes(c.configId));
+              ElMessage.success('批量删除成功（mock）');
+            })
+            .catch(() => {});
+        }
+        function mockRefreshCache() {
+          ElMessage.success('参数缓存已刷新（mock）');
+        }
+
+        // —— operlog ——
+        const opers = ref(MOCK_OPERS.map((x) => ({ ...x })));
+        const operQuery = reactive({
+          operUrl: '', title: '', operName: '', businessType: '', status: '',
+        });
+        const operPage = ref(1);
+        const operPageSize = ref(10);
+        const operSelection = ref([]);
+        const operDetailVisible = ref(false);
+        const operDetail = ref(null);
+
+        function businessTypeLabel(v) {
+          const hit = businessTypeOptions.find((o) => String(o.value) === String(v));
+          return hit ? hit.label : String(v ?? '—');
+        }
+        const filteredOpers = computed(() => {
+          return opers.value.filter((r) => {
+            if (operQuery.operUrl && !(r.operUrl || '').includes(operQuery.operUrl)) return false;
+            if (operQuery.title && !(r.title || '').includes(operQuery.title)) return false;
+            if (operQuery.operName && !(r.operName || '').includes(operQuery.operName)) return false;
+            if (operQuery.businessType !== '' && operQuery.businessType != null && String(r.businessType) !== String(operQuery.businessType)) return false;
+            if (operQuery.status !== '' && operQuery.status != null && r.status !== operQuery.status) return false;
+            return true;
+          });
+        });
+        const pagedOpers = computed(() => {
+          const start = (operPage.value - 1) * operPageSize.value;
+          return filteredOpers.value.slice(start, start + operPageSize.value);
+        });
+        function resetOperQuery() {
+          operQuery.operUrl = '';
+          operQuery.title = '';
+          operQuery.operName = '';
+          operQuery.businessType = '';
+          operQuery.status = '';
+          operPage.value = 1;
+        }
+        function openOperDetail(row) {
+          operDetail.value = { ...row };
+          operDetailVisible.value = true;
+        }
+        function batchRemoveOper() {
+          const ids = operSelection.value.map((r) => r.operId);
+          ElMessageBox.confirm(`确认删除选中的 ${ids.length} 条操作日志？`, '提示', { type: 'warning' })
+            .then(() => {
+              opers.value = opers.value.filter((r) => !ids.includes(r.operId));
+              ElMessage.success('删除成功（mock）');
+            })
+            .catch(() => {});
+        }
+        function cleanOper() {
+          ElMessageBox.confirm('确认清空全部操作日志？', '提示', { type: 'warning' })
+            .then(() => {
+              opers.value = [];
+              ElMessage.success('已清空（mock）');
+            })
+            .catch(() => {});
+        }
+
+        // —— logininfor ——
+        const logins = ref(MOCK_LOGINS.map((x) => ({ ...x })));
+        const loginQuery = reactive({ ipaddr: '', userName: '', clientId: '', status: '' });
+        const loginPage = ref(1);
+        const loginPageSize = ref(10);
+        const loginSelection = ref([]);
+
+        const filteredLogins = computed(() => {
+          return logins.value.filter((r) => {
+            if (loginQuery.ipaddr && !(r.ipaddr || '').includes(loginQuery.ipaddr)) return false;
+            if (loginQuery.userName && !(r.userName || '').includes(loginQuery.userName)) return false;
+            if (loginQuery.clientId && r.clientId !== loginQuery.clientId) return false;
+            if (loginQuery.status !== '' && loginQuery.status != null && r.status !== loginQuery.status) return false;
+            return true;
+          });
+        });
+        const pagedLogins = computed(() => {
+          const start = (loginPage.value - 1) * loginPageSize.value;
+          return filteredLogins.value.slice(start, start + loginPageSize.value);
+        });
+        function resetLoginQuery() {
+          loginQuery.ipaddr = '';
+          loginQuery.userName = '';
+          loginQuery.clientId = '';
+          loginQuery.status = '';
+          loginPage.value = 1;
+        }
+        function batchRemoveLogin() {
+          const ids = loginSelection.value.map((r) => r.infoId);
+          ElMessageBox.confirm(`确认删除选中的 ${ids.length} 条登录日志？`, '提示', { type: 'warning' })
+            .then(() => {
+              logins.value = logins.value.filter((r) => !ids.includes(r.infoId));
+              ElMessage.success('删除成功（mock）');
+            })
+            .catch(() => {});
+        }
+        function cleanLogin() {
+          ElMessageBox.confirm('确认清空全部登录日志？', '提示', { type: 'warning' })
+            .then(() => {
+              logins.value = [];
+              ElMessage.success('已清空（mock）');
+            })
+            .catch(() => {});
+        }
+        function unlockSelected() {
+          const names = [...new Set(loginSelection.value.map((r) => r.userName).filter(Boolean))];
+          if (!names.length) {
+            ElMessage.warning('请先勾选要解锁的用户');
+            return;
+          }
+          ElMessageBox.confirm(`确认解锁用户：${names.join('、')} ？`, '提示', { type: 'warning' })
+            .then(() => {
+              ElMessage.success(`已清除锁定：${names.join('、')}（mock）`);
+            })
+            .catch(() => {});
+        }
+
+        function mockToast(msg) {
+          ElMessage.success(msg);
+        }
+
+        return {
+          activeTab,
+          businessTypeOptions,
+          businessTypeLabel,
+          // config
+          configQuery, configPage, configPageSize, configSelection,
+          filteredConfigs, pagedConfigs, configDialogVisible, configForm, configFormRef,
+          configRules, isBuiltinEdit, resetConfigQuery, openConfigForm, submitConfig,
+          removeConfig, batchRemoveConfig, mockRefreshCache,
+          // oper
+          operQuery, operPage, operPageSize, operSelection, filteredOpers, pagedOpers,
+          operDetailVisible, operDetail, resetOperQuery, openOperDetail, batchRemoveOper, cleanOper,
+          // login
+          loginQuery, loginPage, loginPageSize, loginSelection, filteredLogins, pagedLogins,
+          resetLoginQuery, batchRemoveLogin, cleanLogin, unlockSelected,
+          mockToast,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>
