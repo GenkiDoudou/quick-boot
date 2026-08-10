@@ -1,108 +1,65 @@
 import request from '@/utils/request'
-import { parseStrEmpty } from '@/utils/ruoyi'
 
-/**
- * 用户分页列表。
- * @param {Record<string, any>} query 查询参数（含 pageNum、pageSize）
- * @returns {Promise<any>}
- */
-export function listUser(query) {
-  return request({ url: '/system/user/list', method: 'get', params: query })
+export function pageUser(pageRequest) {
+  return request({ url: '/sys/user/page', method: 'post', data: pageRequest })
 }
 
-/**
- * 用户详情。
- * @param {number|string} userId 用户ID
- * @returns {Promise<any>}
- */
 export function getUser(userId) {
-  return request({ url: '/system/user/' + parseStrEmpty(userId), method: 'get' })
+  return request({ url: `/sys/user/${userId}`, method: 'get' })
 }
 
-/**
- * 新增用户。
- * @param {Record<string, any>} data 表单
- * @returns {Promise<any>}
- */
 export function addUser(data) {
-  return request({ url: '/system/user/create', method: 'post', data })
+  return request({ url: '/sys/user/add', method: 'post', data })
 }
 
-/**
- * 修改用户。
- * @param {Record<string, any>} data 表单
- * @returns {Promise<any>}
- */
 export function updateUser(data) {
-  return request({ url: '/system/user/update', method: 'post', data })
+  return request({ url: '/sys/user/update', method: 'post', data })
 }
 
-/**
- * 删除用户（批量）。
- * @param {Array<number|string>} userIds 用户ID
- * @returns {Promise<any>}
- */
-export function delUser(userIds) {
-  return request({ url: '/system/user/remove', method: 'post', data: userIds })
+export function removeUser(ids) {
+  const list = (Array.isArray(ids) ? ids : [ids]).map(String)
+  return request({ url: '/sys/user/remove', method: 'post', data: list })
 }
 
-/**
- * 重置用户密码（管理员）。
- * @param {{ userId: number, newPassword: string }} data 入参
- * @returns {Promise<any>}
- */
-export function resetUserPwd(data) {
-  return request({ url: '/system/user/resetPwd', method: 'post', data })
-}
-
-/**
- * 修改用户状态。
- * @param {{ userId: number, status: string }} data 入参
- * @returns {Promise<any>}
- */
 export function changeUserStatus(data) {
-  return request({ url: '/system/user/changeStatus', method: 'post', data })
+  return request({ url: '/sys/user/changeStatus', method: 'post', data })
 }
 
-/**
- * 分配角色页数据。
- * @param {number|string} userId 用户ID
- * @returns {Promise<any>}
- */
+export function resetUserPwd(data) {
+  return request({ url: '/sys/user/resetPwd', method: 'post', data })
+}
+
 export function getAuthRole(userId) {
-  return request({ url: '/system/user/authRole/' + parseStrEmpty(userId), method: 'get' })
+  return request({ url: `/sys/user/authRole/${userId}`, method: 'get' })
 }
 
-/**
- * 保存用户角色分配。
- * @param {{ userId: number, roleIds: number[] }} data 入参
- * @returns {Promise<any>}
- */
 export function updateAuthRole(data) {
-  return request({ url: '/system/user/authRole', method: 'post', data })
+  return request({ url: '/sys/user/authRole', method: 'post', data })
 }
 
-// 查询用户个人信息
-export function getUserProfile() {
-  return request({ url: '/system/user/profile', method: 'get' })
-}
-
-// 修改用户个人信息
-export function updateUserProfile(data) {
-  return request({ url: '/system/user/profile/update', method: 'post', data })
-}
-
-// 用户密码重置（个人中心）
-export function updateUserPwd(oldPassword, newPassword) {
-  return request({ url: '/system/user/profile/updatePwd', method: 'post', params: { oldPassword, newPassword } })
-}
-
-// 用户头像上传
-export function uploadAvatar(data) {
+export function exportUser(snapshot) {
   return request({
-    url: '/system/user/profile/avatar',
+    url: '/sys/user/export',
     method: 'post',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    data
+    data: snapshot || {},
+    responseType: 'blob',
+    returnBlobWithHeaders: true,
+    timeout: 120000
   })
+}
+
+export function downloadUserImportTemplate() {
+  return request({
+    url: '/sys/user/import/template',
+    method: 'get',
+    responseType: 'blob',
+    returnBlobWithHeaders: true
+  })
+}
+
+export function importUser(file, strategy) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('updateSupport', strategy === 'overwrite' ? 'true' : 'false')
+  return request({ url: '/sys/user/import', method: 'post', data: form, timeout: 120000 })
 }

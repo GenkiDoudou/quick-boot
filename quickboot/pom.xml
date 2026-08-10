@@ -11,8 +11,12 @@
   <modules>
     <module>quickboot-common</module>
     <module>quickboot-core</module>
-    <module>quickboot-system</module>
-    <module>quickboot-web</module>
+    <module>quickboot-module-system</module>
+    <module>quickboot-module-quartz</module>
+    <module>quickboot-module-report</module>
+    <module>quickboot-module-tool</module>
+    <module>quickboot-module-monitor</module>
+    <module>quickboot-app</module>
   </modules>
 
 
@@ -44,6 +48,17 @@
     <easyexcel.version>3.3.4</easyexcel.version>
 
     <sa-token.version>1.45.0</sa-token.version>
+
+    <!-- Spring Modulith 2.0.x 对齐 Spring Boot 4.0 -->
+    <spring-modulith.version>2.0.6</spring-modulith.version>
+
+    <!-- Boot 4.0.0 默认 Quartz 2.5.1：Util.containsColumnNames 大小写敏感，
+         与 H2 DATABASE_TO_LOWER 组合会误抛 NoRecordFoundException；2.5.2 已修复 -->
+    <quartz.version>2.5.2</quartz.version>
+
+    <jimureport.version>2.5.0</jimureport.version>
+    <jimubi.version>2.5.0</jimubi.version>
+    <jimureport-echarts.version>2.3.0</jimureport-echarts.version>
   </properties>
   <dependencies>
     <dependency>
@@ -61,6 +76,13 @@
         <version>${spring-boot.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+
+      <!-- 覆盖 Boot BOM：修复 2.5.1 列名大小写误判（quartz#1413） -->
+      <dependency>
+        <groupId>org.quartz-scheduler</groupId>
+        <artifactId>quartz</artifactId>
+        <version>${quartz.version}</version>
       </dependency>
 
       <!-- MyBatis-Plus -->
@@ -122,12 +144,58 @@
         <artifactId>easyexcel</artifactId>
         <version>${easyexcel.version}</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.springframework.modulith</groupId>
+        <artifactId>spring-modulith-bom</artifactId>
+        <version>${spring-modulith.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- 积木报表 / JimuBI（Boot4 starter，Jeecg 仓库） -->
+      <dependency>
+        <groupId>org.jeecgframework.jimureport</groupId>
+        <artifactId>jimureport-spring-boot4-starter</artifactId>
+        <version>${jimureport.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jeecgframework.jimureport</groupId>
+        <artifactId>jimubi-spring-boot4-starter</artifactId>
+        <version>${jimubi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jeecgframework.jimureport</groupId>
+        <artifactId>jimureport-echarts-starter</artifactId>
+        <version>${jimureport-echarts.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>gui.ava</groupId>
+        <artifactId>html2image</artifactId>
+        <version>2.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.promeg</groupId>
+        <artifactId>tinypinyin</artifactId>
+        <version>2.0.3</version>
+      </dependency>
     </dependencies>
 
   </dependencyManagement>
 
   <repositories>
-
+    <!-- Jeecg 须优先：积木 Boot4 starter / html2image 等 -->
+    <repository>
+      <id>jeecg</id>
+      <name>Jeecg Maven</name>
+      <url>https://maven.jeecg.org/nexus/content/repositories/jeecg</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
     <repository>
       <id>central</id>
       <name>Maven Central</name>

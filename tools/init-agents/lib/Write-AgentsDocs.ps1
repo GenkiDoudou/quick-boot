@@ -77,6 +77,10 @@ function Build-WritePlan {
     $agentsPlan | Add-Member NoteProperty Content $Documents.Agents -Force
     [void]$items.Add($agentsPlan)
 
+    $codeFormaterPlan = Resolve-DocPlan -ProjectRoot $ProjectRoot -FormalRelative 'code_formater.md' -SuggestedRelative 'code_formater.suggested.md' -Mode SuggestedIfExists -ForceSuggested:$ForceSuggested
+    $codeFormaterPlan | Add-Member NoteProperty Content $Documents.CodeFormater -Force
+    [void]$items.Add($codeFormaterPlan)
+
     # DESIGN / generation-spec / local / corrections: refresh target every -Write
     $designPlan = Resolve-DocPlan -ProjectRoot $ProjectRoot -FormalRelative 'DESIGN.md' -SuggestedRelative 'DESIGN.suggested.md' -Mode AlwaysOverwrite -ForceSuggested:$ForceSuggested
     if ($ForceSuggested) {

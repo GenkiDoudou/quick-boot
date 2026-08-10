@@ -2,17 +2,17 @@
 
 ## 仓库约定
 
-- 编码：**UTF-8 无 BOM**（见 `AGENTS.md`）
-- 后端规范：`sdd/后端代码规范.md`
-- 前端规范：`sdd/前端代码规范.md`、`DESIGN.md`
-- 协作流程：`openspec/project.md`
+- 编码 / 库表 / 分层 / 命名：**UTF-8 无 BOM** 等细则见仓库根 `code_formater.md`（事实源）
+- 协作流程（排障、Karpathy、Never）：仓库根 `AGENTS.md`
+- 前端视觉：`DESIGN.md`
+- 变更流程：`openspec/changes/<change-id>/`
 
 ## 功能开发流程（推荐）
 
 1. 在 `openspec/changes/<change-id>/` 创建 proposal / design / tasks / specs  
 2. 实现代码并与 spec 对齐  
 3. 更新本文档站对应模块页（`docs/docs/backend|frontend/...`）  
-4. 验证：`mvn -pl quickboot-web package`、`pnpm build:prod`
+4. 验证：`mvn -pl quickboot-app -am package`、`pnpm build:prod`
 
 ## 文档贡献
 

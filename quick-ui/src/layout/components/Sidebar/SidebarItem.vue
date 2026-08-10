@@ -34,7 +34,7 @@
 <script setup>
 import { isExternal } from '@/utils/validate'
 import AppLink from './Link.vue'
-import { getNormalPath } from '@/utils/ruoyi'
+import { getNormalPath, parseRouteQuery } from '@/utils/ruoyi'
 
 const props = defineProps({
   item: {
@@ -71,6 +71,10 @@ function hasOneShowingChild(children = [], parent) {
   }
 
   if (showingChildren.length === 0) {
+    // ParentView/Layout 空目录不能当成可点击叶子，否则会进到无组件路由 → 404
+    if (parent.component === 'ParentView' || parent.component === 'Layout' || parent.alwaysShow) {
+      return false
+    }
     onlyOneChild.value = { ...parent, path: '', noShowingChildren: true }
     return true
   }
@@ -79,25 +83,22 @@ function hasOneShowingChild(children = [], parent) {
 }
 
 function resolvePath(routePath, routeQuery, routeMeta) {
+  const path = isExternal(routePath)
+    ? routePath
+    : isExternal(props.basePath)
+      ? props.basePath
+      : getNormalPath(props.basePath + '/' + routePath)
+
   // 内嵌 iframe（meta.link）：须走 router-link，不能因 path 含 http 被当成新标签页外链
   if (routeMeta?.link) {
-    if (routeQuery) {
-      const query = JSON.parse(routeQuery)
-      return { path: getNormalPath(props.basePath + '/' + routePath), query }
-    }
-    return getNormalPath(props.basePath + '/' + routePath)
+    const query = parseRouteQuery(routeQuery)
+    return query ? { path, query } : path
   }
-  if (isExternal(routePath)) {
-    return routePath
+  if (isExternal(routePath) || isExternal(props.basePath)) {
+    return path
   }
-  if (isExternal(props.basePath)) {
-    return props.basePath
-  }
-  if (routeQuery) {
-    let query = JSON.parse(routeQuery)
-    return { path: getNormalPath(props.basePath + '/' + routePath), query: query }
-  }
-  return getNormalPath(props.basePath + '/' + routePath)
+  const query = parseRouteQuery(routeQuery)
+  return query ? { path, query } : path
 }
 
 function hasTitle(title) {

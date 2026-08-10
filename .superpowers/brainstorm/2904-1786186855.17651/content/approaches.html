@@ -1,0 +1,74 @@
+<h2>三种分层方案对比</h2>
+<p class="subtitle">目标：为拆微服务做准备 · Maven↔Modulith 一对一 · 薄共享 · 跨域显式 API · 第一阶段暂不拆 system</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>推荐：platform + module-system + app</h3>
+      <p>共享极薄；system 内分 api / internal；app 只负责启动与组装。新业务域按同样模板加 module-xxx。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Maven / Modulith</div>
+        <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.5">
+          <div>quickboot-platform　　　← 无业务（异常/安全基建/工具）</div>
+          <div>quickboot-module-system ← Modulith: system</div>
+          <div style="padding-left:1em">├ api/　　　← 对外接口 + DTO/事件契约</div>
+          <div style="padding-left:1em">└ internal/ ← entity/mapper/service/controller</div>
+          <div>quickboot-app　　　　　← @SpringBootApplication + 模块校验</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>双 jar 契约：system-api + system</h3>
+      <p>每个域拆出独立 <code>*-api</code> Maven 模块，其他域只依赖 api jar。拆微服务时契约可单独发布，但模块数翻倍。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Maven</div>
+        <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.5">
+          <div>quickboot-platform</div>
+          <div>quickboot-module-system-api　← 仅接口/DTO</div>
+          <div>quickboot-module-system　　　← 实现（Modulith）</div>
+          <div>quickboot-app</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>现状渐进：收编 common/core，少改名</h3>
+      <p>把 common+core 收敛为 thin platform（可暂保留目录名），system 加 api 包边界，web 改造成 app。迁移成本最低，命名与「一对一」叙事略糊。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">演进路径</div>
+        <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.5">
+          <div>common + core → platform（薄化）</div>
+          <div>system　　　→ 增加 api 包 + Modulith 元数据</div>
+          <div>web　　　　→ app（启动 + 校验）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:24px">
+  <div class="pros">
+    <h4>A 适合你如果…</h4>
+    <ul>
+      <li>想清晰模板，后面加域照抄</li>
+      <li>暂不拆 system，但边界规则要先立住</li>
+      <li>接受一次命名整理</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>需注意</h4>
+    <ul>
+      <li>B：契约强，但 Maven 模块膨胀快</li>
+      <li>C：最快落地，长期一对一叙事弱一些</li>
+      <li>三者都应：禁止跨域依赖 internal</li>
+    </ul>
+  </div>
+</div>

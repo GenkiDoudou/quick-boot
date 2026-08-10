@@ -1,0 +1,61 @@
+<h2>设计 §1：整体架构</h2>
+<p class="subtitle">方案 A · 请确认这一段；通过后再讲模块内部与依赖规则</p>
+
+<div class="section">
+  <p class="label">运行时形态</p>
+  <p>仍是<strong>单一可部署单体</strong>（quickboot-app）。Modulith 在进程内强制模块边界；将来拆服务时按 Maven 模块整块外提。</p>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">逻辑视图（第一阶段）</div>
+  <div class="mockup-body">
+    <div style="display:flex;flex-direction:column;gap:12px;font-family:ui-monospace,monospace;font-size:13px">
+      <div style="border:1px dashed var(--border, #888);padding:12px;border-radius:8px">
+        <strong>quickboot-app</strong>（bootstrap）
+        <div style="opacity:.8;margin-top:4px">WebApplication · 安全过滤器装配 · Modulith 校验 · 组合依赖</div>
+      </div>
+      <div style="text-align:center;opacity:.6">↓ depends on</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="border:2px solid var(--accent, #3b82f6);padding:12px;border-radius:8px">
+          <strong>module-system</strong>
+          <div style="margin-top:8px;padding:8px;background:rgba(59,130,246,.12);border-radius:6px">api/（公开）</div>
+          <div style="margin-top:6px;padding:8px;background:rgba(0,0,0,.06);border-radius:6px">internal/（私有）</div>
+          <div style="opacity:.75;margin-top:8px">用户 · 角色 · 菜单 · 字典 · 配置 · 日志 …</div>
+        </div>
+        <div style="border:1px solid var(--border, #888);padding:12px;border-radius:8px">
+          <strong>platform</strong>
+          <div style="opacity:.8;margin-top:8px">异常 · 校验组 · 安全基建 · 缓存/Excel 等无业务能力</div>
+          <div style="opacity:.65;margin-top:8px">不是 Modulith 业务模块；被各域依赖</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <p class="label">演进示意</p>
+  <div class="mockup">
+    <div class="mockup-header">第二阶段起（新业务域）</div>
+    <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.6">
+      app → module-system + <strong>module-order</strong> + platform<br>
+      order 只能依赖 system.<em>api</em> 与 platform，禁止依赖 system.internal
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>这一段 OK</h3>
+      <p>整体分层与演进方向符合预期</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>需要改</h3>
+      <p>在对话里说明要调整的点</p>
+    </div>
+  </div>
+</div>

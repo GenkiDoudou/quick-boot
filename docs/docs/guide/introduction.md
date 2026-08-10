@@ -10,7 +10,6 @@ QuickBoot（本仓库 `quickboot2`）是一套 **企业后台全栈解决方案*
 | `quick-ui/` | Vue 3 + Vite + Element Plus 管理端 |
 | `docs/` | VitePress 文档站点（当前站点） |
 | `openspec/` | OpenSpec 变更与规范 |
-| `sdd/` | 前后端/数据库协作规范 |
 
 ## 技术栈一览
 
@@ -34,8 +33,9 @@ QuickBoot（本仓库 `quickboot2`）是一套 **企业后台全栈解决方案*
 ### 模块划分
 
 - **quickboot-common**：统一响应 `R`、异常、校验分组、i18n、缓存、Excel、脱敏、验证码、文件存储、操作日志 AOP、Web 防火墙（XSS/SQL 注入/敏感词/幂等/CORS/安全头等）
-- **quickboot-core**：预留模块（当前无业务 Java 代码）
-- **quickboot-web**：启动入口、全部 Controller/Service/Mapper、Flyway 脚本
+- **quickboot-core**：项目间共享（如 `BaseEntity`）
+- **quickboot-module-system**：系统域业务（用户/角色/菜单/部门/字典/配置/日志/OAuth 等）
+- **quickboot-app**：启动组装、Flyway、Modulith 校验（不写业务 Controller）
 
 ### 业务域
 
@@ -76,7 +76,7 @@ QuickBoot（本仓库 `quickboot2`）是一套 **企业后台全栈解决方案*
 
 - [能力文档大纲](./capabilities-outline)：全站目录与填充进度
 - [快速上手](./quick-start)：本地运行三步
-- 编码规范：仓库根 `AGENTS.md`、`sdd/*.md`、`DESIGN.md`（前端视觉）
+- 编码规范：仓库根 `code_formater.md`；协作流程：`AGENTS.md`；视觉：`DESIGN.md`
 - 变更流程：`openspec/changes/<change-id>/`
 
 ## 下一步

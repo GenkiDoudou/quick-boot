@@ -20,6 +20,7 @@ PowerShell 脚手架：探测前后端/文档技术栈，生成 AI 规范文件�
 | 目标 | 行为 |
 |------|------|
 | `AGENTS.md` | 若已存在正式文件 → **覆盖** `AGENTS.suggested.md`（永不直接改正式 AGENTS.md）；否则创建/覆盖正式 `AGENTS.md` |
+| `code_formater.md` | 同上（正式文件存在则写 `code_formater.suggested.md`）；编码事实源模板 |
 | `DESIGN.md` | **每次覆盖**正式 `DESIGN.md`（`-ForceSuggested` 时改为写 `DESIGN.suggested.md`） |
 | `AGENTS.local.md` | **每次覆盖** |
 | `.agents/generation-spec.md` | **每次覆盖**（`-ForceSuggested` 时写 `*.suggested.md`） |

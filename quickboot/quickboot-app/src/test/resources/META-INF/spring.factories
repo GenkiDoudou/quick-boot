@@ -1,0 +1,2 @@
+org.springframework.modulith.core.ApplicationModuleSourceFactory=\
+io.github.genkidoudou.web.modulith.SystemApplicationModuleSourceFactory

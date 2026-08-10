@@ -1,0 +1,73 @@
+<h2>设计修订：保留 common + core</h2>
+<p class="subtitle">回应：不合并为 platform；common=工具模块；core=项目间共享</p>
+
+<div class="section">
+  <p class="label">变更点</p>
+  <p>取消「common + core → platform（薄化）」。第一阶段 Maven 底座保持两层共享，再叠加业务模块与 app。</p>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">修订后逻辑视图</div>
+  <div class="mockup-body">
+    <div style="display:flex;flex-direction:column;gap:10px;font-family:ui-monospace,monospace;font-size:13px">
+      <div style="border:1px dashed #888;padding:12px;border-radius:8px">
+        <strong>quickboot-app</strong> — 启动 / 组装 / Modulith 校验
+      </div>
+      <div style="text-align:center;opacity:.6">↓</div>
+      <div style="border:2px solid #3b82f6;padding:12px;border-radius:8px">
+        <strong>quickboot-module-system</strong> — Modulith 业务模块（api / internal）
+      </div>
+      <div style="text-align:center;opacity:.6">↓</div>
+      <div style="border:1px solid #888;padding:12px;border-radius:8px">
+        <strong>quickboot-core</strong> — 项目间共享（BaseEntity、项目级约定/抽象）
+        <div style="opacity:.75;margin-top:6px">可被本仓库业务模块及其他项目复用；禁止依赖任何 module-*</div>
+      </div>
+      <div style="text-align:center;opacity:.6">↓</div>
+      <div style="border:1px solid #888;padding:12px;border-radius:8px">
+        <strong>quickboot-common</strong> — 独立工具模块（无业务：异常、校验、Excel、缓存封装等）
+        <div style="opacity:.75;margin-top:6px">最底层；不依赖 core / module / app</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:16px">
+  <div class="pros">
+    <h4>这样更好的地方</h4>
+    <ul>
+      <li>契合「工具」与「项目共享」两种复用粒度</li>
+      <li>其他项目可只引 common，或 common+core</li>
+      <li>迁移成本更低（少一次大改名）</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>仍要守住的边界</h4>
+    <ul>
+      <li>common / core 都不放业务表实体与业务 Service</li>
+      <li>core → common 单向；禁止反向</li>
+      <li>业务域只通过他域 api 协作，规则不变</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px">
+  <p class="label">依赖假设（若不对请改）</p>
+  <p><code>app → module-* → core → common</code>。Modulith 应用模块仍从业务域算起；common/core 作为共享内核，一般不标成业务 Application Module。</p>
+</div>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>按此修订</h3>
+      <p>保留 common + core，其余仍用方案 A</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>还要再改</h3>
+      <p>例如 common/core 职责边界或依赖方向</p>
+    </div>
+  </div>
+</div>

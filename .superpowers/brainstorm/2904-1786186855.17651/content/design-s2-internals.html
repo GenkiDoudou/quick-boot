@@ -1,0 +1,70 @@
+<h2>设计 §2：模块内部结构与依赖规则</h2>
+<p class="subtitle">方案 A · 以 module-system 为模板；新域照抄</p>
+
+<div class="section">
+  <p class="label">推荐包结构（module-system）</p>
+  <div class="mockup">
+    <div class="mockup-header">io.github.genkidoudou.system</div>
+    <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.55">
+      <div><strong>api/</strong>　← Modulith 允许被其他模块依赖</div>
+      <div style="padding-left:1em">XxxFacade / XxxQueryService（接口）</div>
+      <div style="padding-left:1em">dto / command / event（契约类型）</div>
+      <div style="margin-top:8px"><strong>internal/</strong>　← 默认封闭，仅本模块可见</div>
+      <div style="padding-left:1em">controller · service · mapper · entity · config</div>
+      <div style="padding-left:1em">api 接口的实现类放这里</div>
+      <div style="margin-top:8px">package-info.java　← @ApplicationModule / 开放包声明</div>
+    </div>
+  </div>
+</div>
+
+<div class="split" style="margin-top:16px">
+  <div class="mockup">
+    <div class="mockup-header">允许</div>
+    <div class="mockup-body" style="font-size:13px;line-height:1.6">
+      <ul>
+        <li>app → 所有 module + platform</li>
+        <li>module-X → platform</li>
+        <li>module-X → module-Y.<strong>api</strong></li>
+        <li>同模块 internal 随意协作</li>
+      </ul>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">禁止</div>
+    <div class="mockup-body" style="font-size:13px;line-height:1.6">
+      <ul>
+        <li>module-X → module-Y.<strong>internal</strong></li>
+        <li>platform → 任何业务 module</li>
+        <li>module 之间循环依赖</li>
+        <li>把业务实体/Mapper 放进 platform</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px">
+  <p class="label">跨模块调用约定（你选的显式 API）</p>
+  <p>他域需要本域能力时：只注入 <code>api</code> 中的接口；DTO/事件定义也只放 api。实现与表结构留在 internal。第一阶段 system 暂无他域，先把现有对外扩展点抽到 api（如字典查询、用户查询），避免以后再挖。</p>
+</div>
+
+<div class="section">
+  <p class="label">Controller 放哪？</p>
+  <p><strong>放在各业务模块的 internal</strong>（与现网 system 一致）。app 不写业务接口，只做装配与横切（Sa-Token、全局异常若已在 platform 则保持）。</p>
+</div>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>这一段 OK</h3>
+      <p>包结构与依赖禁令符合预期</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>需要改</h3>
+      <p>在对话里说明要调整的点</p>
+    </div>
+  </div>
+</div>

@@ -53,7 +53,7 @@
           <el-input-number v-model="form.roleSort" :min="0" :controls="true" style="width: 100%"/>
         </el-form-item>
         <el-form-item label="状态" prop="status">
-          <C7Select v-model="form.status" :data-list="statusOptions" style="width: 100%"/>
+          <C7Select v-model="form.status" :data-list="sys_normal_disable" style="width: 100%"/>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
@@ -121,7 +121,7 @@
             <el-table-column prop="nickName" label="昵称" min-width="120"/>
             <el-table-column prop="status" label="状态" width="90">
               <template #default="{ row }">
-                {{ row.status === '1' ? '停用' : '正常' }}
+                <C7DictTag :model-value="row.status" :options="sys_normal_disable" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="100" fixed="right">
@@ -170,7 +170,7 @@
             <el-table-column prop="nickName" label="昵称" min-width="120"/>
             <el-table-column prop="status" label="状态" width="90">
               <template #default="{ row }">
-                {{ row.status === '1' ? '停用' : '正常' }}
+                <C7DictTag :model-value="row.status" :options="sys_normal_disable" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
@@ -204,6 +204,7 @@
  * 交互对齐 oauthClient/index.vue（C7JsonTable + C7Dialog）。
  */
 import {ElMessage, ElMessageBox} from 'element-plus'
+import {useDict} from '@/utils/dict'
 import {
   pageRole,
   getRole,
@@ -221,6 +222,9 @@ import {
   downloadRoleImportTemplate,
   importRole
 } from '@/api/system/role'
+import { toApiLongIds } from '@/utils/ruoyi'
+
+const {sys_normal_disable} = useDict('sys_normal_disable')
 
 const tableRef = ref(null)
 const formRef = ref(null)
@@ -231,18 +235,13 @@ const menuVisible = ref(false)
 const userVisible = ref(false)
 const isAdd = ref(true)
 
-const statusOptions = [
-  {label: '正常', value: '0'},
-  {label: '停用', value: '1'}
-]
-
 const defaultSearch = {
   roleName: '',
   roleKey: '',
   status: ''
 }
 
-const searchColumns = [
+const searchColumns = computed(() => [
   {prop: 'roleName', label: '角色名称', type: 'input', order: 1, span: 6},
   {prop: 'roleKey', label: '权限字符', type: 'input', order: 2, span: 6},
   {
@@ -253,12 +252,12 @@ const searchColumns = [
     span: 6,
     options: [
       {label: '全部', value: ''},
-      ...statusOptions
+      ...(sys_normal_disable.value || [])
     ]
   }
-]
+])
 
-const tableColumns = [
+const tableColumns = computed(() => [
   {prop: 'roleName', label: '角色名称', columnType: 'text', minWidth: 120},
   {prop: 'roleKey', label: '权限字符', columnType: 'text', minWidth: 120},
   {prop: 'roleSort', label: '显示顺序', columnType: 'text', width: 100},
@@ -267,11 +266,11 @@ const tableColumns = [
     label: '状态',
     columnType: 'tag',
     width: 90,
-    options: statusOptions
+    options: sys_normal_disable.value || []
   },
   {prop: 'createTime', label: '创建时间', columnType: 'text', minWidth: 160},
   {prop: 'action', label: '操作', columnType: 'slot', width: 280, fixed: 'right', slotName: 'action'}
-]
+])
 
 const form = reactive({
   roleId: undefined,
@@ -453,7 +452,8 @@ function filterLeafMenuIds(keys, tree) {
 function collectCheckedMenuIds() {
   const checked = menuTreeRef.value?.getCheckedKeys?.(false) || []
   const half = menuTreeRef.value?.getHalfCheckedKeys?.() || []
-  return [...new Set([...checked, ...half].map((id) => Number(id)).filter((n) => !Number.isNaN(n)))]
+  // 禁止 Number(雪花ID)：会丢精度，导致新建目录勾选后写不进 sys_role_menu
+  return toApiLongIds([...checked, ...half])
 }
 
 function submitMenuAuth() {

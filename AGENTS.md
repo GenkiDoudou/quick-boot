@@ -3,68 +3,32 @@
 - 项目：quickboot
 - 技术栈摘要：Vue 3 (quick-ui); Maven Java 17 / Spring Boot 4.0.0 (quickboot); VitePress (docs)
 - 是否 Monorepo：是
-- 前端 (`quick-ui`)：Vue 3，UI=Element Plus，样式=Sass/SCSS，包管理=pnpm，语言=TypeScript
-- 后端 (`quickboot`)：Maven，Java 17，Spring Boot 4.0.0
+- 前端 (`quick-ui`)：Vue 3，UI=Element Plus，样式=Sass/SCSS，包管理=pnpm；语言以 JS 为主，可逐步 TypeScript
+- 后端 (`quickboot`)：Maven，Java 17，Spring Boot 4.0.0；模块 `common` / `core` / `module-system` / `app`
 - 文档 (`docs`)：VitePress
+
+## 文档职责
+
+| 文件 | 管什么 |
+|------|--------|
+| **本文件 `AGENTS.md`** | Agent 协作流程、排障、Karpathy、Never/多 Agent 安全、构建命令、快捷指令 |
+| **`code_formater.md`** | 编码 / 库表 / Maven·Modulith 分层 / 前后端约定 / 命名（**写代码时以它为准**） |
+| **`DESIGN.md`** | 前端视觉 token |
+| **`.cursor/rules`** | 可自动注入的硬规则（如布尔字段、Karpathy 细则） |
+
+写或改业务代码、DDL、前端页面之前，**须通读** `code_formater.md` 相关章节。冲突时：协作流程以本文件为准；编码事实以 `code_formater.md` + `.cursor/rules` + 现网为准。
 
 ## 项目结构
 
 ```
 quickboot/
 |-- quick-ui/   # 前端
-|-- quickboot/   # Maven 模块: quickboot-common, quickboot-core, quickboot-auth, quickboot-system, quickboot-web
+|-- quickboot/   # Maven 模块: quickboot-common, quickboot-core, quickboot-module-system, quickboot-app
 |-- docs/   # VitePress
 `-- ...
 ```
 
 - 禁止编辑框架自动生成缓存目录（若存在：`.next/`、`.nuxt/`、`.umi/`、`.angular/`）
-
-## 文件编码规范（强制）
-
-- 新建或修改任何文本文件时，**一律使用 UTF-8 无 BOM 编码**（强制）。
-- 严禁使用 GBK/ANSI/UTF-16 等会导致跨环境乱码的编码。
-- 严禁在源码文件头写入 BOM（`\ufeff`）；若编译报 `非法字符: '\ufeff'`，必须先移除 BOM 再提交。
-- 若发现历史文件存在乱码或编码不一致，优先转换为 UTF-8 无 BOM 后再继续修改。
-- 在 PowerShell 中写文件时，优先使用无 BOM 写法（如 `new UTF8Encoding($false)`）避免再次引入 `\ufeff`。
-
-## 数据库规范
-
-### 字段与实体布尔类型（强制）
-
-- **禁止**在数据库列、持久化实体（`entity`）以及与表一一映射的 VO 中使用 `boolean` / `Boolean` / `TINYINT(1)` 表达是否类语义。
-- 是否、启用类标志统一用 **`String` + 库表 `CHAR(1)`**，取值约定与常见 `status` / `del_flag` 一致：
-  - **`0`** = 否 / 关闭 / 禁用（默认）
-  - **`1`** = 是 / 开启 / 启用
-- 业务判断写 `"1".equals(field)`，入库前将入参归一化为 `"0"` / `"1"`。
-- **不在本规范内**：仅存在于配置类、运行时 DTO、与库无关的 API 契约中的 `boolean`（例如开关配置）可保留。
-- 若仓库存在 Cursor 规则 `.cursor/rules/no-boolean-db-entity.mdc`，须一并遵守。
-
-### 设计与迁移
-
-- 新建/变更 DDL、Flyway 迁移前，须用读取工具打开并通读 `sdd/数据库设计规范.md`（若该文件存在）；禁止把规范正文抄进本文件代替阅读。
-- 迁移文件头部用块注释说明：变更目的、影响范围、依赖的前置版本或表。
-- 表与列须有业务注释；枚举/状态类字段在注释中写明取值含义。
-- 非显而易见的索引须注释查询场景或性能目的；复杂 `ALTER` 须说明数据迁移或回填策略。
-
-## 前端规范
-
-- 新建或改造前端页面/组件前，须通读 `sdd/前端代码规范.md`（若存在）与根目录 `DESIGN.md`，并按设计系统实现视觉与交互；禁止把规范正文复制进本文件代替阅读。
-- API 封装放在前端工程的 `src/api/`（或项目约定的 `services/`）；通用组件放在 `src/components/`；页面内禁止直接裸调 `fetch`/`axios`。
-- 默认使用项目已选定的框架、UI 库与样式方案（见上文技术栈），禁止擅自引入冲突技术栈。
-- 列表页若项目使用统一表格组件/模板，须对照同域已有页面与前端规范中的列表页模板实现，避免单页自造布局。
-- 生成 Vue/TS/JS 时须编写详细中文注释（页面/业务组件/composable/api 的 JSDoc；复杂校验与 `watch`/`computed` 说明原因与边界）。
-- 若口头需求与 `DESIGN.md` 冲突，默认以 `DESIGN.md` 为准，并向用户确认例外。
-
-## 后端规范
-
-- 新建或生成后端代码前，须通读 `sdd/后端代码规范.md`（若存在）与 `openspec/project.md`（若存在）。
-- 保持 `controller / service / mapper`（或 repository）`/ entity / dto / vo` 分层清晰。
-- 默认不使用 `@PutMapping` / `@DeleteMapping`，修改/删除语义优先 `@PostMapping`（除非项目已有统一约定）。
-- 参数必须接入 Jakarta Validation；对外 REST 至少包含 `@Tag`、`@Operation`，关键参数加 `@Parameter`。
-- 禁止抛出 `IllegalArgumentException` 作为业务失败信号，应使用项目自定义异常。
-- 新接口路径段与 JSON 字段统一 **camelCase**；禁止新接口使用下划线或连字符风格字段名。
-- **public** 类型及 public/protected 成员须具备标准 JavaDoc（含 `@param` / `@return` / `@throws` 等按需补齐）。
-- Controller 说明用途、鉴权前提与副作用；Service/Mapper 注释非显而易见的事务、批量、缓存与并发约束。
 
 ## `/brainstorming` 与需求澄清
 
@@ -247,89 +211,42 @@ pnpm i
 pnpm dev
 ```
 
-## 编码风格与命名
-
-**组件（Vue）**
-- 单文件组件 `.vue`，Composition API + `<script setup>`
-- Props 使用 `defineProps<T>()`
-- 样式方案: Sass/SCSS
-
-**命名约定**
-- 组件 / 类型：PascalCase
-- Hook / composable：`useXxx`
-- 常量：`UPPER_SNAKE_CASE`
-- CSS 类名：kebab-case
-- 函数 / 变量：camelCase
-
-**导入顺序**
-1. 框架核心
-2. UI 组件库
-3. 第三方工具库
-4. 路径别名（`@/`）
-5. 相对路径
-6. 样式文件（最后）
-
-## 提交与 Git 约定
-
-- Conventional Commits：`type(scope): description`
-- 类型：feat / fix / docs / style / refactor / test / chore
-- 只提交自己改动的文件
-- 多 Agent 并发时禁止擅自 `git stash` 或切换分支（除非用户要求）
-
-## 组件与 API 约定
-
-- 通用组件放在 `quick-ui/src/components/`（若项目目录不同请按实际调整） - API 封装放在 `services/` 或 `api/`，页面内禁止直接裸调 fetch/axios - 类型定义放在模块旁或 `types/` / `typings/`
-
-## 后端分层
-
-- 保持 controller / service / mapper（或 repository）/ entity / dto / vo 分层
-- 新增修改删除类接口优先 `@PostMapping`（除非项目已有统一约定）
-- 请求模型接入 Jakarta Validation
-- 对外 REST 补充 `@Tag` / `@Operation`（必要时 `@Parameter`）
-- 库表与实体的是否类字段禁止 boolean，统一 String + CHAR(1)，取值 `0`/`1`（若项目已采用该约定）
-- 新接口 JSON 字段使用 camelCase
-
 ## Never 规则
 
 - 禁止提交密钥、token 或 `.env` 内容
 - 禁止修改 `node_modules/`、构建产物（`dist/`、`build/`、`target/`）或 `.git` 内部
-- 禁止静默整文件覆盖手写维护的 `AGENTS.md` / `DESIGN.md`；应使用 suggested 或先征得确认
+- 禁止静默整文件覆盖手写维护的 `AGENTS.md` / `DESIGN.md` / `code_formater.md`；应使用 suggested 或先征得确认
 - 非琐碎多文件改动前，禁止跳过假设 / 成功标准 / 最小计划
-- 禁止在可写明确类型时使用 `any`
-- 禁止静态 UI 使用内联 style；遵循项目样式方案
-- 存在 services/api 封装时，禁止在组件内直接调用 fetch/axios
-- 列表渲染禁止省略 `key`
-- 存在 Service 层时，禁止把业务逻辑只写在 Controller
-- 禁止用 IllegalArgumentException 作为主要业务失败信号；使用项目自定义异常
-- 禁止在实体/库表是否语义上引入 boolean（应使用 char `0`/`1` 约定）
+- 写业务代码前未通读 `code_formater.md` 相关章节即开写 —— 禁止
+- 生成前后端功能时未检索/复用现有组件与工具类、平行再造 —— 禁止（细则见 `code_formater.md` §0）
+- 编码红线（布尔字段、`R<T>`、OpenAPI、禁止页面裸调 axios 等）以 `code_formater.md` 与 `.cursor/rules` 为准，不得以「AGENTS 里没写细」为由违反
 
 ## 多 Agent 安全
 
 - 禁止擅自 `git stash`、禁止擅自切分支
 - 修改全局配置或安装依赖前先与用户确认
 - 改动保持手术式，禁止顺手大重构
+- 只提交自己改动的文件；Conventional Commits（格式见 `code_formater.md`）
 
 ## 快捷指令
 
 | 指令 | 说明 |
 |------|------|
 | 分析项目规范 | 扫描源码隐性约定，提出补丁（禁止静默覆盖 AGENTS.md） |
-| CR 代码 | 按 Never 规则 Review 暂存区，并起草 Conventional Commit |
-| 生成变量名 | 推荐变量 / 函数 / 组件 / CSS 类名 |
+| CR 代码 | 按 Never 规则与 `code_formater.md` Review，并起草 Conventional Commit |
+| 生成变量名 | 推荐变量 / 函数 / 组件 / CSS 类名（命名见 `code_formater.md`） |
 | 合并 suggested | 对比 `*.suggested.md` 与正式文件，仅合并事实层（需用户确认） |
 | 记录 correction | 向 `.agents/logs/corrections.md` 追加一行 |
-
-## 错误处理
-
-- 异步必须有 try/catch 或 `.catch()`
-- 对用户提示要友好，禁止泄漏密钥
-- API 错误尽量在统一请求封装中处理
 
 ## 规范路径索引
 
 - `.cursor/rules`
+- `code_formater.md`（编码事实源）
+- `DESIGN.md`（前端视觉）
+- `openspec/changes/spring-modulith-maven-layering/`（Modulith / 新域模板；归档后跟主 specs）
 
 ## 协作摘要
 
+- 写代码：先读 `code_formater.md`（含 §0 优先复用）
 - 问题修复：先诊断并给出方案，用户确认后再改代码（用户明确要求直接改除外）
 - 非琐碎编码：改文件前先写清假设、成功标准、最小计划

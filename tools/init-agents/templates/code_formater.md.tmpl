@@ -1,0 +1,65 @@
+# 编码约定（code_formater）
+
+> **定位**：本仓库**编码 / 库表 / 分层 / 命名**的事实来源（由 init-agents 脚手架生成，可按项目手改）。  
+> **优先级**：写代码时以本文与 `.cursor/rules`、现网实现为准。  
+> **协作流程**以 `AGENTS.md` 为准；本文不重复排障 / Karpathy 全文。
+
+写代码前须通读本文相关章节与同域现网实现。
+
+生成前后端代码时**优先复用**仓库已有组件与工具类（前端 `packages/`/`components/`/`utils`；后端 `common`/`core` 与同域已有分层），禁止平行再造；无法复用时须说明原因。
+
+---
+
+## 1. 文件编码（强制）
+
+- 新建或修改任何文本文件时，**一律使用 UTF-8 无 BOM**。
+- 严禁 GBK/ANSI/UTF-16；严禁源码文件头 BOM（`\ufeff`）。
+- PowerShell 写文件时优先无 BOM（如 `new UTF8Encoding($false)`）。
+
+---
+
+## 2. 命名与风格
+
+**命名约定**
+- 组件 / 类型：PascalCase
+- Hook / composable：`useXxx`
+- 常量：`UPPER_SNAKE_CASE`
+- CSS 类名：kebab-case
+- 函数 / 变量：camelCase
+
+**导入顺序**
+1. 框架核心
+2. UI 组件库
+3. 第三方工具库
+4. 路径别名（`@/`）
+5. 相对路径
+6. 样式文件（最后）
+
+{{CodingStyleBlock}}
+
+---
+
+## 3. 组件与 API
+
+{{ComponentApiBlock}}
+
+---
+
+## 4. 后端分层与约定
+
+{{BackendBlock}}
+
+补充（若适用）：
+
+- 库表与实体的是否类字段禁止 boolean，统一 String + CHAR(1)，取值 `0`/`1`
+- 新接口路径段与 JSON 字段使用 camelCase
+- Controller 统一返回项目约定的响应体（如 `R<T>`）；业务失败用项目自定义异常，禁止以 `IllegalArgumentException` 为主信号
+- 对外 REST 补充 `@Tag` / `@Operation`（必要时 `@Parameter`）
+
+---
+
+## 5. Git 提交（编码侧）
+
+- Conventional Commits：`type(scope): description`
+- 类型：feat / fix / docs / style / refactor / test / chore
+- 信息说明「为什么」；只提交自己改动的文件（多 Agent 约束见 `AGENTS.md`）

@@ -3,3 +3,7 @@ io.github.genkidoudou.common.crypto.PasswordCodecAutoConfiguration
 io.github.genkidoudou.common.oauth.OauthClientAutoConfiguration
 io.github.genkidoudou.common.captcha.CaptchaPropertiesAutoConfiguration
 io.github.genkidoudou.common.captcha.TianaiCacheStoreAutoConfiguration
+io.github.genkidoudou.common.monitor.operlog.OperLogCaptureAutoConfiguration
+io.github.genkidoudou.common.monitor.slowsql.SlowSqlCaptureAutoConfiguration
+io.github.genkidoudou.common.tracing.ClientOperationTracingAutoConfiguration
+io.github.genkidoudou.common.desensitization.SensitiveJacksonAutoConfiguration

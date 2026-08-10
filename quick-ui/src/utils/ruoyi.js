@@ -309,3 +309,28 @@ export function toApiLongIds(ids) {
   if (!Array.isArray(ids)) return []
   return [...new Set(ids.map(toApiLongId).filter((id) => id != null))]
 }
+
+/**
+ * 解析菜单上的 route.query。
+ * 若依约定多为 JSON 对象字符串；积木等业务可能把 path 写在 query（如 /jmreport/list），不能 JSON.parse。
+ * @param {unknown} routeQuery
+ * @returns {Record<string, any>|null}
+ */
+export function parseRouteQuery(routeQuery) {
+  if (routeQuery == null || routeQuery === '') {
+    return null
+  }
+  if (typeof routeQuery === 'object') {
+    return routeQuery
+  }
+  const s = String(routeQuery).trim()
+  if (!s || !(s.startsWith('{') && s.endsWith('}'))) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(s)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}

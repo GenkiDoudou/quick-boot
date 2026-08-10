@@ -1,0 +1,212 @@
+server:
+  port: 9993
+  servlet:
+    session:
+      cookie:
+        name: 'JSESSIONID_${spring.application.name}'
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: quick-name
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+  cache:
+    type: redis
+  data:
+    redis:
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          max-wait: 10000ms
+          min-idle: 0
+        shutdown-timeout: 100ms
+  datasource:
+    druid:
+      filter:
+        slf4j:
+          connection-log-enabled: false
+          data-source-log-enabled: false
+          enabled: true
+          result-set-log-enabled: false
+          statement-executable-sql-log-enable: true
+          statement-log-enabled: false
+        stat:
+          enabled: true
+          merge-sql: true
+          log-slow-sql: true
+          slow-sql-millis: 2000
+        wall:
+          config:
+            multi-statement-allow: true
+            # 积木报表 / JimuBI（MiniDao）动态 SQL 常用 where 1=1，Druid 1.2.22+ 默认会拦截
+            select-where-alway-true-check: false
+            condition-and-alway-true-allow: true
+          enabled: true
+      initial-size: 5
+      max-active: 20
+      max-wait: 60000
+      min-idle: 5
+      stat-view-servlet:
+        enabled: true
+        login-password: 3wkp9XkF7Rir
+        login-username: admin
+      web-stat-filter:
+        enabled: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  mvc:
+    format:
+      date: yyyy-MM-dd
+      date-time: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 1000MB
+
+logging:
+  level:
+    io.github.genkidoudou: debug
+
+mybatis-plus:
+  configuration:
+    cache-enabled: true
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'null'
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: del_flag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      insert-strategy: not_empty
+      update-strategy: not_null
+      where-strategy: not_empty
+  mapper-locations: classpath*:mapper/**/*.xml
+
+jasypt:
+  encryptor:
+    bootstrap: true
+    algorithm: PBEWithHMACSHA256AndAES_128
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# Actuator 最小暴露
+management:
+  health:
+    redis:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  tracing:
+    sampling:
+      probability: 1.0
+  # 本地默认无 Collector：关闭 OTLP metrics，避免 Connection refused 刷屏
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  # Boot 4：OTLP tracing 端点；无 Collector 时可不启导出（仍可本地生成 traceId）
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318
+          # 若 Collector 只开 gRPC(4317)，改为：
+          # transport: grpc
+          # endpoint: http://localhost:4317
+
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # token有效期 设为一天 (必定过期) 单位: 秒 备注：
+  timeout: 86400
+  # token临时有效期 (指定时间无操作就过期) 单位: 秒 LoginHelper.java 里重新定义了token有效时长 timeout 小程序3600秒 其余86400秒
+  active-timeout: 1800
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: false
+  # 是否尝试从header里读取token
+  is-read-header: true
+  # 是否尝试从cookie里读取token
+  is-read-cookie: false
+  # token前缀
+  token-prefix: "Bearer"
+  # jwt秘钥
+  jwt-secret-key: abcdefghijklmnopqrstuvwxyz
+  # 是否输出操作日志
+  is-log: true
+
+##  验证码配置
+# 行为验证码配置， 详细请看 cloud.tianai.captcha.autoconfiguration.ImageCaptchaProperties 类
+captcha:
+  # 如果项目中使用到了redis，滑块验证码会自动把验证码数据存到redis中， 这里配置redis的key的前缀,默认是captcha:slider
+  # 验证码过期时间，默认是2分钟,单位毫秒， 可以根据自身业务进行调整
+  expire:
+    # 默认缓存时间 2分钟
+    default: 10000
+    # 针对 点选验证码 过期时间设置为 2分钟， 因为点选验证码验证比较慢，把过期时间调整大一些
+    WORD_IMAGE_CLICK: 20000
+  # 使用加载系统自带的资源， 默认是 false(这里系统的默认资源包含 滑动验证码模板/旋转验证码模板,如果想使用系统的模板，这里设置为true)
+  init-default-resource: true
+  # 缓存控制， 默认为false不开启
+  local-cache-enabled: true
+  # 缓存开启后，验证码会提前缓存一些生成好的验证数据， 默认是20
+  local-cache-size: 20
+  # 缓存开启后，缓存拉取失败后等待时间 默认是 5秒钟
+  local-cache-wait-time: 5000
+  # 缓存开启后，缓存检查间隔 默认是2秒钟
+  local-cache-period: 2000
+  # 缓存开启后，忽略的字段，默认是 ""(不忽略任何字段)
+  local-cache-ignored-cache-fields: ""
+  secondary:
+    # 二次验证， 默认false 不开启
+    enabled: true
+    # 二次验证key过期时间， 默认 2分钟
+    expire: 120000
+    # 二次验证缓存key前缀，默认是 captcha:secondary
+    keyPrefix: "captcha:secondary"
+
+# 积木报表 / JimuBI（不迁 AI；密钥禁止入库）
+qc:
+  monitor:
+    slow-sql:
+      capture-enabled: true
+      threshold-ms: 1000
+      log-enabled: true
+      async-enabled: true
+      export-max-rows: 10000
+      max-sql-length: 4000
+      # 默认含 sys_slow_sql，避免自写入递归；可追加更多子串
+      ignore-sql-contains:
+        - sys_slow_sql
+      jimu-uri-prefixes:
+        - /jmreport/
+        - /drag/
+        - /jimubi/
+        - /jimureport/
+  jimu:
+    enabled: true
+    base-url: http://localhost:9993
+    redis:
+      enabled: false
+    primary-datasource:
+      sync-on-startup: true
+      name: QuickBoot主库
+      code: qc2
+    share:
+      enabled: true

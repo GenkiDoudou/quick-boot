@@ -39,6 +39,7 @@ import {
   buildTopMenus,
   resolveMixTopPath
 } from '@/utils/navLayout'
+import { parseRouteQuery } from '@/utils/ruoyi'
 import useAppStore from '@/store/modules/app'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
@@ -95,8 +96,8 @@ function handleSelect(key) {
   }
   if (!matched || !matched.children?.length) {
     const routeMenu = childrenMenus.value.find((item) => item.path === key)
-    if (routeMenu?.query) {
-      const query = JSON.parse(routeMenu.query)
+    const query = parseRouteQuery(routeMenu?.query)
+    if (query) {
       router.push({ path: key, query })
     } else {
       router.push({ path: key })

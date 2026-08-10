@@ -119,7 +119,9 @@ function Build-ComponentApi {
     $lines = @(
         '- 通用组件放在 `' + $fe.Path + '/src/components/`（若项目目录不同请按实际调整）',
         '- API 封装放在 `services/` 或 `api/`，页面内禁止直接裸调 fetch/axios',
-        '- 类型定义放在模块旁或 `types/` / `typings/`'
+        '- 类型定义放在模块旁或 `types/` / `typings/`',
+        '- 禁止在可写明确类型时使用 `any`',
+        '- 禁止静态 UI 滥用内联 style；列表渲染须有 `key`'
     )
     return ($lines -join "`n")
 }
@@ -143,19 +145,11 @@ function Build-NeverRules {
     $rules = New-Object System.Collections.Generic.List[string]
     [void]$rules.Add('- 禁止提交密钥、token 或 `.env` 内容')
     [void]$rules.Add('- 禁止修改 `node_modules/`、构建产物（`dist/`、`build/`、`target/`）或 `.git` 内部')
-    [void]$rules.Add('- 禁止静默整文件覆盖手写维护的 `AGENTS.md` / `DESIGN.md`；应使用 suggested 或先征得确认')
+    [void]$rules.Add('- 禁止静默整文件覆盖手写维护的 `AGENTS.md` / `DESIGN.md` / `code_formater.md`；应使用 suggested 或先征得确认')
     [void]$rules.Add('- 非琐碎多文件改动前，禁止跳过假设 / 成功标准 / 最小计划')
-    if ($Stack.HasFrontend) {
-        [void]$rules.Add('- 禁止在可写明确类型时使用 `any`')
-        [void]$rules.Add('- 禁止静态 UI 使用内联 style；遵循项目样式方案')
-        [void]$rules.Add('- 存在 services/api 封装时，禁止在组件内直接调用 fetch/axios')
-        [void]$rules.Add('- 列表渲染禁止省略 `key`')
-    }
-    if ($Stack.HasJavaSpring) {
-        [void]$rules.Add('- 存在 Service 层时，禁止把业务逻辑只写在 Controller')
-        [void]$rules.Add('- 禁止用 IllegalArgumentException 作为主要业务失败信号；使用项目自定义异常')
-        [void]$rules.Add('- 禁止在实体/库表是否语义上引入 boolean（应使用 char `0`/`1` 约定）')
-    }
+    [void]$rules.Add('- 写业务代码前未通读 `code_formater.md` 相关章节即开写 —— 禁止')
+    [void]$rules.Add('- 生成前后端功能时未检索/复用现有组件与工具类、平行再造 —— 禁止（见 `code_formater.md`）')
+    [void]$rules.Add('- 编码红线以 `code_formater.md` 与 `.cursor/rules` 为准，不得以「AGENTS 里没写细」为由违反')
     return ($rules -join "`n")
 }
 
@@ -216,10 +210,15 @@ function Build-TechStackBullets {
 
 function Build-SpecPathIndex {
     param($Stack)
-    if (@($Stack.SpecHints).Count -eq 0) {
-        return '_未探测到本地规范线索路径（`sdd/`、`openspec/project.md`、`.cursor/rules`）。_'
+    $lines = New-Object System.Collections.Generic.List[string]
+    [void]$lines.Add('- `code_formater.md`（编码事实源）')
+    [void]$lines.Add('- `DESIGN.md`（前端视觉，若存在）')
+    if (@($Stack.SpecHints).Count -gt 0) {
+        foreach ($h in @($Stack.SpecHints)) {
+            if ($h -match '(?i)^sdd(/|\\)?$') { continue }
+            [void]$lines.Add('- `' + $h + '`')
+        }
     }
-    $lines = @($Stack.SpecHints | ForEach-Object { '- `' + $_ + '`' })
     return ($lines -join "`n")
 }
 
@@ -253,6 +252,7 @@ function New-AgentsDocumentSet {
     }
 
     $agents = Expand-Template -Template (Get-TemplateText $TemplatesDir 'AGENTS.md.tmpl') -Map $map
+    $codeFormater = Expand-Template -Template (Get-TemplateText $TemplatesDir 'code_formater.md.tmpl') -Map $map
     $design = Expand-Template -Template (Get-TemplateText $TemplatesDir 'DESIGN.md.tmpl') -Map $map
     $local = Get-TemplateText $TemplatesDir 'AGENTS.local.md.tmpl'
     $gen = Expand-Template -Template (Get-TemplateText $TemplatesDir 'generation-spec.md.tmpl') -Map $map
@@ -260,6 +260,7 @@ function New-AgentsDocumentSet {
 
     return [pscustomobject]@{
         Agents         = $agents
+        CodeFormater   = $codeFormater
         Design         = $design
         Local          = $local
         GenerationSpec = $gen

@@ -1,54 +1,53 @@
 import request from '@/utils/request'
 
-/**
- * 查询参数列表。
- * @param {Record<string, any>} params 查询参数
- * @returns {Promise<any>}
- */
-export function listConfig(params) {
-  return request({ url: '/system/config/list', method: 'get', params })
+export function pageConfig(pageRequest) {
+  return request({ url: '/sys/config/page', method: 'post', data: pageRequest })
 }
 
-/**
- * 查询参数详情。
- * @param {number|string} configId 参数ID
- * @returns {Promise<any>}
- */
 export function getConfig(configId) {
-  return request({ url: '/system/config/' + configId, method: 'get' })
+  return request({ url: `/sys/config/${configId}`, method: 'get' })
 }
 
-/**
- * 新增参数。
- * @param {Record<string, any>} data 参数数据
- * @returns {Promise<any>}
- */
 export function addConfig(data) {
-  return request({ url: '/system/config/create', method: 'post', data })
+  return request({ url: '/sys/config/add', method: 'post', data })
 }
 
-/**
- * 修改参数。
- * @param {Record<string, any>} data 参数数据
- * @returns {Promise<any>}
- */
 export function updateConfig(data) {
-  return request({ url: '/system/config/update', method: 'post', data })
+  return request({ url: '/sys/config/update', method: 'post', data })
 }
 
-/**
- * 删除参数。
- * @param {Array<number|string>} configIds 参数ID集合
- * @returns {Promise<any>}
- */
-export function removeConfig(configIds) {
-  return request({ url: '/system/config/remove', method: 'post', data: configIds })
+export function removeConfig(ids) {
+  const list = (Array.isArray(ids) ? ids : [ids]).map(String)
+  return request({ url: '/sys/config/remove', method: 'post', data: list })
 }
 
-/**
- * 刷新全部参数缓存。
- * @returns {Promise<any>}
- */
 export function refreshConfigCache() {
-  return request({ url: '/system/config/refreshCache', method: 'post' })
+  return request({ url: '/sys/config/refreshCache', method: 'post' })
+}
+
+export function exportConfig(snapshot) {
+  return request({
+    url: '/sys/config/export',
+    method: 'post',
+    data: snapshot || {},
+    responseType: 'blob',
+    returnBlobWithHeaders: true,
+    timeout: 120000
+  })
+}
+
+export function downloadConfigImportTemplate() {
+  return request({
+    url: '/sys/config/import/template',
+    method: 'get',
+    responseType: 'blob',
+    returnBlobWithHeaders: true
+  })
+}
+
+export function importConfig(file, strategy) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('updateSupport', strategy === 'overwrite' ? 'true' : 'false')
+  return request({ url: '/sys/config/import', method: 'post', data: form, timeout: 120000 })
 }

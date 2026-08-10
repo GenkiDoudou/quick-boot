@@ -60,11 +60,11 @@
 | 分类 | 状态 |
 |------|------|
 | `/docs/skill/*` | ✅ |
-| `/docs/sdd/*` | ✅ |
+| 编码约定 | 仓库根 `code_formater.md` + `AGENTS.md`（无独立 `sdd/` 目录） |
 
 ## 七、源码映射
 
 ```text
-quickboot-web/  → docs/docs/backend/
+quickboot-app/  → docs/docs/backend/
 quick-ui/       → docs/docs/frontend/
 ```

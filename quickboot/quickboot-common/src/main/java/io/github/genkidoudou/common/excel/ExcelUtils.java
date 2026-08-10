@@ -11,12 +11,16 @@ import com.alibaba.excel.write.builder.ExcelWriterSheetBuilder;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.excel.write.metadata.fill.FillConfig;
 import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
+import com.alibaba.excel.read.builder.ExcelReaderBuilder;
+import com.alibaba.excel.write.builder.ExcelWriterBuilder;
 import io.github.genkidoudou.common.excel.conver.ExcelBigNumberConvert;
+import io.github.genkidoudou.common.excel.conver.ExcelDictConvert;
 import io.github.genkidoudou.common.excel.conver.merge.CellMergeStrategy;
 import io.github.genkidoudou.common.excel.exception.ExcelException;
 import io.github.genkidoudou.common.excel.listener.ExcelListener;
 import io.github.genkidoudou.common.excel.listener.ExcelListenerCallback;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
+import io.github.genkidoudou.common.excel.template.TemplateConstraintWriteHandler;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.experimental.UtilityClass;
@@ -42,7 +46,7 @@ public class ExcelUtils {
 
   /*******************导出******************************/
   public static <T> void exportExcel(List<T> list, String sheetName, Class<T> clazz, HttpServletResponse response) {
-    exportExcel(list, sheetName, clazz, false, response);
+    exportExcel(list, sheetName, clazz, false, false, response);
   }
 
   public static <T> void exportExcel(List<T> list,
@@ -50,16 +54,37 @@ public class ExcelUtils {
                                      Class<T> clazz,
                                      boolean merge,
                                      HttpServletResponse response) {
+    exportExcel(list, sheetName, clazz, merge, false, response);
+  }
+
+  /**
+   * 导出 Excel。
+   *
+   * @param list                     数据；导入模板常为空列表
+   * @param sheetName                sheet / 文件名
+   * @param clazz                    行模型
+   * @param merge                    是否启用单元格合并策略
+   * @param applyTemplateConstraints 为 true 时按注解写入导入模板列约束（下拉/输入提示）
+   * @param response                 HTTP 响应
+   */
+  public static <T> void exportExcel(List<T> list,
+                                     String sheetName,
+                                     Class<T> clazz,
+                                     boolean merge,
+                                     boolean applyTemplateConstraints,
+                                     HttpServletResponse response) {
     try {
       resetResponse(sheetName, response);
       ServletOutputStream os = response.getOutputStream();
-      ExcelWriterSheetBuilder builder = EasyExcel.write(os, clazz)
+      ExcelWriterSheetBuilder builder = registerConverters(EasyExcel.write(os, clazz))
         .autoCloseStream(false)
         .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
-        .registerConverter(new ExcelBigNumberConvert())
         .sheet(sheetName);
       if (merge) {
         builder.registerWriteHandler(new CellMergeStrategy(list, true));
+      }
+      if (applyTemplateConstraints) {
+        builder.registerWriteHandler(new TemplateConstraintWriteHandler(clazz));
       }
       builder.doWrite(list);
     } catch (IOException e) {
@@ -78,6 +103,7 @@ public class ExcelUtils {
         .withTemplate(templateResource.getStream())
         .autoCloseStream(false)
         .registerConverter(new ExcelBigNumberConvert())
+        .registerConverter(new ExcelDictConvert())
         .build();
       WriteSheet writeSheet = EasyExcel.writerSheet().build();
       if (CollUtil.isEmpty(data)) {
@@ -137,7 +163,9 @@ public class ExcelUtils {
    * @return 行列表
    */
   public static <T> List<T> importExcelSync(InputStream is, Class<T> clazz) {
-    return EasyExcel.read(is).head(clazz).autoCloseStream(false).sheet().doReadSync();
+    return registerConverters(EasyExcel.read(is).head(clazz).autoCloseStream(false))
+      .sheet()
+      .doReadSync();
   }
 
   /**
@@ -184,8 +212,20 @@ public class ExcelUtils {
   }
 
   public static <T> ExcelResult<T> importExcel(InputStream is, Class<T> clazz, ExcelListener<T> listener) {
-    EasyExcel.read(is, clazz, listener).sheet().doRead();
+    registerConverters(EasyExcel.read(is, clazz, listener)).sheet().doRead();
     return listener.getExcelResult();
+  }
+
+  private static ExcelWriterBuilder registerConverters(ExcelWriterBuilder builder) {
+    return builder
+      .registerConverter(new ExcelBigNumberConvert())
+      .registerConverter(new ExcelDictConvert());
+  }
+
+  private static ExcelReaderBuilder registerConverters(ExcelReaderBuilder builder) {
+    return builder
+      .registerConverter(new ExcelBigNumberConvert())
+      .registerConverter(new ExcelDictConvert());
   }
 
 }

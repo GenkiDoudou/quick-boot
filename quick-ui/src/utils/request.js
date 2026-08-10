@@ -6,9 +6,18 @@ import {tansParams, blobValidate} from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import {saveAs} from 'file-saver'
 import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'
+import { isMonitorEnabled } from '@/monitor/config'
+import {
+    beginRequestObservation,
+    finalizeRequestObservationSuccess,
+    finalizeRequestObservationError
+} from '@/monitor/requestObservation'
 
 let downloadLoadingInstance;
 let isShowReloginDialog = false;
+
+/** 模块加载时读取一次，避免每个请求重复解析 env */
+const monitorEnabled = isMonitorEnabled()
 
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 
@@ -18,6 +27,9 @@ const service = axios.create({
 })
 
 service.interceptors.request.use((config) => {
+    if (monitorEnabled) {
+        beginRequestObservation(config)
+    }
     // FormData：去掉 application/json（否则 axios 会转成 {"file":{}}）；勿手写 multipart/form-data（无 boundary 后端解析不到 file 部件）
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
         const headers = AxiosHeaders.from(config.headers)
@@ -138,6 +150,9 @@ function tryHandleAxiosErrorResponseBody(error) {
 }
 
 service.interceptors.response.use(async (res) => {
+        if (monitorEnabled) {
+            finalizeRequestObservationSuccess(res)
+        }
         if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
             // 导出等二进制场景：若后端返回的是 JSON 错误体，需要提前识别 401 并跳转登录。
             if (res.data && res.data.type && String(res.data.type).includes('application/json')) {
@@ -186,6 +201,9 @@ service.interceptors.response.use(async (res) => {
     },
     error => {
         console.error('响应拦截器错误:', error)
+        if (monitorEnabled) {
+            finalizeRequestObservationError(error)
+        }
         const fromBody = tryHandleAxiosErrorResponseBody(error)
         if (fromBody != null) {
             return fromBody

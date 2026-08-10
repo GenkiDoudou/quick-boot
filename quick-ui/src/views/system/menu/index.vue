@@ -12,7 +12,7 @@
       </el-form-item>
       <el-form-item label="状态">
         <el-select v-model="query.status" placeholder="菜单状态" clearable style="width: 200px">
-          <el-option v-for="d in statusOptions" :key="d.value" :label="d.label" :value="d.value" />
+          <el-option v-for="d in (sys_normal_disable || [])" :key="d.value" :label="d.label" :value="d.value" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -68,9 +68,7 @@
       <el-table-column label="类型" width="100" align="center">
         <template #default="{ row }">
           <el-tag v-if="row.isFrame === '1' || isExternalLinkMenu(row)" type="danger" size="small">外链</el-tag>
-          <el-tag v-else-if="row.menuType === 'M'" type="primary" size="small">目录</el-tag>
-          <el-tag v-else-if="row.menuType === 'C'" type="success" size="small">菜单</el-tag>
-          <el-tag v-else-if="row.menuType === 'F'" type="warning" size="small">按钮</el-tag>
+          <C7DictTag v-else :model-value="row.menuType" :options="sys_menu_menu_type" />
         </template>
       </el-table-column>
       <el-table-column prop="orderNum" label="排序" width="120" align="center">
@@ -89,12 +87,12 @@
       <el-table-column prop="component" label="组件路径" min-width="160" :show-overflow-tooltip="true" />
       <el-table-column prop="visible" label="显示" width="80" align="center">
         <template #default="{ row }">
-          <span>{{ row.visible === '1' ? '隐藏' : '显示' }}</span>
+          <C7DictTag :model-value="row.visible" :options="sys_show_hide" />
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="80" align="center">
         <template #default="{ row }">
-          <C7DictTag :model-value="row.status" :options="statusOptions" />
+          <C7DictTag :model-value="row.status" :options="sys_normal_disable" />
         </template>
       </el-table-column>
       <el-table-column label="操作" align="center" width="210" fixed="right">
@@ -134,6 +132,7 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Delete, Edit, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue'
+import { useDict } from '@/utils/dict'
 import {
   delMenu,
   listMenu,
@@ -147,10 +146,11 @@ import AddOrUpdate from './add-or-update.vue'
 
 defineOptions({ name: 'SysMenu' })
 
-const statusOptions = [
-  { label: '正常', value: '0' },
-  { label: '停用', value: '1' }
-]
+const { sys_normal_disable, sys_menu_menu_type, sys_show_hide } = useDict(
+  'sys_normal_disable',
+  'sys_menu_menu_type',
+  'sys_show_hide'
+)
 
 const loading = ref(false)
 const menuList = ref([])

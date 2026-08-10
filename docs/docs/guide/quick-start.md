@@ -7,7 +7,7 @@
 ```bash
 cd quickboot
 mvn clean install -DskipTests
-mvn -pl quickboot-web spring-boot:run
+mvn -pl quickboot-app -am spring-boot:run
 ```
 
 - 默认端口：**9992**

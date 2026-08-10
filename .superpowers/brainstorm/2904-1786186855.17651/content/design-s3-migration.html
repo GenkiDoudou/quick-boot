@@ -1,0 +1,63 @@
+<h2>设计 §3：现状迁移与验证</h2>
+<p class="subtitle">从 common/core/system/web 演进到 platform + module-system + app</p>
+
+<div class="section">
+  <p class="label">映射关系</p>
+  <div class="mockup">
+    <div class="mockup-header">演进映射（逻辑）</div>
+    <div class="mockup-body" style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.6">
+      <div>quickboot-common + quickboot-core　→　<strong>quickboot-platform</strong>（薄化：去掉/上移业务相关）</div>
+      <div>quickboot-system　　　　　　　　　→　<strong>quickboot-module-system</strong>（加 api/internal）</div>
+      <div>quickboot-web　　　　　　　　　　→　<strong>quickboot-app</strong></div>
+    </div>
+  </div>
+  <p style="margin-top:12px">命名可一次改干净，或分两步（先结构后改 artifactId）。推荐<strong>一次改名</strong>，避免长期双名。</p>
+</div>
+
+<div class="section">
+  <p class="label">迁移顺序（建议）</p>
+  <ol style="line-height:1.7">
+    <li>引入 Spring Modulith 依赖与 <code>ApplicationModules</code> 测试骨架（先在现结构验证也能跑）</li>
+    <li>合并/薄化 common+core → platform；切断对 system 的反向依赖</li>
+    <li>system 包整理为 api + internal；声明 @ApplicationModule</li>
+    <li>web → app；scan/MapperScan 指向新包；CI 加上 Modulith 结构测试</li>
+    <li>文档化「新域模板」：复制 module-system 骨架即可</li>
+  </ol>
+</div>
+
+<div class="section">
+  <p class="label">成功标准（可验证）</p>
+  <ul style="line-height:1.7">
+    <li><code>ApplicationModules.of(...).verify()</code> 通过（无非法跨模块依赖）</li>
+    <li>Maven 依赖图：platform 不依赖任何 module-*；module 互不依赖对方 internal</li>
+    <li>现有登录/用户/字典等主路径回归可用</li>
+    <li>新增业务域有书面模板（模块名、包名、api 约定）</li>
+  </ul>
+</div>
+
+<div class="section">
+  <p class="label">刻意不做（YAGNI）</p>
+  <ul style="line-height:1.7">
+    <li>第一阶段不拆 system 为多域</li>
+    <li>不单独建 *-api Maven 模块</li>
+    <li>不强制上事件驱动（保留显式 API；事件可后加）</li>
+    <li>不在本设计里改前端或库表</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top:20px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>整份设计 OK</h3>
+      <p>§1–§3 都认可，可以写进规格文档</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>需要改</h3>
+      <p>在对话里说明要调整的点</p>
+    </div>
+  </div>
+</div>

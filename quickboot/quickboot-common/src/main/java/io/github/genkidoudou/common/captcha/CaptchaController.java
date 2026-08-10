@@ -4,6 +4,8 @@ import cloud.tianai.captcha.application.ImageCaptchaApplication;
 import cloud.tianai.captcha.application.vo.ImageCaptchaVO;
 import cloud.tianai.captcha.common.response.ApiResponse;
 import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +21,7 @@ import java.util.Collections;
  * @author genkidoudou
  * @since 1.0.0
  */
+@Tag(name = "验证码")
 @RestController
 @RequestMapping("/api/captcha")
 @RequiredArgsConstructor
@@ -34,6 +37,7 @@ public class CaptchaController {
    *
    * @return tianai 标准载荷
    */
+  @Operation(summary = "生成验证码")
   @RequestMapping("/generate")
   public ApiResponse<ImageCaptchaVO> generate() {
     return application.generateCaptcha(captchaProperties.getType());
@@ -45,6 +49,7 @@ public class CaptchaController {
    * @param body id + 轨迹
    * @return 校验结果
    */
+  @Operation(summary = "校验验证码")
   @PostMapping("/validate")
   public ApiResponse<?> validate(@RequestBody Data body) {
     ApiResponse<?> response = application.matching(body.getId(), body.getData());
@@ -60,4 +65,3 @@ public class CaptchaController {
     private ImageCaptchaTrack data;
   }
 }
-

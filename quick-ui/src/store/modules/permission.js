@@ -169,13 +169,26 @@ function isLayoutRoute(route) {
  * 扁平化 ParentView 下的多级 children，拼接完整 path 供 router 注册。
  * 若依菜单中「目录 + 多级菜单」经此处理后变为一级 children 列表。
  */
+function joinRoutePath(parentPath, childPath) {
+  const parent = String(parentPath || '').replace(/^\/+|\/+$/g, '')
+  const child = String(childPath || '').replace(/^\/+|\/+$/g, '')
+  if (!parent) {
+    return child
+  }
+  if (!child) {
+    return parent
+  }
+  return `${parent}/${child}`
+}
+
 function filterChildren(childrenMap, lastRouter = false) {
   var children = []
   childrenMap.forEach((el) => {
     if (el.children && el.children.length) {
       if (el.component === 'ParentView' && !lastRouter) {
         el.children.forEach(c => {
-          c.path = el.path + '/' + c.path
+          // 目录 path 为空时不能拼成 '/job'（绝对路径），否则侧栏 /tool/job 与注册路由不一致 → 404
+          c.path = joinRoutePath(el.path, c.path)
           if (c.children && c.children.length) {
             children = children.concat(filterChildren(c.children, c))
             return
@@ -186,7 +199,7 @@ function filterChildren(childrenMap, lastRouter = false) {
       }
     }
     if (lastRouter) {
-      el.path = lastRouter.path + '/' + el.path
+      el.path = joinRoutePath(lastRouter.path, el.path)
       if (el.children && el.children.length) {
         children = children.concat(filterChildren(el.children, el))
         return

@@ -38,7 +38,7 @@
 
 配置文件位置：
 
-- `quickboot/quickboot-web/src/main/resources/application.yml`
+- `quickboot/quickboot-app/src/main/resources/application.yml`
 - `application-dev.yml` / `application-prod.yml`
 
 ## 前端配置要点
@@ -63,7 +63,7 @@ cd docs && pnpm i
 
 - 后端：IntelliJ IDEA，启用 Lombok、Annotation Processing
 - 前端：VS Code / Cursor，推荐 Volar、ESLint
-- 统一编码：**UTF-8 无 BOM**（见仓库 `AGENTS.md`）
+- 统一编码：**UTF-8 无 BOM**（见仓库根 `code_formater.md`）
 
 ## 下一步
 

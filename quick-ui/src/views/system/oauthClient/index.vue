@@ -125,7 +125,7 @@
           </template>
           <C7Select
             v-model="form.status"
-            :data-list="statusOptions"
+            :data-list="sys_normal_disable"
             style="width: 100%"
           />
         </el-form-item>
@@ -191,6 +191,7 @@
 <script setup>
 import { Plus, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useDict } from '@/utils/dict'
 import {
   pageOauthClient,
   getOauthClient,
@@ -204,6 +205,8 @@ import {
 
 /** 与菜单 component 路由 name（OauthClient）一致，供 keep-alive include 命中 */
 defineOptions({ name: 'OauthClient' })
+
+const { sys_normal_disable, sys_yes_no } = useDict('sys_normal_disable', 'sys_yes_no')
 
 const tableRef = ref(null)
 const formRef = ref(null)
@@ -223,18 +226,13 @@ const fieldTips = {
   remark: '可选说明，仅管理展示，不影响鉴权。'
 }
 
-const statusOptions = [
-  { label: '启用', value: '0' },
-  { label: '停用', value: '1' }
-]
-
 const defaultSearch = {
   clientId: '',
   clientName: '',
   status: ''
 }
 
-const searchColumns = [
+const searchColumns = computed(() => [
   { prop: 'clientId', label: '客户端id', type: 'input', order: 1, span: 6 },
   { prop: 'clientName', label: '客户端名称', type: 'input', order: 2, span: 6 },
   {
@@ -245,12 +243,12 @@ const searchColumns = [
     span: 6,
     options: [
       { label: '全部', value: '' },
-      ...statusOptions
+      ...(sys_normal_disable.value || [])
     ]
   }
-]
+])
 
-const tableColumns = [
+const tableColumns = computed(() => [
   { prop: 'clientId', label: '客户端id', columnType: 'text', minWidth: 100 },
   { prop: 'clientName', label: '客户端名称', columnType: 'text', minWidth: 100 },
   { prop: 'apiPathPatterns', label: '放行的接口API', columnType: 'text', minWidth: 120, showOverflowTooltip: true },
@@ -260,23 +258,20 @@ const tableColumns = [
     label: '验证码',
     columnType: 'tag',
     width: 100,
-    options: [
-      { label: '是', value: '1' },
-      { label: '否', value: '0' }
-    ]
+    options: sys_yes_no.value || []
   },
   {
     prop: 'status',
     label: '状态',
     columnType: 'tag',
     width: 100,
-    options: statusOptions
+    options: sys_normal_disable.value || []
   },
   { prop: 'createTime', label: '创建时间', columnType: 'text', minWidth: 160 },
   { prop: 'action', label: '操作', columnType: 'slot', width: 240, slotName: 'action' }
-]
+])
 
-const viewDescItems = [
+const viewDescItems = computed(() => [
   { prop: 'clientId', label: '客户端id' },
   { prop: 'clientName', label: '客户端名称' },
   { prop: 'apiPathPatterns', label: 'API 路径' },
@@ -285,20 +280,17 @@ const viewDescItems = [
     prop: 'checkCaptcha',
     label: '校验验证码',
     columnType: 'tag',
-    options: [
-      { label: '是', value: '1' },
-      { label: '否', value: '0' }
-    ]
+    options: sys_yes_no.value || []
   },
   {
     prop: 'status',
     label: '状态',
     columnType: 'tag',
-    options: statusOptions
+    options: sys_normal_disable.value || []
   },
   { prop: 'remark', label: '备注' },
   { prop: 'createTime', label: '创建时间' }
-]
+])
 
 const form = reactive({
   id: undefined,
