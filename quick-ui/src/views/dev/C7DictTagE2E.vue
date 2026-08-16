@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-/** Dev 联调页：覆盖双值、max、+N、tooltip、未匹配、dictType fallback。 */
+/** C7DictTag 组件 E2E 联调页：覆盖双值、max、+N、tooltip、未匹配与 dictType fallback。 */
 
 const statusOpts = [
   {label: '启用', value: '1'},

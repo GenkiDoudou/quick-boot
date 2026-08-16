@@ -183,10 +183,32 @@ captcha:
 
 # 积木报表 / JimuBI（不迁 AI；密钥禁止入库）
 qc:
+  lite-trace:
+    app-ids: quick-ui,quick-h5
+    ingest-max-events-per-minute: 5000
+    access-project-enabled: true
+    sql-project-enabled: true
+    exception-project-enabled: true
+  file:
+    enabled: true
+    type: local
+    # 空则使用 java.io.tmpdir/quickboot-uploads
+    local:
+      path: ./data/uploads
+    # 管理端预览拼装前缀（无独立 CDN domain 时使用）
+    view-url-base: http://localhost:9993/system/file/view
+    default-classify: default
+    compress:
+      # 服务端压缩总开关；默认关闭（前端 C7Upload 压缩为主）
+      enabled: false
+      # 以下三项为分类未配置时的默认值；优先读 sys_file_classify 对应列
+      min-size-kb: 200
+      quality: 0.85
+      max-edge: 1920
   monitor:
     slow-sql:
       capture-enabled: true
-      threshold-ms: 1000
+      threshold-ms: 1
       log-enabled: true
       async-enabled: true
       export-max-rows: 10000
@@ -194,6 +216,9 @@ qc:
       # 默认含 sys_slow_sql，避免自写入递归；可追加更多子串
       ignore-sql-contains:
         - sys_slow_sql
+        - sys_trace_index
+        - sys_trace_span
+        - sys_rum_event
       jimu-uri-prefixes:
         - /jmreport/
         - /drag/

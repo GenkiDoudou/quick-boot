@@ -22,6 +22,7 @@ public class JimuDragExternalServiceImpl implements IOnlDragExternalService {
 
     private final JimuAuthBridge jimuAuthBridge;
 
+    /** 批量字典：按 dictType 从 quickboot 字典桥接。 */
     @Override
     public Map<String, List<DragDictModel>> getManyDictItems(List<String> codeList,
                                                               List<JSONObject> tableDictList) {
@@ -35,16 +36,19 @@ public class JimuDragExternalServiceImpl implements IOnlDragExternalService {
         return result;
     }
 
+    /** 单字典类型查询。 */
     @Override
     public List<DragDictModel> getDictItems(String dictCode) {
         return toDragModels(jimuAuthBridge.listDictByType(dictCode));
     }
 
+    /** 预留：对接操作日志，当前为空实现。 */
     @Override
     public void addLog(DragLogDTO dragLogDTO) {
         // 可选：对接 operlog
     }
 
+    /** 预留：对接操作日志，当前为空实现。 */
     @Override
     public void addLog(String logMsg, int logType, int operateType) {
         // 可选：对接 operlog

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户行为 · B 左树右钻</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --bg:#0b0f14; --panel:#121821; --line:#243044; --text:#e8eef7; --muted:#8b9bb4; --accent:#3b82f6; --act:#f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    .top { padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 12px; align-items: center; }
+    .top a { color: #93c5fd; font-size: 13px; text-decoration: none; }
+    .top h1 { font-size: 15px; margin: 0; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr 360px; }
+    .col { overflow: auto; border-right: 1px solid var(--line); padding: 12px; }
+    .col:last-child { border-right: 0; background: #0e141c; }
+    .item { padding: 10px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; margin-bottom: 8px; font-size: 12px; background: #0f1620; }
+    .item.on, .item:hover { border-color: var(--accent); }
+    .mono { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+    .meta { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .page-node {
+      border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; cursor: pointer;
+    }
+    .page-node.on { border-color: var(--accent); background: rgba(59,130,246,.08); }
+    .page-t { font-weight: 700; font-size: 14px; }
+    .acts { margin: 8px 0 0 12px; border-left: 2px solid #334155; padding-left: 10px; }
+    .act {
+      display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px;
+      background: #0f1620; margin-bottom: 6px; cursor: pointer; font-size: 12px;
+    }
+    .act.on { outline: 1px solid var(--act); background: rgba(245,158,11,.08); }
+    .pill { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #422006; color: #fcd34d; }
+    .transit { text-align: center; color: #64748b; font-size: 11px; margin: 6px 0 10px; }
+    .d-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .kv { font-size: 12px; margin-bottom: 8px; }
+    .kv label { display: inline-block; width: 90px; color: var(--muted); }
+    .sec { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: #93c5fd; }
+    .span { background: #0b0f14; border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 11px; }
+    .sql { margin: 6px 0 0; white-space: pre-wrap; word-break: break-all; color: #cbd5e1; max-height: 100px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <h1>B · 左树右钻（深色控制台）</h1>
+  </div>
+  <div id="app" class="body">
+    <div class="col">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">会话</div>
+      <div class="item on">
+        <div class="mono">sess_demo_8f2a</div>
+        <div class="meta">admin · 5 事件</div>
+        <div class="meta">home → user/form</div>
+      </div>
+    </div>
+    <div class="col">
+      <div style="margin-bottom:12px;font-size:13px">
+        <span style="background:var(--accent);color:#fff;padding:1px 8px;border-radius:3px;font-size:11px;margin-right:6px">路径</span>
+        home → user → user/form
+      </div>
+      <template v-for="(p, i) in pages" :key="p.id">
+        <div class="page-node" :class="{ on: selPage === p.id && !selAct }" @click="pickPage(p)">
+          <div class="page-t">{{ i + 1 }}. 页面 · {{ p.short }}</div>
+          <div class="mono meta">{{ p.path }}</div>
+          <div class="meta" v-if="p.from">从 {{ p.from }} 进入 · {{ p.time }}</div>
+          <div class="acts">
+            <div
+              v-for="a in p.actions"
+              :key="a.id"
+              class="act"
+              :class="{ on: selAct === a.id }"
+              @click.stop="pickAct(p, a)"
+            >
+              <span class="pill">点击</span>
+              <div>
+                <div>「{{ a.name }}」</div>
+                <div class="meta">{{ a.time }}</div>
+              </div>
+            </div>
+            <div v-if="!p.actions.length" class="meta">本页无操作</div>
+          </div>
+        </div>
+        <div v-if="i < pages.length - 1" class="transit">↓ {{ p.short }} → {{ pages[i + 1].short }}</div>
+      </template>
+    </div>
+    <div class="col">
+      <template v-if="detail.kind === 'action'">
+        <div class="d-title">操作 · 「{{ detail.action.name }}」</div>
+        <div class="kv"><label>所在页</label><span class="mono">{{ detail.page.path }}</span></div>
+        <div class="kv"><label>时间</label>{{ detail.action.time }}</div>
+        <div class="kv"><label>traceId</label><span class="mono">{{ detail.action.traceId }}</span></div>
+        <el-button type="primary" link size="small" @click="tip">打开完整请求链路</el-button>
+        <div class="sec">接口</div>
+        <div v-for="(x, i) in detail.action.apis" :key="'api'+i" class="span">
+          <div class="mono">{{ x.name }}</div>
+          <div class="meta">{{ x.ms }}ms · {{ x.status }}</div>
+        </div>
+        <div class="sec">SQL</div>
+        <div v-for="(x, i) in detail.action.sqls" :key="'sql'+i" class="span">
+          <div class="mono">{{ x.mapper }}</div>
+          <div class="meta">{{ x.ms }}ms</div>
+          <pre class="sql">{{ x.sql }}</pre>
+        </div>
+      </template>
+      <template v-else-if="detail.kind === 'page'">
+        <div class="d-title">页面 · {{ detail.page.short }}</div>
+        <div class="kv"><label>路径</label><span class="mono">{{ detail.page.path }}</span></div>
+        <div class="kv"><label>来自</label><span class="mono">{{ detail.page.from || '—' }}</span></div>
+        <div class="kv"><label>进入</label>{{ detail.page.time }}</div>
+        <div class="sec">点左侧操作可看接口 / SQL</div>
+      </template>
+      <div v-else class="meta" style="padding:24px">点选页面或操作</div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    createApp({
+      setup() {
+        const pages = [
+          { id: 'p1', short: 'home', path: '/home', from: '', time: '16:40:01', actions: [] },
+          {
+            id: 'p2', short: 'user', path: '/system/user', from: '/home', time: '16:40:18',
+            actions: [{
+              id: 'a1', name: '新增', time: '16:40:25', traceId: 'tr_abc123',
+              apis: [
+                { name: 'GET /system/user/deptTree', ms: 42, status: 200 },
+                { name: 'GET /system/dict/data/type/sys_user_sex', ms: 18, status: 200 }
+              ],
+              sqls: [
+                { mapper: 'SysDeptMapper.selectList', ms: 3, sql: 'SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0' }
+              ]
+            }]
+          },
+          {
+            id: 'p3', short: 'user/form', path: '/system/user/form', from: '/system/user', time: '16:40:26',
+            actions: [{
+              id: 'a2', name: '保存', time: '16:41:05', traceId: 'tr_def456',
+              apis: [{ name: 'POST /system/user', ms: 86, status: 200 }],
+              sqls: [
+                { mapper: 'SysUserMapper.insert', ms: 5, sql: "INSERT INTO sys_user ..." },
+                { mapper: 'SysUserRoleMapper.insertBatch', ms: 2, sql: 'INSERT INTO sys_user_role ...' }
+              ]
+            }]
+          }
+        ]
+        const selPage = ref('p2')
+        const selAct = ref('a1')
+        const detail = computed(() => {
+          const page = pages.find((p) => p.id === selPage.value)
+          if (!page) return { kind: '' }
+          if (selAct.value) {
+            const action = page.actions.find((a) => a.id === selAct.value)
+            if (action) return { kind: 'action', page, action }
+          }
+          return { kind: 'page', page }
+        })
+        function pickPage(p) {
+          selPage.value = p.id
+          selAct.value = ''
+        }
+        function pickAct(p, a) {
+          selPage.value = p.id
+          selAct.value = a.id
+        }
+        function tip() {
+          ElementPlus.ElMessage.success('原型：跳转请求链路')
+        }
+        return { pages, selPage, selAct, detail, pickPage, pickAct, tip }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

@@ -72,6 +72,15 @@
 </template>
 
 <script setup>
+/**
+ * 定时任务新增/编辑弹窗：封装任务表单、Cron 选择器与 ITask Bean 下拉；支持只读查看。
+ *
+ * @prop {boolean} modelValue 弹窗显隐（v-model）
+ * @prop {number|null} jobId 编辑时传入任务 ID；为空则新增
+ * @prop {boolean} [readOnly=false] 只读模式（隐藏提交按钮）
+ * @emits update:modelValue 关闭弹窗
+ * @emits success 保存成功
+ */
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'

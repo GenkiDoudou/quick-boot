@@ -32,6 +32,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * 字典数据实现：{@code listByType} 走 Spring Cache，增删改导入时全量失效。
+ */
 @Service
 @RequiredArgsConstructor
 @CacheConfig(cacheNames = "sys-dict#3600")
@@ -69,6 +72,9 @@ public class SysDictDataServiceImpl extends BaseServiceImpl<SysDictDataMapper, S
     return toVo(row, SysDictDataVo.class);
   }
 
+  /**
+   * 写入后清空字典缓存，保证前端下拉与标签即时一致。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public Long add(SysDictDataVo vo) {
@@ -103,6 +109,7 @@ public class SysDictDataServiceImpl extends BaseServiceImpl<SysDictDataMapper, S
     this.removeByIds(ids.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
   }
 
+  /** 按 dictType 缓存启用字典项，TTL 见 {@code sys-dict#3600}。 */
   @Cacheable(key = "'type:'+#dictType")
   @Override
   public List<SysDictDataVo> listByType(String dictType) {

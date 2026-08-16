@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V2 会话逐字稿</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; background: #dbeafe; }
+    .shell {
+      max-width: 720px; margin: 0 auto; min-height: 100vh; background: #fff;
+      display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(30,64,175,.15);
+    }
+    .head {
+      background: #1d4ed8; color: #fff; padding: 14px 18px; display: flex; gap: 12px; align-items: center;
+    }
+    .head a { color: #bfdbfe; text-decoration: none; font-size: 13px; }
+    .thread { flex: 1; padding: 20px 18px 28px; overflow: auto; background: linear-gradient(#eff6ff, #fff); }
+    .day { text-align: center; font-size: 12px; color: #64748b; margin: 8px 0 16px; }
+    .msg { display: flex; gap: 10px; margin-bottom: 14px; max-width: 92%; }
+    .msg.sys { align-self: flex-start; }
+    .msg.user { margin-left: auto; flex-direction: row-reverse; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+    }
+    .sys .avatar { background: #e2e8f0; color: #475569; }
+    .user .avatar { background: #1d4ed8; color: #fff; }
+    .bubble {
+      border-radius: 14px; padding: 10px 14px; font-size: 14px; line-height: 1.45;
+      box-shadow: 0 1px 2px rgba(15,23,42,.06);
+    }
+    .sys .bubble { background: #f1f5f9; color: #334155; border-top-left-radius: 4px; }
+    .user .bubble {
+      background: #1d4ed8; color: #fff; border-top-right-radius: 4px; cursor: pointer;
+    }
+    .user .bubble:hover { filter: brightness(1.05); }
+    .user .bubble.on { outline: 3px solid #93c5fd; }
+    .tiny { font-size: 11px; opacity: .75; margin-top: 4px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .tech {
+      margin: -6px 46px 16px auto; max-width: 88%;
+      background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 12px; font-size: 12px;
+      display: none;
+    }
+    .tech.show { display: block; }
+    .tech h4 { margin: 0 0 8px; color: #7dd3fc; font-size: 12px; }
+    .tech pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-all; color: #cbd5e1; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="app" class="shell">
+    <div class="head">
+      <a href="./user-behavior-journey-picker.html">← 选型</a>
+      <div>
+        <div style="font-weight:700">V2 · 会话逐字稿</div>
+        <div style="font-size:12px;opacity:.85">与 admin 的行为对话 · sess_demo_8f2a</div>
+      </div>
+    </div>
+    <div class="thread">
+      <div class="day">2026-08-15 16:40</div>
+      <template v-for="(m, i) in messages" :key="i">
+        <div class="msg" :class="m.role">
+          <div class="avatar">{{ m.role === 'sys' ? '站' : '点' }}</div>
+          <div>
+            <div
+              class="bubble"
+              :class="{ on: m.role === 'user' && open === m.id }"
+              @click="m.role === 'user' && toggle(m.id)"
+            >
+              <div v-html="m.text"></div>
+              <div class="tiny">{{ m.time }}<span v-if="m.role === 'user'"> · 点击查看接口/SQL</span></div>
+            </div>
+          </div>
+        </div>
+        <div v-if="m.detail" class="tech" :class="{ show: open === m.id }">
+          <h4>触发明细</h4>
+          <div v-for="(line, j) in m.detail.apis" :key="'a'+j" class="mono" style="margin-bottom:4px">{{ line }}</div>
+          <pre v-for="(s, j) in m.detail.sqls" :key="'s'+j">{{ s }}</pre>
+        </div>
+      </template>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+    createApp({
+      setup() {
+        const open = ref('u1')
+        const messages = [
+          { role: 'sys', time: '16:40:01', text: '进入页面 <span class="mono">/home</span>（工作台）' },
+          { role: 'sys', time: '16:40:18', text: '从 /home 进入 <span class="mono">/system/user</span>（用户管理）' },
+          {
+            role: 'user', id: 'u1', time: '16:40:25',
+            text: '我点击了「新增」',
+            detail: {
+              apis: ['GET /system/user/deptTree · 42ms', 'GET /system/dict/.../sys_user_sex · 18ms'],
+              sqls: ['SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0']
+            }
+          },
+          { role: 'sys', time: '16:40:26', text: '从 /system/user 进入 <span class="mono">/system/user/form</span>' },
+          {
+            role: 'user', id: 'u2', time: '16:41:05',
+            text: '我点击了「保存」',
+            detail: {
+              apis: ['POST /system/user · 86ms'],
+              sqls: ['INSERT INTO sys_user ...', 'INSERT INTO sys_user_role ...']
+            }
+          }
+        ]
+        function toggle(id) { open.value = open.value === id ? '' : id }
+        return { messages, open, toggle }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

@@ -9,7 +9,12 @@ public final class CacheNameTtlParser {
   }
 
   /**
+   * 解析缓存名中的 TTL 后缀。
+   * <p>
+   * 仅当最后一个 {@code #} 之后为纯正整数秒时生效；否则整串作为逻辑分区名并使用默认 TTL。
+   *
    * @param rawCacheName Spring Cache 传入的缓存名（含可选 {@code #ttl} 后缀）
+   * @return 逻辑分区名与过期秒数
    */
   public static CacheNameTtl parse(String rawCacheName) {
     if (rawCacheName == null || rawCacheName.isEmpty()) {

@@ -1,3 +1,7 @@
+/**
+ * 通知公告管理 API。
+ * 封装 `/system/notice` 列表、详情及 CRUD（读 GET / 写 POST）。
+ */
 import request from '@/utils/request'
 
 /**

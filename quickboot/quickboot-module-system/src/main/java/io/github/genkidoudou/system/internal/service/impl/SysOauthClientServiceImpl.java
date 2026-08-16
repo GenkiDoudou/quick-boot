@@ -170,6 +170,9 @@ public class SysOauthClientServiceImpl extends BaseServiceImpl<SysOauthClientMap
     return this.list(q);
   }
 
+  /**
+   * 批量导入：新增行自动生成 secret，更新行保留原 secret；完成后全量驱逐客户端缓存。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public ExcelResult<SysOauthClientImportRow> importExcel(MultipartFile file, boolean updateSupport) throws IOException {

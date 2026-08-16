@@ -27,6 +27,9 @@
 </template>
 
 <script setup>
+/**
+ * 左侧垂直菜单：Logo + 权限过滤后的 sidebarRouters 树形渲染。
+ */
 import Logo from './Logo.vue'
 import SidebarItem from './SidebarItem.vue'
 import variables from '@/assets/styles/variables.module.scss'

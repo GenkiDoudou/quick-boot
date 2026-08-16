@@ -32,6 +32,9 @@
 </template>
 
 <script setup>
+/**
+ * 侧栏菜单项递归组件：单子节点折叠、外链/内嵌 iframe 路由解析。
+ */
 import { isExternal } from '@/utils/validate'
 import AppLink from './Link.vue'
 import { getNormalPath, parseRouteQuery } from '@/utils/ruoyi'
@@ -53,6 +56,10 @@ const props = defineProps({
 
 const onlyOneChild = ref({})
 
+/**
+ * 判断是否仅有一个可见子路由（可折叠为单菜单项）。
+ * ParentView/Layout 空目录不当作叶子，避免进入无组件路由。
+ */
 function hasOneShowingChild(children = [], parent) {
   if (!children) {
     children = []
@@ -82,6 +89,7 @@ function hasOneShowingChild(children = [], parent) {
   return false
 }
 
+/** 拼接 basePath 与路由 path，内嵌 iframe（meta.link）须走 router-link */
 function resolvePath(routePath, routeQuery, routeMeta) {
   const path = isExternal(routePath)
     ? routePath

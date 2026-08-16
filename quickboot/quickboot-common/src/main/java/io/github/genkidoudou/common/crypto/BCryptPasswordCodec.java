@@ -2,6 +2,9 @@ package io.github.genkidoudou.common.crypto;
 
 import cn.hutool.crypto.digest.BCrypt;
 
+/**
+ * BCrypt 密码编解码器：带盐哈希，适用于用户口令存储。
+ */
 public class BCryptPasswordCodec extends AbstractValidatingPasswordCodec {
   @Override
   protected String encryptNonNullPassword(String rawPassword) {

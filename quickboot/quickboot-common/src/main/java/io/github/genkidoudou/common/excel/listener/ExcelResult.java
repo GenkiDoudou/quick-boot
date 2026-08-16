@@ -9,61 +9,49 @@ public interface ExcelResult<T> {
 
 
   /**
-   * 总条数
-   *
-   * @author luyanan
-   * @since 2026/5/10
+   * @return 读取总条数（含成功与失败）
    */
-
   Long getTotal();
 
-
+  /**
+   * @param total 总条数
+   */
   void setTotal(Long total);
 
   /**
-   * 成功条数
-   *
-   * @return
-   * @since 2026/5/10
+   * @return 成功条数
    */
   Long getSuccessCount();
 
+  /**
+   * @param successCount 成功条数
+   */
   void setSuccessCount(Long successCount);
 
   /**
-   * 失败条数
-   *
-   * @return
-   * @since 2026/5/10
+   * @return 失败条数
    */
   Long getFailCount();
 
+  /**
+   * @param failCount 失败条数
+   */
   void setFailCount(Long failCount);
 
   /**
-   * 失败明细
-   *
-   * @since 2026/5/10
+   * @return 失败明细文案列表（按行）
    */
-
-
   List<String> getErrorList();
 
 
   /**
-   * 导入回执
-   *
-   * @return
-   * @since 2026/5/10
+   * @return 导入结果摘要文案
    */
   String getAnalysis();
 
 
   /**
-   * 写入错误的文件
-   *
-   * @return
-   * @since 2026/8/2
+   * 将 {@link #getErrorList()} 编码为 Base64 错误文件，供前端下载。
    */
   void writeErrorFile();
 }

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V1 地铁路线图</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; font-family: "DIN Alternate", "Segoe UI", sans-serif; background: #e8eef5; color: #0f172a; }
+    .nav { background: #0c4a6e; color: #fff; padding: 12px 20px; display: flex; gap: 14px; align-items: center; }
+    .nav a { color: #7dd3fc; text-decoration: none; font-size: 13px; }
+    .map {
+      max-width: 900px; margin: 24px auto; padding: 28px 24px 40px;
+      background: #f8fafc; border-radius: 20px; border: 1px solid #cbd5e1;
+      box-shadow: 0 12px 40px rgba(12,74,110,.12);
+    }
+    .line-name {
+      display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; margin-bottom: 28px;
+    }
+    .line-badge {
+      background: #0284c7; color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 13px;
+    }
+    .route { position: relative; padding-left: 36px; }
+    .route::before {
+      content: ""; position: absolute; left: 15px; top: 18px; bottom: 18px; width: 8px;
+      background: linear-gradient(#0284c7, #0ea5e9); border-radius: 4px;
+    }
+    .station { position: relative; margin-bottom: 8px; }
+    .stop {
+      position: absolute; left: -36px; top: 18px; width: 22px; height: 22px;
+      border-radius: 50%; background: #fff; border: 5px solid #0284c7; z-index: 1;
+    }
+    .stop.end { background: #0284c7; }
+    .plat {
+      background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 14px 16px;
+      margin-left: 8px;
+    }
+    .plat h3 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+    .plat .code { font-size: 12px; color: #64748b; font-family: ui-monospace, Consolas, monospace; margin-top: 2px; }
+    .transfers { margin: 10px 0 0 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .xfer {
+      border: 2px dashed #f59e0b; background: #fffbeb; color: #b45309;
+      border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .xfer:hover, .xfer.on { background: #f59e0b; color: #fff; border-style: solid; }
+    .panel {
+      margin-top: 16px; margin-left: 8px; display: none;
+      border: 2px solid #0284c7; border-radius: 12px; background: #fff; padding: 14px;
+    }
+    .panel.show { display: block; }
+    .panel h4 { margin: 0 0 8px; color: #0284c7; font-size: 13px; }
+    .row { font-size: 12px; padding: 8px; background: #f1f5f9; border-radius: 6px; margin-bottom: 6px; font-family: ui-monospace, Consolas, monospace; }
+    .sql { background: #0f172a; color: #e2e8f0; padding: 8px; border-radius: 6px; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <strong>V1 · 地铁路线图</strong>
+  </div>
+  <div id="app" class="map">
+    <div class="line-name"><span class="line-badge">行为 1 号线</span> 会话 sess_demo_8f2a · admin</div>
+    <div class="route">
+      <div class="station" v-for="(s, i) in stations" :key="s.id">
+        <div class="stop" :class="{ end: i === stations.length - 1 }"></div>
+        <div class="plat">
+          <h3>{{ s.name }}</h3>
+          <div class="code">{{ s.path }} · 到站 {{ s.time }}</div>
+          <div class="transfers" v-if="s.actions.length">
+            <span
+              v-for="a in s.actions"
+              :key="a.id"
+              class="xfer"
+              :class="{ on: open === a.id }"
+              @click="toggle(a.id)"
+            >换乘 · 点击「{{ a.name }}」</span>
+          </div>
+          <div v-for="a in s.actions" :key="'p'+a.id" class="panel" :class="{ show: open === a.id }">
+            <h4>该点击触发</h4>
+            <div v-for="(api, j) in a.apis" :key="'api'+j" class="row">{{ api }}</div>
+            <div v-for="(sql, j) in a.sqls" :key="'sql'+j" class="sql" style="margin-top:8px">{{ sql }}</div>
+          </div>
+        </div>
+        <div v-if="i < stations.length - 1" style="height:18px"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+    createApp({
+      setup() {
+        const open = ref('a1')
+        const stations = [
+          { id: 's1', name: '工作台', path: '/home', time: '16:40:01', actions: [] },
+          {
+            id: 's2', name: '用户管理', path: '/system/user', time: '16:40:18',
+            actions: [{
+              id: 'a1', name: '新增',
+              apis: ['GET /system/user/deptTree · 42ms', 'GET /system/dict/.../sys_user_sex · 18ms'],
+              sqls: ['SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0']
+            }]
+          },
+          {
+            id: 's3', name: '新建用户', path: '/system/user/form', time: '16:40:26',
+            actions: [{
+              id: 'a2', name: '保存',
+              apis: ['POST /system/user · 86ms'],
+              sqls: ['INSERT INTO sys_user ...', 'INSERT INTO sys_user_role ...']
+            }]
+          }
+        ]
+        function toggle(id) { open.value = open.value === id ? '' : id }
+        return { stations, open, toggle }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

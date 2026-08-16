@@ -44,6 +44,11 @@ public class LoginController {
 
   private final ISysPermissionService permissionService;
 
+  /**
+   * 应用根路径欢迎页（无鉴权）。
+   *
+   * @return 固定欢迎文案
+   */
   @Operation(summary = "首页")
   @GetMapping("/")
   public String index() {
@@ -53,6 +58,10 @@ public class LoginController {
 
   /**
    * 账号密码登录（验证码 uuid 在启用天爱时必填）。
+   *
+   * @param loginRequestVo 用户名、密码及可选验证码
+   * @param request        用于提取客户端 IP 等登录上下文
+   * @return 访问令牌及过期信息
    */
   @Operation(summary = "账号密码登录")
   @PostMapping("/login")
@@ -64,6 +73,8 @@ public class LoginController {
 
   /**
    * 当前登录用户（quick-ui {@code getInfo} → {@code /auth/me}）。
+   *
+   * @return 用户基本信息、角色键与权限标识集合；未登录时由 Sa-Token 拦截
    */
   @Operation(summary = "当前登录用户")
   @GetMapping("/auth/me")

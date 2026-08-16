@@ -5,6 +5,12 @@
 </template>
 
 <script setup>
+/**
+ * SVG 雪碧图图标：通过 symbol id（icon-[dir]-[name]）引用 vite-plugin-svg-icons 生成的 sprite。
+ *
+ * @prop {string} iconClass 图标名（对应 assets/icons/svg 下文件名，不含扩展名）
+ * @prop {string} [className] 附加 CSS 类名
+ */
 import { computed } from 'vue'
 
 const props = defineProps({

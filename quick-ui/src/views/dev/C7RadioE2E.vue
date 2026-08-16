@@ -85,8 +85,8 @@
 </template>
 
 <script setup>
+/** C7Radio 组件 E2E 联调页：覆盖静态/异步、空态与 radioStyle 形态。 */
 import {ref} from 'vue'
-import {ElMessage} from 'element-plus'
 
 const staticVal = ref('')
 const autoVal = ref('')

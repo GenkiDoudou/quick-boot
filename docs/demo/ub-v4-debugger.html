@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V4 调试器调用栈</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --bg:#1e1e1e; --side:#252526; --line:#3c3c3c; --text:#cccccc; --muted:#858585; --accent:#007acc; --green:#4ec9b0; --yellow:#dcdcaa; --orange:#ce9178; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Consolas, "Cascadia Code", "Segoe UI", monospace; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    .titlebar {
+      height: 36px; background: #323233; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+      font-size: 12px; border-bottom: 1px solid #000;
+    }
+    .titlebar a { color: #3794ff; text-decoration: none; }
+    .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; }
+    .stack {
+      background: var(--side); border-right: 1px solid var(--line); overflow: auto; padding: 8px 0;
+    }
+    .sec-h {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+      padding: 8px 12px 4px;
+    }
+    .frame {
+      padding: 6px 12px 6px 8px; cursor: pointer; border-left: 3px solid transparent; font-size: 12px;
+    }
+    .frame:hover { background: #2a2d2e; }
+    .frame.on { background: #094771; border-left-color: var(--accent); }
+    .frame .fn { color: var(--yellow); }
+    .frame .file { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .indent-1 { padding-left: 22px; }
+    .indent-2 { padding-left: 36px; }
+    .tag-pv { color: var(--green); }
+    .tag-act { color: var(--orange); }
+    .pane { display: flex; flex-direction: column; min-width: 0; }
+    .tabs { display: flex; background: var(--side); border-bottom: 1px solid var(--line); font-size: 12px; }
+    .tab { padding: 8px 14px; border-right: 1px solid var(--line); color: var(--muted); }
+    .tab.on { background: var(--bg); color: #fff; }
+    .editor { flex: 1; overflow: auto; padding: 14px 16px; font-size: 13px; line-height: 1.55; }
+    .ln { color: var(--muted); display: inline-block; width: 28px; user-select: none; }
+    .kw { color: #569cd6; }
+    .str { color: var(--orange); }
+    .cm { color: #6a9955; }
+    .watch {
+      border-top: 1px solid var(--line); background: var(--side); max-height: 42%; overflow: auto; padding: 10px 12px;
+    }
+    .watch h3 { margin: 0 0 8px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .06em; }
+    .var { font-size: 12px; margin-bottom: 6px; }
+    .var .k { color: #9cdcfe; }
+    .var .v { color: var(--orange); }
+    .sqlbox {
+      margin-top: 6px; background: #1e1e1e; border: 1px solid var(--line); padding: 8px;
+      white-space: pre-wrap; word-break: break-all; color: #d4d4d4; font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <span>V4 · DEBUG · user-behavior.session</span>
+    <span style="color:#858585">sess_demo_8f2a</span>
+  </div>
+  <div id="app" class="main">
+    <div class="stack">
+      <div class="sec-h">Call Stack</div>
+      <template v-for="(n, i) in nodes" :key="n.id">
+        <div
+          class="frame"
+          :class="['indent-' + n.depth, { on: sel === n.id }]"
+          @click="sel = n.id"
+        >
+          <div>
+            <span :class="n.kind === 'pv' ? 'tag-pv' : 'tag-act'">{{ n.kind === 'pv' ? 'page' : 'action' }}</span>
+            <span class="fn"> {{ n.label }}</span>
+          </div>
+          <div class="file">{{ n.file }} · {{ n.time }}</div>
+        </div>
+      </template>
+    </div>
+    <div class="pane">
+      <div class="tabs">
+        <div class="tab on">locals</div>
+        <div class="tab">sql</div>
+        <div class="tab">http</div>
+      </div>
+      <div class="editor" v-if="current">
+        <div class="cm">// selected frame</div>
+        <div><span class="ln">1</span><span class="kw">const</span> kind = <span class="str">'{{ current.kind }}'</span></div>
+        <div><span class="ln">2</span><span class="kw">const</span> name = <span class="str">'{{ current.label }}'</span></div>
+        <div><span class="ln">3</span><span class="kw">const</span> path = <span class="str">'{{ current.path || current.pagePath || '' }}'</span></div>
+        <div v-if="current.kind === 'action'"><span class="ln">4</span><span class="cm">// click to inspect triggered IO below</span></div>
+        <div v-else><span class="ln">4</span><span class="cm">// page enter — expand child actions in stack</span></div>
+      </div>
+      <div class="watch" v-if="current">
+        <h3>WATCH · {{ current.kind === 'action' ? 'TRIGGERED IO' : 'PAGE CONTEXT' }}</h3>
+        <template v-if="current.kind === 'action'">
+          <div class="var" v-for="(a, i) in current.apis" :key="'a'+i">
+            <span class="k">http[{{ i }}]</span> = <span class="v">{{ a }}</span>
+          </div>
+          <div class="var" v-for="(s, i) in current.sqls" :key="'s'+i">
+            <span class="k">sql[{{ i }}]</span>
+            <div class="sqlbox">{{ s }}</div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="var"><span class="k">fromPage</span> = <span class="v">{{ current.from || 'null' }}</span></div>
+          <div class="var"><span class="k">enteredAt</span> = <span class="v">{{ current.time }}</span></div>
+          <div class="var"><span class="k">childActions</span> = <span class="v">{{ current.childCount }}</span></div>
+        </template>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    createApp({
+      setup() {
+        const nodes = [
+          { id: 'p1', depth: 0, kind: 'pv', label: 'enter(/home)', file: 'pv:home', path: '/home', from: '', time: '16:40:01', childCount: 0 },
+          { id: 'p2', depth: 0, kind: 'pv', label: 'enter(/system/user)', file: 'pv:user', path: '/system/user', from: '/home', time: '16:40:18', childCount: 1 },
+          {
+            id: 'a1', depth: 1, kind: 'action', label: 'click("新增")', file: 'action:add', pagePath: '/system/user', time: '16:40:25',
+            apis: ['GET /system/user/deptTree · 42ms', 'GET /dict/sys_user_sex · 18ms'],
+            sqls: ['SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0']
+          },
+          { id: 'p3', depth: 0, kind: 'pv', label: 'enter(/system/user/form)', file: 'pv:form', path: '/system/user/form', from: '/system/user', time: '16:40:26', childCount: 1 },
+          {
+            id: 'a2', depth: 1, kind: 'action', label: 'click("保存")', file: 'action:save', pagePath: '/system/user/form', time: '16:41:05',
+            apis: ['POST /system/user · 86ms'],
+            sqls: ['INSERT INTO sys_user ...', 'INSERT INTO sys_user_role ...']
+          }
+        ]
+        const sel = ref('a1')
+        const current = computed(() => nodes.find((n) => n.id === sel.value))
+        return { nodes, sel, current }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

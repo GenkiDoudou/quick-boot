@@ -51,6 +51,7 @@
 </template>
 
 <script setup>
+/** C7Title 组件 E2E 联调页：覆盖语义标签、字号预设与图标插槽。 */
 </script>
 
 <style scoped>

@@ -20,4 +20,11 @@ public interface SysUserQueryFacade {
    * @return 用户视图；不存在时返回 {@code null}
    */
   SysUserView findByUserId(Long userId);
+
+  /**
+   * 未删除用户总数（逻辑删除已生效，对齐态势总览「总用户」口径）。
+   *
+   * @return 用户数，永不 {@code null}
+   */
+  long countActiveUsers();
 }

@@ -22,6 +22,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
+import io.github.genkidoudou.monitor.internal.litetrace.support.LiteTraceExceptionReporter;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Objects;
 
@@ -34,6 +36,19 @@ import java.util.Objects;
 public class GlobalExceptionHandler {
 
   private static final String DEFAULT_FALLBACK_MESSAGE = "系统繁忙，请稍后再试";
+
+  private final ObjectProvider<LiteTraceExceptionReporter> liteTraceExceptionReporter;
+
+  public GlobalExceptionHandler(ObjectProvider<LiteTraceExceptionReporter> liteTraceExceptionReporter) {
+    this.liteTraceExceptionReporter = liteTraceExceptionReporter;
+  }
+
+  private void projectBeError(Throwable ex) {
+    LiteTraceExceptionReporter reporter = liteTraceExceptionReporter.getIfAvailable();
+    if (reporter != null) {
+      reporter.report(ex);
+    }
+  }
 
   /**
    * 处理可预期异常。
@@ -58,6 +73,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ErrorException.class)
   public ResponseEntity<R<Void>> handleErrorException(ErrorException ex) {
+    projectBeError(ex);
     int code = normalizeCode(ex.getCode());
     String message = resolveMessage(code, ex.getArgs(), ex.getMsg());
     log.error("error exception, code={}, msg={}", code, message, ex);
@@ -124,6 +140,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(Throwable.class)
   public ResponseEntity<R<Void>> handleThrowable(Throwable ex) {
+    projectBeError(ex);
     int code = ErrorCodes.System.INTERNAL_ERROR;
     String message = resolveMessage(code, null, DEFAULT_FALLBACK_MESSAGE);
     log.error("unhandled exception, code={}, msg={}", code, message, ex);

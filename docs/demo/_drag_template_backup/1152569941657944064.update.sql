@@ -1,0 +1,1 @@
+UPDATE onl_drag_page SET template=CONVERT(LOAD_FILE('e:/workspace/luyanan/quickboot/docs/demo/_drag_template_backup/1152569941657944064.template.fixed.txt') USING utf8mb4) WHERE id='1152569941657944064';

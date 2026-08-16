@@ -47,19 +47,23 @@ public abstract class ExcelListenerCallback<T> extends AnalysisEventListener<T> 
 
   private Long totalNum = 0L;
   /**
-   * 每批处理的条数
-   *
-   * @return
-   * @since 2026/5/10
+   * 每批处理的条数；默认 {@link Long#MAX_VALUE} 表示整表一批。
    */
   private long batchSize = Long.MAX_VALUE;
 
 
+  /**
+   * @param isValidate 是否对每行执行 Bean Validation
+   */
   public ExcelListenerCallback(boolean isValidate) {
     this.excelResult = new DefaultExcelResult<>();
     this.isValidate = isValidate;
   }
 
+  /**
+   * @param isValidate 是否校验
+   * @param batchSize  批大小，{@code null} 时不覆盖默认
+   */
   public ExcelListenerCallback(boolean isValidate, Long batchSize) {
     this.excelResult = new DefaultExcelResult<>();
     this.isValidate = isValidate;
@@ -156,12 +160,10 @@ public abstract class ExcelListenerCallback<T> extends AnalysisEventListener<T> 
   protected abstract void callback(T data, AnalysisContext context);
 
   /**
-   * 成功的数据
+   * 批次回调：达到 {@link #batchSize} 或读取结束时触发，由子类实现持久化等逻辑。
    *
-   * @param list
-   * @param context
-   * @return
-   * @since 2026/5/10
+   * @param list    本批成功行（已通过校验）
+   * @param context EasyExcel 上下文
    */
   protected abstract void getList(List<T> list, AnalysisContext context);
 }

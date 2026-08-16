@@ -23,6 +23,9 @@ public class JimuShareAccessFilter extends OncePerRequestFilter {
 
     private final JimuProperties jimuProperties;
 
+    /**
+     * 分享路径命中时在 request 上标记 IS_PASS，供积木 Token 服务走分享态鉴权。
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {

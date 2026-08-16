@@ -109,6 +109,7 @@
 </template>
 
 <script setup>
+/** C7Watermark 组件 E2E 联调页：覆盖全屏/容器、图片回落与防篡改。 */
 import { ref } from 'vue'
 import userSvg from '@/assets/icons/svg/user.svg'
 

@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS sys_client_track (
   reason            VARCHAR(32)   NOT NULL DEFAULT 'normal',
   page_path         VARCHAR(500)  NULL,
   ua                VARCHAR(500)  NULL,
-  events_json       CLOB          NOT NULL,
+  events_json       LONGTEXT      NOT NULL,
   client_ip         VARCHAR(128)  NULL,
   create_time       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (batch_id)

@@ -16,6 +16,11 @@ public class ClientOperationTracingAutoConfiguration {
   /** 略晚于 CORS（{@code HIGHEST_PRECEDENCE}），尽早供 oper_log / 慢 SQL 读取。 */
   private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 5;
 
+  /**
+   * 注册客户端操作追踪 Filter，顺序略晚于 CORS。
+   *
+   * @return Filter 注册 Bean
+   */
   @Bean
   public FilterRegistrationBean<ClientOperationFilter> clientOperationFilterRegistration() {
     FilterRegistrationBean<ClientOperationFilter> reg = new FilterRegistrationBean<>(new ClientOperationFilter());

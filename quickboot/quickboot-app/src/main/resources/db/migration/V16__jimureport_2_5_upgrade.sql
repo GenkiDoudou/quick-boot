@@ -31,8 +31,9 @@ CREATE TABLE IF NOT EXISTS `chat2bi_table_meta` (
   UNIQUE KEY `uk_source_table`(`db_source_type`, `db_source_id`, `schema_name`, `table_name`),
   KEY `idx_source`(`db_source_type`, `db_source_id`),
   KEY `idx_table_name`(`table_name`),
-  KEY `idx_table_name_comment`(`table_name`, `source_comment`, `table_comment`),
-  KEY `idx_table_comment`(`table_comment`)
+  -- utf8mb4 下整列索引易超 InnoDB 3072 字节上限，使用前缀
+  KEY `idx_table_name_comment`(`table_name`, `source_comment`(100), `table_comment`(100)),
+  KEY `idx_table_comment`(`table_comment`(191))
 );
 
 -- 修复错误接口数据（演示数据集 URL）

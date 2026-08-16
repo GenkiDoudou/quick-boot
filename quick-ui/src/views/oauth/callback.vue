@@ -5,6 +5,9 @@
 </template>
 
 <script setup>
+/**
+ * OAuth 社交登录回调页：用 ticket 换 token，写入本地后跳转首页。
+ */
 import { ElMessage } from 'element-plus'
 import { socialComplete } from '@/api/login'
 import { setToken } from '@/utils/auth'

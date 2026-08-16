@@ -8,6 +8,9 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import java.util.Locale;
 
 
+/**
+ * 国际化文案解析工具：按业务码从 Spring {@link MessageSource} 取消息，支持占位参数与线程 Locale。
+ */
 public final class I18nUtil {
 
   private I18nUtil() {
@@ -41,10 +44,18 @@ public final class I18nUtil {
     return resolveFromMessageSource(code, args);
   }
 
+  /**
+   * @return 当前线程 Locale（来自 {@link LocaleContextHolder}）
+   */
   public static Locale getLocale() {
     return LocaleContextHolder.getLocale();
   }
 
+  /**
+   * 设置当前线程 Locale，供后续 {@link #getMessage(Integer, Object[], String)} 解析使用。
+   *
+   * @param locale 目标 Locale
+   */
   public static void setLocale(Locale locale) {
     LocaleContextHolder.setLocale(locale);
   }

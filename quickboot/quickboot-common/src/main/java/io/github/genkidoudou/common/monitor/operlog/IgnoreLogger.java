@@ -14,6 +14,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IgnoreLogger {
 
+  /**
+   * 忽略粒度。
+   *
+   * @return 忽略类型，默认 {@link Type#ALL}
+   */
   Type type() default Type.ALL;
 
   enum Type {

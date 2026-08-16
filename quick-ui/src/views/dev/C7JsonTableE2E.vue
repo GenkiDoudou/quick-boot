@@ -24,6 +24,7 @@
 </template>
 
 <script setup>
+/** C7JsonTable 组件 E2E 联调页：覆盖搜索、分页、导入导出与 beforeFetch 拦截。 */
 import {ref} from 'vue'
 
 const delCount = ref(0)

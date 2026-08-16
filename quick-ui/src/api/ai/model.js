@@ -1,3 +1,6 @@
+/**
+ * AI 大模型 API：模型 CRUD、密钥管理、连通性测试与导出（/ai/model）。
+ */
 import request from '@/utils/request'
 
 /**

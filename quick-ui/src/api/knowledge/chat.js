@@ -1,3 +1,6 @@
+/**
+ * 知识库问答 API：RAG 问答与引用溯源（/knowledge/chat）。
+ */
 import request from '@/utils/request'
 
 /**

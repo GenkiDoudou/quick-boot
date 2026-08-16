@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>请求链路 · 页访问聚合原型（pageVisit）</title>
+  <!--
+    假设（本原型）：
+    1. 浏览器模式：左侧按 pageVisitId 聚合；一页多条 traceId
+    2. 瀑布内接口只保留 1 条（合并 fe_api 参数/响应 + service 耗时）
+    3. 头栏展示 sessionId / pageVisitId / 当前页 / 来自
+    纯 API / 任务：仍按单 trace 列表（切换 chip 可看）
+  -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --panel2: #182130; --line: #243044;
+      --text: #e8eef7; --muted: #8b9bb4; --accent: #3b82f6;
+      --ok: #22c55e; --bad: #ef4444; --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      min-height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: 13px; flex-wrap: wrap;
+    }
+    .title { font-weight: 600; white-space: nowrap; }
+    .hint {
+      padding: 8px 14px; font-size: 12px; color: var(--muted);
+      border-bottom: 1px solid var(--line); background: #0e141c; line-height: 1.5;
+    }
+    .hint b { color: #93c5fd; font-weight: 600; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; }
+    .left { border-right: 1px solid var(--line); background: var(--panel); overflow: auto; }
+    .filters { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      font-size: 11px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line);
+      color: var(--muted); cursor: pointer; user-select: none;
+    }
+    .chip.on { border-color: var(--accent); color: #93c5fd; background: rgba(59,130,246,.12); }
+    .item { padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px; }
+    .item:hover, .item.active { background: var(--panel2); }
+    .mono { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; word-break: break-all; }
+    .meta { color: var(--muted); margin-top: 4px; }
+    .badge { font-size: 10px; padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
+    .badge.browser { background: rgba(59,130,246,.2); color: #93c5fd; }
+    .badge.api { background: rgba(139,92,246,.2); color: #c4b5fd; }
+    .badge.job { background: rgba(245,158,11,.2); color: #fcd34d; }
+    .badge.ok { background: rgba(34,197,94,.15); color: var(--ok); }
+    .badge.bad { background: rgba(239,68,68,.15); color: var(--bad); }
+    .right { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .head {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+      font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px;
+    }
+    .head .ok { color: var(--ok); }
+    .links {
+      padding: 8px 16px; border-bottom: 1px solid var(--line); background: #0e141c;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+    .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr); }
+    .col { overflow: auto; padding: 14px 16px; min-width: 0; }
+    .col.detail { background: #0e141c; border-left: 1px solid var(--line); }
+    .sec-title { font-size: 13px; font-weight: 600; margin: 0 0 10px; color: var(--text); }
+    .trace-tabs { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .trace-tab {
+      border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; cursor: pointer;
+      background: #0f1620; font-size: 12px;
+    }
+    .trace-tab.on { border-color: var(--accent); background: rgba(59,130,246,.1); }
+    .row {
+      display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 56px; gap: 10px;
+      align-items: center; margin-bottom: 6px; font-size: 12px; padding: 4px; border-radius: 4px; cursor: pointer;
+    }
+    .row.on { background: rgba(59,130,246,.08); outline: 1px solid rgba(59,130,246,.35); }
+    .lbl { min-width: 0; overflow: hidden; }
+    .lbl-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lbl small { display: block; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track { height: 22px; background: #0f1620; border: 1px solid var(--line); border-radius: 3px; position: relative; min-width: 0; }
+    .span { position: absolute; top: 3px; height: 16px; border-radius: 2px; min-width: 3px; }
+    .span.fe { background: #3b82f6; }
+    .span.be { background: #8b5cf6; }
+    .span.sql { background: var(--warn); }
+    .span.page { background: #06b6d4; }
+    .ms { text-align: right; color: var(--muted); white-space: nowrap; }
+    .kv { margin-bottom: 10px; font-size: 12px; }
+    .kv label { display: block; color: var(--muted); margin-bottom: 4px; }
+    .kv pre, .kv span { margin: 0; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+    .kv pre { background: #0b0f14; border: 1px solid var(--line); padding: 8px; border-radius: 4px; max-height: 200px; overflow: auto; }
+    .empty { color: var(--muted); padding: 24px; font-size: 13px; }
+    .callout {
+      margin-bottom: 12px; padding: 8px 10px; border-radius: 4px; font-size: 11px; line-height: 1.45;
+      background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.25); color: #93c5fd;
+    }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .legend .page { background: #06b6d4; }
+    .legend .api { background: #8b5cf6; }
+    .legend .sql { background: var(--warn); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <span class="title">请求链路 · 原型</span>
+      <el-input
+        v-model="keyword"
+        size="small"
+        clearable
+        placeholder="sessionId: / pageVisitId: / traceId: / page:"
+        style="flex:1; min-width: 220px; max-width: 520px"
+      ></el-input>
+      <el-button size="small" type="primary" @click="applyFilter">查询</el-button>
+      <el-button size="small" @click="resetFilter">重置</el-button>
+    </div>
+    <div class="hint">
+      <b>设计目标：</b>浏览器下「一个 pageVisitId = 一次页面停留 = 多条 traceId」；
+      瀑布里<strong>同一接口只出现一次</strong>（合并前端参数/响应 + 后端耗时）；头栏展示 <b>sessionId</b>。
+      本页为静态 mock，用浏览器直接打开即可点选验证交互。
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="filters">
+          <span class="chip" :class="{ on: mode === 'browser' }" @click="setMode('browser')">浏览器（按页）</span>
+          <span class="chip" :class="{ on: mode === 'api' }" @click="setMode('api')">纯 API（按链）</span>
+          <span class="chip" :class="{ on: mode === 'job' }" @click="setMode('job')">任务</span>
+        </div>
+
+        <!-- 浏览器：pageVisit 列表 -->
+        <template v-if="mode === 'browser'">
+          <div
+            v-for="pv in filteredPageVisits"
+            :key="pv.pageVisitId"
+            class="item"
+            :class="{ active: curVisit && curVisit.pageVisitId === pv.pageVisitId }"
+            @click="selectVisit(pv)"
+          >
+            <div>
+              <span class="mono">{{ short(pv.pagePath) }}</span>
+              <span class="badge browser">页面访问</span>
+              <span class="badge" :class="pv.okFlag === '1' ? 'ok' : 'bad'">{{ pv.okFlag === '1' ? 'OK' : 'ERR' }}</span>
+            </div>
+            <div class="meta">当前页 {{ pv.pagePath }}</div>
+            <div class="meta" v-if="pv.fromPage">来自 {{ pv.fromPage }}</div>
+            <div class="meta">{{ pv.traces.length }} 条链路 · {{ pv.durationMs }}ms · {{ pv.endedAt }}</div>
+            <div class="meta">pageVisitId {{ shortId(pv.pageVisitId) }}</div>
+          </div>
+          <div v-if="!filteredPageVisits.length" class="empty">无匹配的页面访问</div>
+        </template>
+
+        <!-- 纯 API / 任务：仍按 trace -->
+        <template v-else>
+          <div
+            v-for="t in filteredTraces"
+            :key="t.traceId"
+            class="item"
+            :class="{ active: curTrace && curTrace.traceId === t.traceId }"
+            @click="selectLoneTrace(t)"
+          >
+            <div>
+              <span class="mono">{{ shortId(t.traceId) }}</span>
+              <span class="badge" :class="mode">{{ mode === 'api' ? '纯 API' : '任务' }}</span>
+            </div>
+            <div class="meta">{{ t.entryName }} · {{ t.durationMs }}ms</div>
+          </div>
+        </template>
+      </div>
+
+      <div class="right">
+        <template v-if="mode === 'browser' && curVisit">
+          <div class="head">
+            <span>当前页 <span class="mono">{{ curVisit.pagePath }}</span></span>
+            <span v-if="curVisit.fromPage">来自 <span class="mono">{{ curVisit.fromPage }}</span></span>
+            <span>sessionId <span class="mono">{{ curVisit.sessionId }}</span></span>
+            <span>pageVisitId <span class="mono">{{ curVisit.pageVisitId }}</span></span>
+            <span>uin {{ curVisit.uin }}</span>
+            <span class="ok">{{ curVisit.okFlag === '1' ? 'OK' : 'ERR' }}</span>
+            <span>{{ curVisit.traces.length }} traces · 合计 {{ curVisit.durationMs }}ms</span>
+            <span>{{ curVisit.startedAt }} ~ {{ curVisit.endedAt }}</span>
+          </div>
+          <div class="links">
+            <el-button size="small" @click="msg('跳转慢 SQL（原型）')">慢 SQL</el-button>
+            <el-button size="small" @click="msg('跳转操作日志（原型）')">操作日志</el-button>
+            <el-button size="small" @click="msg('跳转用户行为 session=' + curVisit.sessionId)">用户行为</el-button>
+          </div>
+          <div class="main">
+            <div class="col">
+              <div class="callout">
+                选左侧「页面访问」后，先选下面某条 <b>traceId</b>（= 一个接口），再看瀑布。
+                对比旧版：旧版左侧直接是 trace，容易误以为「一页一链」。
+              </div>
+              <div class="sec-title">本页下的链路（{{ curVisit.traces.length }}）</div>
+              <div class="trace-tabs">
+                <div
+                  v-for="t in curVisit.traces"
+                  :key="t.traceId"
+                  class="trace-tab"
+                  :class="{ on: curTrace && curTrace.traceId === t.traceId }"
+                  @click="selectTraceInVisit(t)"
+                >
+                  <div><span class="mono">{{ t.traceId }}</span>
+                    <span class="badge" :class="t.okFlag === '1' ? 'ok' : 'bad'">{{ t.okFlag === '1' ? 'OK' : 'ERR' }}</span>
+                  </div>
+                  <div class="meta">{{ t.entryName }} · {{ t.durationMs }}ms · HTTP {{ t.statusCode }}</div>
+                </div>
+              </div>
+
+              <template v-if="curTrace">
+                <div class="sec-title">瀑布 · {{ shortId(curTrace.traceId) }}</div>
+                <div class="legend">
+                  <span><i class="page"></i>页面</span>
+                  <span><i class="api"></i>接口（已去重合并）</span>
+                  <span><i class="sql"></i>SQL</span>
+                </div>
+                <div
+                  v-for="s in displaySpans"
+                  :key="s.id"
+                  class="row"
+                  :class="{ on: selectedSpan && selectedSpan.id === s.id }"
+                  @click="selectedSpan = s"
+                >
+                  <div class="lbl">
+                    <span class="lbl-name">{{ s.name }}</span>
+                    <small>{{ s.kindLabel }} · {{ s.service }} · {{ s.ok }} · {{ s.status || '—' }}</small>
+                  </div>
+                  <div class="track">
+                    <div class="span" :class="s.bar" :style="barStyle(s)"></div>
+                  </div>
+                  <div class="ms">{{ s.durationMs }}ms</div>
+                </div>
+              </template>
+            </div>
+            <div class="col detail">
+              <div class="sec-title">{{ detailTitle }}</div>
+              <template v-if="selectedSpan && selectedSpan.kind === 'page'">
+                <div class="kv"><label>当前页</label><span class="mono">{{ curVisit.pagePath }}</span></div>
+                <div class="kv"><label>来自</label><span class="mono">{{ curVisit.fromPage || '—' }}</span></div>
+                <div class="kv"><label>sessionId</label><span class="mono">{{ curVisit.sessionId }}</span></div>
+                <div class="kv"><label>pageVisitId</label><span class="mono">{{ curVisit.pageVisitId }}</span></div>
+              </template>
+              <template v-else-if="selectedSpan && selectedSpan.kind === 'api'">
+                <div class="callout" style="margin-top:0">
+                  旧瀑布会拆成「browser fe_api」+「quickboot-app service」两条；原型合并为一条，参数来自前端，耗时取后端。
+                </div>
+                <div class="kv"><label>Method / URL</label><span class="mono">{{ selectedSpan.name }}</span></div>
+                <div class="kv"><label>请求 Params</label><pre>{{ selectedSpan.requestParams || '—' }}</pre></div>
+                <div class="kv"><label>请求 Body</label><pre>{{ selectedSpan.requestBody || '—' }}</pre></div>
+                <div class="kv"><label>响应预览</label><pre>{{ selectedSpan.responsePreview || '—' }}</pre></div>
+                <div class="kv"><label>HTTP / 业务码</label><span>{{ selectedSpan.status }} · {{ selectedSpan.bizCode }} / {{ selectedSpan.bizMsg }}</span></div>
+                <div class="kv"><label>耗时</label><span>前端观测 {{ selectedSpan.feMs }}ms · 后端 {{ selectedSpan.beMs }}ms（展示用后端）</span></div>
+              </template>
+              <template v-else-if="selectedSpan && selectedSpan.kind === 'sql'">
+                <div class="kv"><label>Mapper</label><span class="mono">{{ selectedSpan.name }}</span></div>
+                <div class="kv"><label>完整 SQL</label><pre>{{ selectedSpan.sql || '—' }}</pre></div>
+              </template>
+              <div v-else class="empty">先选 trace，再点瀑布中的 Span</div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="mode !== 'browser' && curTrace">
+          <div class="head">
+            <span>traceId <span class="mono">{{ curTrace.traceId }}</span></span>
+            <span>entry {{ curTrace.entryName }}</span>
+            <span>{{ curTrace.durationMs }}ms</span>
+          </div>
+          <div class="empty">纯 API / 任务模式仍按单 trace（与现网一致）。本原型重点演示「浏览器按页」。</div>
+        </template>
+
+        <div v-else class="empty">请选择左侧「页面访问」查看：页 → 多 trace → 去重瀑布</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+
+    /** mock：同一 session 下，/system/role 一次页面访问含 3 条接口链 */
+    const MOCK_PAGE_VISITS = [
+      {
+        pageVisitId: 'pv-role-20260815-133839',
+        sessionId: 'sess-admin-7f2a91c0',
+        uin: 'admin',
+        pagePath: '/system/role',
+        fromPage: '/system/user',
+        okFlag: '1',
+        startedAt: '2026-08-15 13:38:39',
+        endedAt: '2026-08-15 13:38:41',
+        durationMs: 210,
+        traces: [
+          {
+            traceId: 'f7cf395feb8424176c5680734ad4d91a',
+            entryName: 'POST /sys/role/page',
+            statusCode: '200',
+            okFlag: '1',
+            durationMs: 44,
+            spansRaw: [
+              { id: 'p1', kind: 'page', name: '/system/role', service: 'browser', durationMs: 0, start: 0 },
+              { id: 's1', kind: 'sql', name: 'SysRoleMapper.selectList', service: 'mysql', durationMs: 8, start: 4, sql: 'SELECT * FROM sys_role WHERE ...' },
+              { id: 's2', kind: 'sql', name: 'SysUserMapper.selectById', service: 'mysql', durationMs: 3, start: 14, sql: 'SELECT * FROM sys_user WHERE user_id=?' },
+              // 故意放两条接口：原型会合并
+              { id: 'fe', kind: 'fe_api', name: 'POST /sys/role/page', service: 'browser', durationMs: 44, start: 0, status: '200',
+                requestParams: 'pageNum=1&pageSize=10', requestBody: '{"status":"0"}',
+                responsePreview: '{"code":200,"msg":"success","data":{"total":3,"rows":[...]}}',
+                bizCode: 200, bizMsg: 'success', feMs: 44, beMs: null },
+              { id: 'be', kind: 'service', name: 'POST /sys/role/page', service: 'quickboot-app', durationMs: 32, start: 2, status: '200',
+                feMs: null, beMs: 32 }
+            ]
+          },
+          {
+            traceId: 'a11b22c33d44e55f6677889900aabbcc',
+            entryName: 'GET /sys/role/1',
+            statusCode: '200',
+            okFlag: '1',
+            durationMs: 28,
+            spansRaw: [
+              { id: 'p2', kind: 'page', name: '/system/role', service: 'browser', durationMs: 0, start: 0 },
+              { id: 's3', kind: 'sql', name: 'SysRoleMapper.selectById', service: 'mysql', durationMs: 5, start: 3, sql: 'SELECT * FROM sys_role WHERE role_id=?' },
+              { id: 'fe2', kind: 'fe_api', name: 'GET /sys/role/1', service: 'browser', durationMs: 28, start: 0, status: '200',
+                requestParams: '', requestBody: '', responsePreview: '{"code":200,"data":{"roleId":1,"roleName":"管理员"}}',
+                bizCode: 200, bizMsg: 'success', feMs: 28, beMs: null },
+              { id: 'be2', kind: 'service', name: 'GET /sys/role/1', service: 'quickboot-app', durationMs: 18, start: 1, status: '200', beMs: 18 }
+            ]
+          },
+          {
+            traceId: 'deadbeef0123456789abcdef01234567',
+            entryName: 'GET /sys/menu/roleMenuTreeselect/1',
+            statusCode: '200',
+            okFlag: '1',
+            durationMs: 61,
+            spansRaw: [
+              { id: 'p3', kind: 'page', name: '/system/role', service: 'browser', durationMs: 0, start: 0 },
+              { id: 's4', kind: 'sql', name: 'SysMenuMapper.selectMenuList', service: 'mysql', durationMs: 12, start: 5, sql: 'SELECT * FROM sys_menu ...' },
+              { id: 'fe3', kind: 'fe_api', name: 'GET /sys/menu/roleMenuTreeselect/1', service: 'browser', durationMs: 61, start: 0, status: '200',
+                requestParams: '', requestBody: '', responsePreview: '{"code":200,"menus":[...],"checkedKeys":[...]}',
+                bizCode: 200, bizMsg: 'success', feMs: 61, beMs: null },
+              { id: 'be3', kind: 'service', name: 'GET /sys/menu/roleMenuTreeselect/1', service: 'quickboot-app', durationMs: 40, start: 2, status: '200', beMs: 40 }
+            ]
+          }
+        ]
+      },
+      {
+        pageVisitId: 'pv-user-20260815-133700',
+        sessionId: 'sess-admin-7f2a91c0',
+        uin: 'admin',
+        pagePath: '/system/user',
+        fromPage: '/index',
+        okFlag: '1',
+        startedAt: '2026-08-15 13:37:00',
+        endedAt: '2026-08-15 13:37:02',
+        durationMs: 95,
+        traces: [
+          {
+            traceId: '11223344556677889900aabbccddeeff',
+            entryName: 'POST /sys/user/page',
+            statusCode: '200',
+            okFlag: '1',
+            durationMs: 95,
+            spansRaw: [
+              { id: 'pu', kind: 'page', name: '/system/user', service: 'browser', durationMs: 0, start: 0 },
+              { id: 'feu', kind: 'fe_api', name: 'POST /sys/user/page', service: 'browser', durationMs: 95, start: 0, status: '200',
+                requestBody: '{"pageNum":1}', responsePreview: '{"code":200,"data":{...}}', bizCode: 200, bizMsg: 'ok', feMs: 95 },
+              { id: 'beu', kind: 'service', name: 'POST /sys/user/page', service: 'quickboot-app', durationMs: 70, start: 3, status: '200', beMs: 70 },
+              { id: 'su', kind: 'sql', name: 'SysUserMapper.selectPage', service: 'mysql', durationMs: 20, start: 10, sql: 'SELECT ... FROM sys_user LIMIT ?' }
+            ]
+          }
+        ]
+      }
+    ]
+
+    const MOCK_API_TRACES = [
+      { traceId: 'openapi-001', entryName: 'GET /openapi/v1/ping', durationMs: 12, okFlag: '1' }
+    ]
+
+    function normalizeUrlKey(name) {
+      return String(name || '').trim().toUpperCase().replace(/\s+/g, ' ')
+    }
+
+    /** 合并 fe_api + service → 单条接口 */
+    function mergeSpans(raw, totalMs) {
+      const list = Array.isArray(raw) ? [...raw] : []
+      const apis = list.filter((s) => s.kind === 'fe_api' || s.kind === 'service')
+      const others = list.filter((s) => s.kind !== 'fe_api' && s.kind !== 'service')
+      const byKey = new Map()
+      for (const s of apis) {
+        const key = normalizeUrlKey(s.name)
+        const cur = byKey.get(key) || {
+          id: 'api-' + key,
+          kind: 'api',
+          kindLabel: '接口',
+          name: s.name,
+          service: 'merged',
+          bar: 'be',
+          ok: 'OK',
+          status: s.status || '—',
+          durationMs: 0,
+          start: s.start || 0,
+          requestParams: '',
+          requestBody: '',
+          responsePreview: '',
+          bizCode: '—',
+          bizMsg: '—',
+          feMs: null,
+          beMs: null
+        }
+        if (s.kind === 'fe_api') {
+          cur.requestParams = s.requestParams || cur.requestParams
+          cur.requestBody = s.requestBody || cur.requestBody
+          cur.responsePreview = s.responsePreview || cur.responsePreview
+          cur.bizCode = s.bizCode != null ? s.bizCode : cur.bizCode
+          cur.bizMsg = s.bizMsg || cur.bizMsg
+          cur.feMs = s.durationMs
+          cur.status = s.status || cur.status
+        } else {
+          cur.beMs = s.durationMs
+          cur.durationMs = s.durationMs
+          cur.start = s.start || cur.start
+          cur.status = s.status || cur.status
+          cur.service = s.service
+        }
+        byKey.set(key, cur)
+      }
+      for (const cur of byKey.values()) {
+        if (cur.durationMs == null || cur.durationMs === 0) {
+          cur.durationMs = cur.beMs != null ? cur.beMs : (cur.feMs || 0)
+        }
+      }
+      const mergedApis = [...byKey.values()]
+      const mappedOthers = others.map((s) => ({
+        id: s.id,
+        kind: s.kind === 'page' ? 'page' : s.kind === 'sql' ? 'sql' : s.kind,
+        kindLabel: s.kind === 'page' ? '页面' : s.kind === 'sql' ? 'SQL' : s.kind,
+        name: s.name,
+        service: s.service,
+        bar: s.kind === 'page' ? 'page' : s.kind === 'sql' ? 'sql' : 'fe',
+        ok: 'OK',
+        status: s.status || '—',
+        durationMs: s.durationMs || 0,
+        start: s.start || 0,
+        sql: s.sql,
+        totalMs
+      }))
+      const out = [...mappedOthers.filter((x) => x.kind === 'page'), ...mergedApis, ...mappedOthers.filter((x) => x.kind !== 'page')]
+      out.forEach((x) => { x.totalMs = totalMs })
+      return out
+    }
+
+    createApp({
+      setup() {
+        const mode = ref('browser')
+        const keyword = ref('')
+        const filterKw = ref('')
+        const curVisit = ref(null)
+        const curTrace = ref(null)
+        const selectedSpan = ref(null)
+
+        const filteredPageVisits = computed(() => {
+          const k = filterKw.value.trim().toLowerCase()
+          if (!k) return MOCK_PAGE_VISITS
+          return MOCK_PAGE_VISITS.filter((pv) => {
+            const blob = [pv.pagePath, pv.fromPage, pv.sessionId, pv.pageVisitId, ...pv.traces.map((t) => t.traceId)].join(' ').toLowerCase()
+            if (k.startsWith('sessionid:')) return pv.sessionId.toLowerCase().includes(k.slice(10).trim())
+            if (k.startsWith('pagevisitid:')) return pv.pageVisitId.toLowerCase().includes(k.slice(12).trim())
+            if (k.startsWith('page:')) return pv.pagePath.toLowerCase().includes(k.slice(5).trim())
+            if (k.startsWith('traceid:')) return pv.traces.some((t) => t.traceId.toLowerCase().includes(k.slice(8).trim()))
+            return blob.includes(k)
+          })
+        })
+
+        const filteredTraces = computed(() => MOCK_API_TRACES)
+
+        const displaySpans = computed(() => {
+          if (!curTrace.value) return []
+          return mergeSpans(curTrace.value.spansRaw, curTrace.value.durationMs || 1)
+        })
+
+        const detailTitle = computed(() => {
+          if (!selectedSpan.value) return '详情'
+          if (selectedSpan.value.kind === 'page') return '页面详情'
+          if (selectedSpan.value.kind === 'api') return '接口详情（已合并）'
+          if (selectedSpan.value.kind === 'sql') return 'SQL 详情'
+          return 'Span 详情'
+        })
+
+        function setMode(m) {
+          mode.value = m
+          curVisit.value = null
+          curTrace.value = null
+          selectedSpan.value = null
+        }
+
+        function selectVisit(pv) {
+          curVisit.value = pv
+          curTrace.value = pv.traces[0] || null
+          selectedSpan.value = null
+          if (curTrace.value) {
+            const spans = mergeSpans(curTrace.value.spansRaw, curTrace.value.durationMs)
+            selectedSpan.value = spans.find((s) => s.kind === 'api') || spans[0] || null
+          }
+        }
+
+        function selectTraceInVisit(t) {
+          curTrace.value = t
+          const spans = mergeSpans(t.spansRaw, t.durationMs)
+          selectedSpan.value = spans.find((s) => s.kind === 'api') || spans[0] || null
+        }
+
+        function selectLoneTrace(t) {
+          curTrace.value = t
+          curVisit.value = null
+          selectedSpan.value = null
+        }
+
+        function applyFilter() {
+          filterKw.value = keyword.value
+          ElementPlus.ElMessage.success('已按条件过滤（mock）')
+        }
+
+        function resetFilter() {
+          keyword.value = ''
+          filterKw.value = ''
+        }
+
+        function barStyle(s) {
+          const total = Math.max(s.totalMs || 1, 1)
+          const start = Number(s.start || 0)
+          const dur = Math.max(Number(s.durationMs || 0), 1)
+          return {
+            left: (start / total) * 100 + '%',
+            width: Math.max((dur / total) * 100, 0.4) + '%'
+          }
+        }
+
+        function short(p) {
+          if (!p) return '—'
+          const parts = String(p).split('/').filter(Boolean)
+          return parts.length ? parts[parts.length - 1] : p
+        }
+
+        function shortId(id) {
+          if (!id) return '—'
+          return id.length > 16 ? id.slice(0, 8) + '…' + id.slice(-4) : id
+        }
+
+        function msg(text) {
+          ElementPlus.ElMessage.info(text)
+        }
+
+        // 默认选中角色页，对齐你截图场景
+        selectVisit(MOCK_PAGE_VISITS[0])
+
+        return {
+          mode, keyword, curVisit, curTrace, selectedSpan,
+          filteredPageVisits, filteredTraces, displaySpans, detailTitle,
+          setMode, selectVisit, selectTraceInVisit, selectLoneTrace,
+          applyFilter, resetFilter, barStyle, short, shortId, msg
+        }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

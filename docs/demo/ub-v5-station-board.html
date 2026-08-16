@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V5 站台看板</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body {
+      margin: 0; font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f766e; background-image: radial-gradient(circle at 20% 20%, #14b8a6, #0f766e 45%, #115e59);
+      color: #134e4a; min-height: 100vh;
+    }
+    .top {
+      padding: 14px 20px; display: flex; gap: 12px; align-items: center; color: #ecfdf5;
+    }
+    .top a { color: #a7f3d0; text-decoration: none; font-size: 13px; }
+    .board {
+      display: flex; gap: 14px; overflow-x: auto; padding: 8px 20px 32px; align-items: flex-start;
+    }
+    .col {
+      flex: 0 0 280px; background: #ecfdf5; border-radius: 16px; padding: 12px;
+      box-shadow: 0 16px 40px rgba(6,78,59,.35); border: 1px solid #99f6e4;
+    }
+    .col-h {
+      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
+    }
+    .col-h h2 { margin: 0; font-size: 16px; color: #115e59; }
+    .col-h span { font-size: 11px; color: #0f766e; font-family: ui-monospace, Consolas, monospace; }
+    .lane { font-size: 11px; font-weight: 700; color: #0d9488; margin: 10px 0 6px; letter-spacing: .04em; }
+    .card {
+      background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 8px;
+      border: 1px solid #ccfbf1; box-shadow: 0 1px 2px rgba(15,118,110,.08);
+    }
+    .card.browse { border-left: 4px solid #2dd4bf; }
+    .card.click {
+      border-left: 4px solid #f97316; cursor: pointer; transition: .12s transform;
+    }
+    .card.click:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(249,115,22,.2); }
+    .card h3 { margin: 0 0 4px; font-size: 14px; color: #134e4a; }
+    .meta { font-size: 12px; color: #5eead4; color: #0f766e; opacity: .85; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .arrow {
+      align-self: center; color: #ecfdf5; font-size: 28px; font-weight: 700; flex: 0 0 auto; opacity: .7;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <strong>V5 · 站台看板</strong>
+    <span style="font-size:12px;opacity:.85">每站一列 · 点橙色卡片开抽屉</span>
+  </div>
+  <div id="app" class="board">
+    <template v-for="(col, i) in cols" :key="col.id">
+      <div class="col">
+        <div class="col-h">
+          <h2>第 {{ i + 1 }} 站 · {{ col.title }}</h2>
+          <span>{{ col.time }}</span>
+        </div>
+        <div class="mono meta" style="margin-bottom:8px">{{ col.path }}</div>
+        <div class="lane">浏览</div>
+        <div class="card browse">
+          <h3>进入本页</h3>
+          <div class="meta">来自 {{ col.from || '会话起点' }}</div>
+        </div>
+        <div class="lane">点击</div>
+        <div v-if="!col.actions.length" class="meta" style="padding:8px">无显式操作</div>
+        <div
+          v-for="a in col.actions"
+          :key="a.id"
+          class="card click"
+          @click="open(a, col)"
+        >
+          <h3>「{{ a.name }}」</h3>
+          <div class="meta">{{ a.time }} · 查看接口 / SQL</div>
+        </div>
+      </div>
+      <div v-if="i < cols.length - 1" class="arrow">→</div>
+    </template>
+
+    <el-drawer v-model="visible" :title="drawerTitle" size="400px">
+      <template v-if="cur">
+        <p class="mono" style="font-size:12px;color:#64748b">{{ cur.col.path }}</p>
+        <h4 style="margin:12px 0 8px;color:#0f766e">接口</h4>
+        <el-table :data="cur.action.apis" size="small" border>
+          <el-table-column prop="name" label="接口" min-width="160"></el-table-column>
+          <el-table-column prop="ms" label="ms" width="60"></el-table-column>
+        </el-table>
+        <h4 style="margin:16px 0 8px;color:#0f766e">SQL</h4>
+        <div v-for="(s, i) in cur.action.sqls" :key="i" style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px">
+          <div class="mono" style="font-weight:700">{{ s.mapper }}</div>
+          <pre style="margin:6px 0 0;white-space:pre-wrap;word-break:break-all;font-size:11px">{{ s.sql }}</pre>
+        </div>
+      </template>
+    </el-drawer>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    createApp({
+      setup() {
+        const visible = ref(false)
+        const cur = ref(null)
+        const cols = [
+          { id: 'c1', title: '工作台', path: '/home', from: '', time: '16:40:01', actions: [] },
+          {
+            id: 'c2', title: '用户管理', path: '/system/user', from: '/home', time: '16:40:18',
+            actions: [{
+              id: 'a1', name: '新增', time: '16:40:25',
+              apis: [
+                { name: 'GET /system/user/deptTree', ms: 42 },
+                { name: 'GET /dict/sys_user_sex', ms: 18 }
+              ],
+              sqls: [{ mapper: 'SysDeptMapper.selectList', sql: 'SELECT ... FROM sys_dept WHERE del_flag = 0' }]
+            }]
+          },
+          {
+            id: 'c3', title: '新建用户', path: '/system/user/form', from: '/system/user', time: '16:40:26',
+            actions: [{
+              id: 'a2', name: '保存', time: '16:41:05',
+              apis: [{ name: 'POST /system/user', ms: 86 }],
+              sqls: [
+                { mapper: 'SysUserMapper.insert', sql: 'INSERT INTO sys_user ...' },
+                { mapper: 'SysUserRoleMapper.insertBatch', sql: 'INSERT INTO sys_user_role ...' }
+              ]
+            }]
+          }
+        ]
+        const drawerTitle = computed(() => (cur.value ? `点击「${cur.value.action.name}」` : '明细'))
+        function open(action, col) {
+          cur.value = { action, col }
+          visible.value = true
+        }
+        return { cols, visible, cur, drawerTitle, open }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

@@ -31,8 +31,9 @@ public class SaTokenWebConfig implements WebMvcConfigurer {
     this.jimuProperties = jimuProperties;
   }
 
-  @PostConstruct
-  public void rewriteSaStrategy() {
+    /** 重写 sa-token 权限匹配：{@code *:*:*} 或 {@code *} 视为拥有全部权限字符。 */
+    @PostConstruct
+    public void rewriteSaStrategy() {
     SaStrategy.instance.hasElement = (list, element) -> {
       if (list == null || list.isEmpty() || element == null) {
         return false;
@@ -44,6 +45,10 @@ public class SaTokenWebConfig implements WebMvcConfigurer {
     };
   }
 
+  /**
+   * 注册登录拦截器；积木路径按 {@link JimuProperties} 排除 sa-token 校验。
+   * 副作用：未登录访问非排除路径将抛出 NotLoginException。
+   */
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
     List<String> excludes = new ArrayList<>(List.of(
@@ -53,7 +58,8 @@ public class SaTokenWebConfig implements WebMvcConfigurer {
       "/favicon.ico",
       "/h2-console/**",
       "/actuator/**",
-      "/api/captcha/**"
+      "/api/captcha/**",
+      "/file/preview/**"
     ));
     if (jimuEnabled) {
       JimuProperties props = jimuProperties.getIfAvailable();

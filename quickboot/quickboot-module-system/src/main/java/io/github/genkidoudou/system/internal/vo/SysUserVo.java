@@ -15,30 +15,40 @@ import lombok.Data;
 
 import java.util.List;
 
+/**
+ * 系统用户读写、导入导出及批量操作 VO。
+ */
 @Data
 @ExcelIgnoreUnannotated
 public class SysUserVo {
+  /** 用户主键。 */
   @NotNull(groups = UpdateGroup.class)
   @Null(groups = AddGroup.class)
   @ExcelProperty("用户ID")
   private Long userId;
 
+  /** 所属部门 ID。 */
   @ExcelProperty("部门ID")
   private Long deptId;
 
+  /** 部门名称（展示用，非持久化）。 */
   @ExcelProperty("部门名称")
   private String deptName;
 
+  /** 登录账号。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("用户账号")
   private String userName;
 
+  /** 用户昵称。 */
   @ExcelProperty("用户昵称")
   private String nickName;
 
+  /** 邮箱。 */
   @ExcelProperty("邮箱")
   private String email;
 
+  /** 手机号。 */
   @ExcelProperty("手机号")
   @Sensitive(type = SensitiveType.MOBILE)
   private String phonenumber;
@@ -56,13 +66,17 @@ public class SysUserVo {
   @ExcelProperty("状态")
   private String status;
 
+  /** 备注。 */
   @ExcelProperty("备注")
   private String remark;
 
+  /** 关联角色 ID 列表。 */
   @NotEmpty(groups = {AddGroup.class, UpdateGroup.class}, message = "请选择角色")
   private List<Long> roleIds;
 
+  /** 角色名称汇总（展示用）。 */
   private String roleNames;
 
+  /** 批量操作主键集合。 */
   private List<Long> ids;
 }

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A · Trace-first 调用链</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --panel2: #182130; --line: #243044;
+      --text: #e8eef7; --muted: #8b9bb4; --accent: #3b82f6; --ok: #22c55e; --bad: #ef4444; --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    }
+    .bar .title { font-size: 13px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+    .bar .title b { color: var(--text); font-weight: 600; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; }
+    .left { border-right: 1px solid var(--line); background: var(--panel); overflow: auto; }
+    .right { display: flex; flex-direction: column; min-width: 0; }
+    .trace-item {
+      padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px;
+    }
+    .trace-item:hover, .trace-item.active { background: var(--panel2); }
+    .trace-item .id { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+    .trace-item .meta { color: var(--muted); margin-top: 4px; }
+    .badge {
+      display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;
+    }
+    .badge.ok { background: rgba(34,197,94,.15); color: var(--ok); }
+    .badge.bad { background: rgba(239,68,68,.15); color: var(--bad); }
+    .detail-head {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+      font-size: 12px; display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted);
+    }
+    .detail-head code { color: #93c5fd; font-family: ui-monospace, Consolas, monospace; }
+    .waterfall { flex: 1; overflow: auto; padding: 12px 16px 24px; }
+    .wf-row {
+      display: grid; grid-template-columns: 220px 1fr 72px; gap: 10px; align-items: center;
+      margin-bottom: 8px; font-size: 12px;
+    }
+    .wf-label { color: var(--text); font-family: ui-monospace, Consolas, monospace; }
+    .wf-label small { display: block; color: var(--muted); font-family: inherit; margin-top: 2px; }
+    .track { position: relative; height: 22px; background: #0f1620; border: 1px solid var(--line); border-radius: 3px; }
+    .span {
+      position: absolute; top: 3px; height: 16px; border-radius: 2px; min-width: 4px;
+    }
+    .span.fe { background: #3b82f6; }
+    .span.be { background: #8b5cf6; }
+    .span.sql { background: var(--warn); }
+    .span.err { background: var(--bad); }
+    .ms { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .side-note { font-size: 11px; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    a.back { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .el-input__wrapper, .el-select__wrapper { background: #0f1620 !important; box-shadow: 0 0 0 1px var(--line) inset !important; }
+    .el-input__inner { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <div class="title">方案 <b>A</b> · Trace-first 调用链瀑布</div>
+      <el-input v-model="query" size="small" placeholder="traceId / 接口 path" style="width:280px" clearable></el-input>
+      <el-button size="small" type="primary" @click="filter">检索</el-button>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="side-note">最近 Trace（按结束时间）</div>
+        <div
+          v-for="t in filtered"
+          :key="t.traceId"
+          class="trace-item"
+          :class="{ active: current && current.traceId === t.traceId }"
+          @click="current = t"
+        >
+          <div>
+            <span class="id">{{ t.traceId }}</span>
+            <span class="badge" :class="t.ok ? 'ok' : 'bad'">{{ t.ok ? 'OK' : 'ERR' }}</span>
+          </div>
+          <div class="meta">{{ t.api }} · {{ t.totalMs }}ms · {{ t.endedAt }}</div>
+          <div class="meta">op={{ t.operationId }} · {{ t.page }}</div>
+        </div>
+      </div>
+      <div class="right" v-if="current">
+        <div class="detail-head">
+          <span>traceId <code>{{ current.traceId }}</code></span>
+          <span>operationId <code>{{ current.operationId }}</code></span>
+          <span>action <code>{{ current.action }}</code></span>
+          <span>{{ current.fromPage || '—' }} → {{ current.page }}</span>
+          <span>uin {{ current.uin }} · {{ current.browser }} · {{ current.clientIp }}</span>
+        </div>
+        <div class="waterfall">
+          <div class="side-note" style="border:0;padding:0 0 10px">Span 瀑布（相对 trace 起点）· 蓝=前端 紫=后端 黄=SQL 红=错误</div>
+          <div v-for="s in current.spans" :key="s.id" class="wf-row">
+            <div class="wf-label">
+              {{ s.name }}
+              <small>{{ s.service }}</small>
+            </div>
+            <div class="track">
+              <div class="span" :class="s.kind" :style="barStyle(s)"></div>
+            </div>
+            <div class="ms">{{ s.durationMs }}ms</div>
+          </div>
+          <div v-if="current.errorStack" style="margin-top:18px">
+            <div class="side-note" style="border:0;padding:0 0 8px">关联前端错误</div>
+            <pre style="margin:0;background:#0f1620;border:1px solid var(--line);padding:12px;border-radius:4px;font-size:12px;color:#fecaca;white-space:pre-wrap">{{ current.errorStack }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const TRACES = [
+      {
+        traceId: 'tr_9f2a1c',
+        operationId: 'op_7c21',
+        action: 'order.submit',
+        api: 'POST /api/order/create',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        uin: 'u_8821',
+        browser: 'Chrome/126',
+        clientIp: '112.64.12.21',
+        ok: false,
+        totalMs: 860,
+        endedAt: '20:47:01',
+        errorStack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at OrderConfirm.vue:142",
+        spans: [
+          { id: 1, name: 'action:order.submit', service: 'browser', kind: 'fe', start: 0, durationMs: 12 },
+          { id: 2, name: 'fetch POST /api/order/create', service: 'browser', kind: 'fe', start: 12, durationMs: 760 },
+          { id: 3, name: 'HTTP handler', service: 'order-service', kind: 'be', start: 45, durationMs: 702 },
+          { id: 4, name: 'SQL SELECT t_order', service: 'mysql', kind: 'sql', start: 60, durationMs: 680 },
+          { id: 5, name: 'window.onerror', service: 'browser', kind: 'err', start: 780, durationMs: 2 },
+        ],
+      },
+      {
+        traceId: 'tr_3aa901',
+        operationId: 'op_7c30',
+        action: 'order.search',
+        api: 'GET /api/order/page',
+        fromPage: '/dashboard',
+        page: '/orders',
+        uin: 'u_2201',
+        browser: 'Edge/126',
+        clientIp: '36.110.8.2',
+        ok: false,
+        totalMs: 1205,
+        endedAt: '19:54:41',
+        errorStack: 'Unhandled Promise Rejection: Network Error',
+        spans: [
+          { id: 1, name: 'action:order.search', service: 'browser', kind: 'fe', start: 0, durationMs: 8 },
+          { id: 2, name: 'fetch GET /api/order/page', service: 'browser', kind: 'fe', start: 8, durationMs: 1205 },
+        ],
+      },
+      {
+        traceId: 'tr_11bb02',
+        operationId: 'op_7c40',
+        action: 'user.save',
+        api: 'PUT /api/user/profile',
+        fromPage: '/users',
+        page: '/users/detail',
+        uin: 'u_1001',
+        browser: 'Chrome/126',
+        clientIp: '101.80.3.9',
+        ok: true,
+        totalMs: 210,
+        endedAt: '18:12:08',
+        errorStack: '',
+        spans: [
+          { id: 1, name: 'action:user.save', service: 'browser', kind: 'fe', start: 0, durationMs: 5 },
+          { id: 2, name: 'fetch PUT /api/user/profile', service: 'browser', kind: 'fe', start: 5, durationMs: 210 },
+          { id: 3, name: 'HTTP handler', service: 'user-service', kind: 'be', start: 20, durationMs: 168 },
+        ],
+      },
+    ];
+    const { createApp, ref, computed } = Vue;
+    createApp({
+      setup() {
+        const query = ref('');
+        const applied = ref('');
+        const current = ref(TRACES[0]);
+        const filtered = computed(() => {
+          const q = applied.value.trim().toLowerCase();
+          if (!q) return TRACES;
+          return TRACES.filter((t) => t.traceId.includes(q) || t.api.toLowerCase().includes(q));
+        });
+        function filter() { applied.value = query.value; }
+        function barStyle(s) {
+          const total = Math.max(current.value.totalMs, 1);
+          return { left: (s.start / total * 100) + '%', width: Math.max(s.durationMs / total * 100, 0.5) + '%' };
+        }
+        return { query, current, filtered, filter, barStyle };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

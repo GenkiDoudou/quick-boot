@@ -34,6 +34,7 @@
 </template>
 
 <script setup>
+/** Cron「秒」字段配置面板：通过 @update 向父组件回写 second 段表达式。 */
 const emit = defineEmits(['update'])
 const props = defineProps({
     cron: {

@@ -10,55 +10,24 @@ import java.util.Set;
 @Data
 public class LoginUser {
 
-  /**
-   * 用户id
-   *
-   * @since 2026/8/1
-   */
-
+  /** 用户主键。 */
   private Long userId;
 
-  /**
-   * 用户名
-   *
-   * @since 2026/8/1
-   */
-
+  /** 登录账号。 */
   private String username;
 
-  /**
-   * 用户昵称
-   *
-   * @since 2026/8/1
-   */
-
+  /** 用户昵称。 */
   private String nickName;
 
-
-  /**
-   * 部门id
-   *
-   * @since 2026/8/1
-   */
-
+  /** 所属部门 id。 */
   private Long deptId;
 
-  /**
-   * 菜单权限
-   */
+  /** 菜单权限标识集合。 */
   private Set<String> menuPermission;
 
-  /**
-   * 角色权限
-   */
+  /** 角色权限标识集合。 */
   private Set<String> rolePermission;
 
-
-  /**
-   * 客户端id
-   *
-   * @since 2026/8/1
-   */
-
+  /** OAuth 客户端 id（多端登录场景）。 */
   private String clientId;
 }

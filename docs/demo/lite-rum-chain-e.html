@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E · 查询控制台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #070b10; --panel: #10161f; --line: #243044; --text: #e8eef7; --muted: #8b9bb4; --accent: #22d3ee;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: ui-monospace, Consolas, "Segoe UI", monospace; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      border-bottom: 1px solid var(--line); background: var(--panel); padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    a.back { color: #67e8f9; text-decoration: none; font-size: 12px; font-family: "Segoe UI", sans-serif; }
+    .label { font-size: 12px; color: var(--muted); font-family: "Segoe UI", sans-serif; }
+    .prompt {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+      background: #0a1018; border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px;
+    }
+    .prompt span { color: var(--accent); }
+    .prompt input {
+      flex: 1; background: transparent; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 13px;
+    }
+    .hint {
+      padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line);
+      font-family: "Segoe UI", sans-serif;
+    }
+    .hint code { color: #67e8f9; }
+    .main { flex: 1; overflow: auto; padding: 12px 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; }
+    tr { cursor: pointer; }
+    tr:hover td { background: #121a24; }
+    tr.active td { background: #152033; }
+    .expand {
+      margin-top: 12px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 12px;
+    }
+    .expand h4 { margin: 0 0 8px; font-size: 12px; color: var(--accent); font-weight: 600; }
+    pre { margin: 0; white-space: pre-wrap; color: #cbd5e1; line-height: 1.5; }
+    .btn {
+      background: #155e75; color: #fff; border: 0; border-radius: 4px; padding: 7px 12px;
+      cursor: pointer; font-size: 12px; font-family: "Segoe UI", sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <span class="label">方案 <b style="color:#e8eef7">E</b> · 查询控制台</span>
+      <div class="prompt">
+        <span>›</span>
+        <input
+          v-model="input"
+          @keydown.enter="run"
+          placeholder='traceId:tr_9f2a1c  |  operationId:op_7c21  |  uin:u_8821  |  page:/orders'
+        />
+      </div>
+      <button class="btn" @click="run">Run</button>
+    </div>
+    <div class="hint">
+      语法：<code>traceId:</code> <code>operationId:</code> <code>uin:</code> <code>page:</code> <code>action:</code>
+      · 示例已预填，回车执行
+    </div>
+    <div class="main">
+      <div v-if="error" style="color:#f87171;font-size:12px;margin-bottom:10px">{{ error }}</div>
+      <table v-if="rows.length">
+        <thead>
+          <tr>
+            <th style="width:120px">type</th>
+            <th style="width:140px">id</th>
+            <th>summary</th>
+            <th style="width:90px">status</th>
+            <th style="width:80px">ms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="r in rows"
+            :key="r.id"
+            :class="{ active: selected && selected.id === r.id }"
+            @click="selected = r"
+          >
+            <td>{{ r.type }}</td>
+            <td>{{ r.id }}</td>
+            <td>{{ r.summary }}</td>
+            <td :style="{ color: r.ok ? '#4ade80' : '#f87171' }">{{ r.status }}</td>
+            <td>{{ r.ms != null ? r.ms : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="selected" class="expand">
+        <h4>CHAIN DUMP · {{ selected.id }}</h4>
+        <pre>{{ selected.dump }}</pre>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const DB = [
+      {
+        type: 'trace',
+        id: 'tr_9f2a1c',
+        operationId: 'op_7c21',
+        uin: 'u_8821',
+        page: '/orders/confirm',
+        action: 'order.submit',
+        summary: 'POST /api/order/create · order.submit · /cart→/orders/confirm',
+        status: 'ERR',
+        ok: false,
+        ms: 760,
+        dump: [
+          'operationId: op_7c21',
+          'action:       order.submit',
+          'page:         /cart → /orders/confirm',
+          'uin:          u_8821',
+          'ua/ip:        Chrome/126 · 112.64.12.21',
+          '',
+          '[fe] action                 +0ms',
+          '[fe] POST /api/order/create 760ms status=500',
+          '[be] order-service          702ms',
+          '[be] SQL t_order            680ms',
+          '[fe] TypeError reading id',
+          '',
+          'backend:',
+          'NullPointerException at OrderService.create:88',
+        ].join('\n'),
+      },
+      {
+        type: 'trace',
+        id: 'tr_3aa901',
+        operationId: 'op_7c30',
+        uin: 'u_2201',
+        page: '/orders',
+        action: 'order.search',
+        summary: 'GET /api/order/page · Network Error',
+        status: 'ERR',
+        ok: false,
+        ms: 1205,
+        dump: [
+          'operationId: op_7c30',
+          'action:       order.search',
+          'page:         /dashboard → /orders',
+          '',
+          '[fe] GET /api/order/page 1205ms status=0',
+          '[be] (no access log)',
+          '[fe] Unhandled Rejection: Network Error',
+        ].join('\n'),
+      },
+      {
+        type: 'operation',
+        id: 'op_7c40',
+        operationId: 'op_7c40',
+        uin: 'u_1001',
+        page: '/users/detail',
+        action: 'user.save',
+        summary: 'user.save · PUT /api/user/profile',
+        status: 'OK',
+        ok: true,
+        ms: 210,
+        dump: [
+          'operationId: op_7c40',
+          'action:       user.save',
+          'page:         /users → /users/detail',
+          '',
+          '[fe] action',
+          '[fe] PUT /api/user/profile 210ms',
+          '[be] user-service 168ms 200',
+        ].join('\n'),
+      },
+    ];
+
+    const { createApp, ref } = Vue;
+    createApp({
+      setup() {
+        const input = ref('traceId:tr_9f2a1c');
+        const rows = ref([]);
+        const selected = ref(null);
+        const error = ref('');
+
+        function parse(q) {
+          const out = {};
+          q.trim().split(/\s+/).forEach((part) => {
+            const i = part.indexOf(':');
+            if (i > 0) out[part.slice(0, i)] = part.slice(i + 1);
+          });
+          return out;
+        }
+
+        function run() {
+          error.value = '';
+          selected.value = null;
+          const f = parse(input.value);
+          if (!Object.keys(f).length) {
+            error.value = '需要查询条件，例如 traceId:tr_9f2a1c';
+            rows.value = [];
+            return;
+          }
+          rows.value = DB.filter((r) => {
+            if (f.traceId && r.id !== f.traceId && !(r.dump || '').includes(f.traceId)) return false;
+            if (f.operationId && r.operationId !== f.operationId) return false;
+            if (f.uin && r.uin !== f.uin) return false;
+            if (f.page && !(r.page || '').includes(f.page)) return false;
+            if (f.action && r.action !== f.action) return false;
+            return true;
+          });
+          if (!rows.value.length) error.value = '无命中';
+          else selected.value = rows.value[0];
+        }
+
+        run();
+        return { input, rows, selected, error, run };
+      },
+    }).mount('#app');
+  </script>
+</body>
+</html>

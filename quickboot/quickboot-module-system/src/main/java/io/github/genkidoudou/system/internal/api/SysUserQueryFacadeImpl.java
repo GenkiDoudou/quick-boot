@@ -3,6 +3,7 @@ package io.github.genkidoudou.system.internal.api;
 import io.github.genkidoudou.system.api.SysUserQueryFacade;
 import io.github.genkidoudou.system.api.SysUserView;
 import io.github.genkidoudou.system.internal.entity.SysUser;
+import io.github.genkidoudou.system.internal.mapper.SysUserMapper;
 import io.github.genkidoudou.system.internal.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class SysUserQueryFacadeImpl implements SysUserQueryFacade {
 
   private final ISysUserService userService;
+  private final SysUserMapper userMapper;
 
   @Override
   public SysUserView findByUserName(String username) {
@@ -24,6 +26,12 @@ public class SysUserQueryFacadeImpl implements SysUserQueryFacade {
   @Override
   public SysUserView findByUserId(Long userId) {
     return toView(userService.findByUserId(userId));
+  }
+
+  @Override
+  public long countActiveUsers() {
+    Long n = userMapper.selectCount(null);
+    return n == null ? 0L : n;
   }
 
   private static SysUserView toView(SysUser user) {

@@ -70,6 +70,9 @@ import {
   pageOperlog, getOperlog, removeOperlog, cleanOperlog, exportOperlog
 } from '@/api/monitor/operlog'
 
+/**
+ * 操作日志：分页查询、详情、批量删除、清空、导出。
+ */
 defineOptions({ name: 'SysOperlog' })
 
 const tableRef = ref(null)
@@ -134,6 +137,7 @@ function toLongOrUndef(v) {
   return Number.isFinite(n) ? n : undefined
 }
 
+/** 规范化耗时区间等筛选参数，空字符串转为 undefined */
 function normalizeOperParam(param) {
   const p = { ...(param || {}) }
   p.costTimeMin = toLongOrUndef(p.costTimeMin)

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B · 浅色管理端 · 表格 + 抽屉</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; background: #f5f7fa; font-family: "PingFang SC", "Segoe UI", sans-serif; }
+    .top { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 20px; display: flex; gap: 12px; align-items: center; }
+    a.back { color: #409eff; text-decoration: none; font-size: 13px; }
+    .box { padding: 16px 20px; }
+    .tip { margin-bottom: 12px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .wf-row { display: grid; grid-template-columns: 160px 1fr 56px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12px; cursor: pointer; padding: 4px; border-radius: 4px; }
+    .wf-row.on { background: #ecf5ff; }
+    .track { height: 16px; background: #eef2f7; border-radius: 3px; position: relative; }
+    .bar { position: absolute; top: 2px; height: 12px; border-radius: 2px; background: #8b5cf6; min-width: 3px; }
+    .bar.sql { background: #e6a23c; } .bar.pg { background: #09c; }
+    .kv { margin-bottom: 10px; font-size: 13px; }
+    .kv label { display: block; color: #909399; font-size: 12px; margin-bottom: 4px; }
+    .kv pre { margin: 0; background: #f5f7fa; padding: 8px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow: auto; }
+    .sub { color: #909399; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <a class="back" href="./lite-trace-page-visit-picker.html">← 选型</a>
+    <strong>B · 浅色管理端</strong>
+    <span class="sub">表格列出 pageVisit，抽屉看多 Trace + 合并瀑布</span>
+  </div>
+  <div class="box">
+    <el-alert class="tip" type="info" :closable="false" show-icon
+      title="风格：标准后台表格。适合运营/管理视角；研发排障密度不如 A。"></el-alert>
+    <el-form :inline="true" style="margin-bottom:12px">
+      <el-form-item label="页面">
+        <el-input v-model="q" clearable placeholder="/system/role" style="width:180px"></el-input>
+      </el-form-item>
+      <el-form-item label="sessionId">
+        <el-input v-model="sid" clearable style="width:180px"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="noop">查询</el-button>
+      </el-form-item>
+    </el-form>
+    <el-table :data="rows" border stripe @row-click="open">
+      <el-table-column prop="startedAt" label="时间" width="170"></el-table-column>
+      <el-table-column prop="pagePath" label="当前页" min-width="140"></el-table-column>
+      <el-table-column prop="fromPage" label="来自" min-width="120"></el-table-column>
+      <el-table-column prop="sessionId" label="sessionId" min-width="160">
+        <template #default="{ row }"><span class="mono">{{ row.sessionId }}</span></template>
+      </el-table-column>
+      <el-table-column prop="pageVisitId" label="pageVisitId" min-width="160">
+        <template #default="{ row }"><span class="mono">{{ row.pageVisitId }}</span></template>
+      </el-table-column>
+      <el-table-column label="链路数" width="80">
+        <template #default="{ row }">{{ row.traces.length }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="80">
+        <template #default="{ row }">
+          <el-tag :type="row.okFlag==='1'?'success':'danger'" size="small">{{ row.okFlag==='1'?'OK':'ERR' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="90" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click.stop="open(row)">打开</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+
+  <el-drawer v-model="drawer" size="56%" :title="drawerTitle">
+    <template v-if="cur">
+      <el-descriptions :column="2" border size="small" style="margin-bottom:12px">
+        <el-descriptions-item label="sessionId"><span class="mono">{{ cur.sessionId }}</span></el-descriptions-item>
+        <el-descriptions-item label="pageVisitId"><span class="mono">{{ cur.pageVisitId }}</span></el-descriptions-item>
+        <el-descriptions-item label="当前页">{{ cur.pagePath }}</el-descriptions-item>
+        <el-descriptions-item label="来自">{{ cur.fromPage }}</el-descriptions-item>
+      </el-descriptions>
+      <el-tabs v-model="tab">
+        <el-tab-pane v-for="t in cur.traces" :key="t.traceId" :label="t.entryName" :name="t.traceId">
+          <div class="sub" style="margin-bottom:8px">traceId <span class="mono">{{ t.traceId }}</span> · {{ t.durationMs }}ms</div>
+          <el-alert type="success" :closable="false" title="接口已合并：参数来自前端，耗时取后端" style="margin-bottom:10px"></el-alert>
+          <div v-for="s in merge(t)" :key="s.id" class="wf-row" :class="{on:sel&&sel.id===s.id}" @click="sel=s">
+            <div>{{ s.kindLabel }} · {{ s.name }}</div>
+            <div class="track"><div class="bar" :class="s.bar" :style="barStyle(s,t.durationMs)"></div></div>
+            <div>{{ s.durationMs }}ms</div>
+          </div>
+          <el-divider></el-divider>
+          <template v-if="sel&&sel.kind==='api'">
+            <div class="kv"><label>Params</label><pre>{{ sel.requestParams||'—' }}</pre></div>
+            <div class="kv"><label>Body</label><pre>{{ sel.requestBody||'—' }}</pre></div>
+            <div class="kv"><label>响应</label><pre>{{ sel.responsePreview||'—' }}</pre></div>
+          </template>
+        </el-tab-pane>
+      </el-tabs>
+    </template>
+  </el-drawer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+<script src="./lite-trace-pv-mock.js"></script>
+<script>
+const { createApp, ref, computed, watch } = Vue
+createApp({
+  setup() {
+    const q = ref('')
+    const sid = ref('')
+    const drawer = ref(false)
+    const cur = ref(null)
+    const tab = ref('')
+    const sel = ref(null)
+    const rows = computed(() => {
+      let list = window.LT_PV_MOCK.visits
+      if (q.value.trim()) list = list.filter(v => v.pagePath.includes(q.value.trim()))
+      if (sid.value.trim()) list = list.filter(v => v.sessionId.includes(sid.value.trim()))
+      return list
+    })
+    const drawerTitle = computed(() => cur.value ? ('页面访问 · ' + cur.value.pagePath) : '')
+    function open(row) {
+      cur.value = row
+      tab.value = row.traces[0].traceId
+      drawer.value = true
+      const spans = merge(row.traces[0])
+      sel.value = spans.find(s => s.kind === 'api') || spans[0]
+    }
+    function merge(t) { return window.LT_PV_MOCK.mergeSpans(t.spansRaw, t.durationMs) }
+    function barStyle(s, total) {
+      const t = Math.max(total || 1, 1)
+      return { left: ((s.start||0)/t*100)+'%', width: Math.max((s.durationMs||1)/t*100,1)+'%' }
+    }
+    function noop() { ElementPlus.ElMessage.success('已过滤（mock）') }
+    watch(tab, (id) => {
+      if (!cur.value) return
+      const t = cur.value.traces.find(x => x.traceId === id)
+      if (!t) return
+      const spans = merge(t)
+      sel.value = spans.find(s => s.kind === 'api') || spans[0]
+    })
+    return { q, sid, rows, drawer, cur, tab, sel, drawerTitle, open, merge, barStyle, noop }
+  }
+}).use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

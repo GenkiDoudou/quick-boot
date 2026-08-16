@@ -117,6 +117,7 @@
 </template>
 
 <script setup>
+/** C7Card 组件 E2E 联调页：覆盖折叠受控/非受控、色块与 extra 插槽。 */
 import {ref} from 'vue'
 
 const controlled = ref(true)

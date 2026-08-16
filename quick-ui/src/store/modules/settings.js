@@ -1,3 +1,7 @@
+/**
+ * 布局设置 Store：主题、导航模式（navType）、TagsView、固定 Header、动态标题等；
+ * 优先读取 localStorage layout-setting，与 defaultSettings 合并。
+ */
 import defaultSettings from '@/settings'
 import { useDynamicTitle } from '@/utils/dynamicTitle'
 import { defineStore } from 'pinia'

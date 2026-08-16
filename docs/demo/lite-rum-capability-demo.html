@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lite RUM · 数据能实现的功能（静态演示）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --side: #0b1220;
+      --ok: #67c23a;
+      --warn: #e6a23c;
+      --danger: #f56c6c;
+      --muted: #909399;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: #303133;
+    }
+    #app { height: 100vh; }
+    .layout { display: flex; height: 100%; }
+    .side {
+      width: 232px;
+      background: var(--side);
+      color: #fff;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .brand h1 { margin: 0; font-size: 15px; }
+    .brand p { margin: 6px 0 0; font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.4; }
+    .menu-group {
+      margin: 12px 12px 4px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.06em;
+    }
+    .menu-item {
+      padding: 10px 18px;
+      cursor: pointer;
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      border-left: 3px solid transparent;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .menu-item.active {
+      background: rgba(64,158,255,0.22);
+      color: #fff;
+      border-left-color: #409eff;
+    }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #ebeef5;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .banner {
+      background: #ecf5ff;
+      color: #337ecc;
+      border: 1px solid #d9ecff;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+    .content { padding: 16px; overflow: auto; flex: 1; }
+    .cap-intro {
+      background: #fff;
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #606266;
+      line-height: 1.6;
+    }
+    .cap-intro strong { color: #303133; }
+    .cap-intro code {
+      background: #f4f4f5;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .score-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 960px) { .score-row { grid-template-columns: 1fr; } }
+    .score-card {
+      background: linear-gradient(160deg, #1d39c4, #409eff);
+      color: #fff;
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .score-card .value { font-size: 44px; font-weight: 700; margin: 6px 0; }
+    .score-card .subs { font-size: 12px; display: flex; gap: 12px; opacity: 0.95; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .kpi {
+      background: #fff;
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .kpi .name { font-size: 12px; color: var(--muted); }
+    .kpi .val { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .panel {
+      background: #fff;
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart { width: 100%; height: 260px; }
+    .chart-sm { width: 100%; height: 180px; }
+    .top-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+    @media (max-width: 1100px) { .top-grid { grid-template-columns: 1fr; } }
+    .linkish { color: #409eff; cursor: pointer; }
+    .linkish:hover { text-decoration: underline; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .stack-pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 180px;
+      overflow: auto;
+    }
+    .timeline {
+      border-left: 2px solid #dcdfe6;
+      margin-left: 10px;
+      padding-left: 16px;
+    }
+    .tl-item { position: relative; margin-bottom: 16px; }
+    .tl-item::before {
+      content: "";
+      position: absolute;
+      left: -21px;
+      top: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #409eff;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px #409eff;
+    }
+    .tl-item.fail::before { background: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+    .tl-item .meta { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .tl-item .body {
+      background: #f5f7fa;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .env-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 16px;
+      font-size: 13px;
+    }
+    .env-grid .k { color: var(--muted); }
+    .chain-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 960px) { .chain-cols { grid-template-columns: 1fr; } }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="layout">
+      <aside class="side">
+        <div class="brand">
+          <h1>Lite RUM 能力演示</h1>
+          <p>由前端采集 + Ingest/后端字段<br />可实现的功能静态稿</p>
+        </div>
+        <div class="menu-group">发现</div>
+        <div class="menu-item" :class="{ active: menu === 'overview' }" @click="go('overview')">数据总览 / 健康分</div>
+        <div class="menu-item" :class="{ active: menu === 'alert' }" @click="go('alert')">阈值告警</div>
+        <div class="menu-group">定位 · 前端</div>
+        <div class="menu-item" :class="{ active: menu === 'error' }" @click="go('error')">异常 Issue</div>
+        <div class="menu-item" :class="{ active: menu === 'api' }" @click="go('api')">API 监控</div>
+        <div class="menu-group">定位 · 操作 / 全链路</div>
+        <div class="menu-item" :class="{ active: menu === 'operation' }" @click="go('operation')">操作时间线</div>
+        <div class="menu-item" :class="{ active: menu === 'trace' }" @click="go('trace')">全链路 Trace</div>
+        <div class="menu-group">环境</div>
+        <div class="menu-item" :class="{ active: menu === 'env' }" @click="go('env')">UA / IP 个案</div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="banner">静态 Mock · 对照设计 §3.0 字段 → 功能</span>
+            <el-tag size="small" type="info" effect="plain">appId: web-admin</el-tag>
+            <el-tag v-if="focusOp" size="small" type="warning" effect="plain" closable @close="focusOp = ''">
+              operationId: {{ focusOp }}
+            </el-tag>
+            <el-tag v-if="focusTrace" size="small" type="success" effect="plain" closable @close="focusTrace = ''">
+              traceId: {{ focusTrace }}
+            </el-tag>
+          </div>
+          <el-radio-group v-model="range" size="small">
+            <el-radio-button label="1h">近 1h</el-radio-button>
+            <el-radio-button label="24h">近 24h</el-radio-button>
+            <el-radio-button label="7d">近 7d</el-radio-button>
+          </el-radio-group>
+        </div>
+
+        <div class="content">
+          <!-- 总览 -->
+          <div v-show="menu === 'overview'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              <code>pv</code> <code>error</code> <code>api</code> 汇总 → KPI / 健康分 / 趋势 / TOP。
+              点击 TOP 可跳到异常、API 或操作链路。
+            </div>
+            <div class="score-row">
+              <div class="score-card">
+                <div style="font-size:13px;opacity:.85">应用健康分</div>
+                <div class="value">{{ health.total }}</div>
+                <div class="subs">
+                  <span>报错率分 {{ health.errorScore }}</span>
+                  <span>接口分 {{ health.apiScore }}</span>
+                </div>
+              </div>
+              <div class="kpi-grid">
+                <div class="kpi"><div class="name">PV</div><div class="val">{{ kpis.pv.toLocaleString() }}</div></div>
+                <div class="kpi">
+                  <div class="name">JS 错误率</div>
+                  <div class="val" :style="{ color: rateColor(kpis.errorRate) }">{{ pct(kpis.errorRate) }}</div>
+                </div>
+                <div class="kpi">
+                  <div class="name">API 成功率</div>
+                  <div class="val" :style="{ color: successColor(kpis.apiSuccessRate) }">{{ pct(kpis.apiSuccessRate) }}</div>
+                </div>
+                <div class="kpi"><div class="name">API 均耗时</div><div class="val">{{ kpis.apiAvgMs }} ms</div></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">关键趋势</div>
+              <div ref="overviewChartEl" class="chart"></div>
+            </div>
+            <div class="top-grid">
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">错误 TOP 页面</div>
+                <el-table :data="errorPageTop" size="small" @row-click="(r) => jumpError(r.page)">
+                  <el-table-column prop="page" label="页面"></el-table-column>
+                  <el-table-column prop="errorCount" label="错误" width="70"></el-table-column>
+                </el-table>
+              </div>
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">失败 API TOP</div>
+                <el-table :data="failApiTop" size="small" @row-click="(r) => jumpApi(r.api)">
+                  <el-table-column prop="api" label="接口"></el-table-column>
+                  <el-table-column prop="failCount" label="失败" width="70"></el-table-column>
+                </el-table>
+              </div>
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">失败操作 TOP</div>
+                <el-table :data="failActionTop" size="small" @row-click="(r) => jumpOp(r.operationId)">
+                  <el-table-column prop="action" label="操作"></el-table-column>
+                  <el-table-column prop="failCount" label="失败" width="70"></el-table-column>
+                </el-table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 告警 -->
+          <div v-show="menu === 'alert'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>汇总窗口内错误率 / API 成功率（可扩展某 <code>action</code> 失败率）→ Webhook。本页仅 Mock，不发真实请求。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">规则</div>
+              <el-form :model="alertForm" label-width="110px" style="max-width:560px">
+                <el-form-item label="启用"><el-switch v-model="alertForm.enabled"></el-switch></el-form-item>
+                <el-form-item label="指标">
+                  <el-select v-model="alertForm.metric" style="width:240px">
+                    <el-option label="页面报错率" value="errorRate"></el-option>
+                    <el-option label="API 成功率" value="apiSuccessRate"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="阈值(%)">
+                  <el-input-number v-model="alertForm.threshold" :min="0" :max="100" :step="0.1"></el-input-number>
+                </el-form-item>
+                <el-form-item label="窗口/冷却(分)">
+                  <el-input-number v-model="alertForm.windowMinutes" :min="1"></el-input-number>
+                  <span style="margin:0 8px">/</span>
+                  <el-input-number v-model="alertForm.cooldownMinutes" :min="1"></el-input-number>
+                </el-form-item>
+                <el-form-item label="Webhook">
+                  <el-input v-model="alertForm.webhookUrl"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="msg('已保存 Mock 规则')">保存</el-button>
+                  <el-button @click="simulateAlert">模拟触发</el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+            <div class="panel">
+              <div class="panel-title">触发记录</div>
+              <el-table :data="alertEvents" size="small">
+                <el-table-column prop="triggeredAt" label="时间" width="170"></el-table-column>
+                <el-table-column prop="metricLabel" label="指标" width="120"></el-table-column>
+                <el-table-column prop="valueText" label="当前值" width="100"></el-table-column>
+                <el-table-column prop="note" label="备注"></el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- 异常 -->
+          <div v-show="menu === 'error'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              <code>error.name/message/stack/fingerprint</code> + <code>page</code>；详情可挂 <code>operationId</code>/<code>traceId</code>/<code>ua</code>/<code>clientIp</code>。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">
+                <span>Issue 列表</span>
+                <el-input v-model="errorFilter" clearable size="small" placeholder="按页面筛选" style="width:220px"></el-input>
+              </div>
+              <el-table :data="filteredIssues" size="small">
+                <el-table-column prop="fingerprint" label="指纹" width="110"></el-table-column>
+                <el-table-column prop="message" label="摘要" min-width="200" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="count" label="次数" width="70"></el-table-column>
+                <el-table-column prop="pageCount" label="页面数" width="80"></el-table-column>
+                <el-table-column prop="lastSeenAt" label="最近" width="160"></el-table-column>
+                <el-table-column label="操作" width="80">
+                  <template #default="{ row }">
+                    <span class="linkish" @click="openIssue(row)">详情</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- API -->
+          <div v-show="menu === 'api'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              <code>api.method/url/status/ok/durationMs</code> + <code>page</code>；点行可带 <code>traceId</code> 进全链路。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">汇总趋势</div>
+              <div ref="apiChartEl" class="chart"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <span>API TOP</span>
+                <el-radio-group v-model="apiMode" size="small">
+                  <el-radio-button label="slow">按耗时</el-radio-button>
+                  <el-radio-button label="fail">按失败</el-radio-button>
+                </el-radio-group>
+              </div>
+              <el-table :data="apiTopRows" size="small" @row-click="onApiRow">
+                <el-table-column prop="api" label="接口" min-width="180"></el-table-column>
+                <el-table-column prop="count" label="次数" width="80"></el-table-column>
+                <el-table-column label="成功率" width="90">
+                  <template #default="{ row }">{{ pct(row.successRate) }}</template>
+                </el-table-column>
+                <el-table-column prop="avgMs" label="均耗时" width="90"></el-table-column>
+                <el-table-column label="示例 trace" min-width="140">
+                  <template #default="{ row }">
+                    <span class="linkish mono" @click.stop="jumpTrace(row.sampleTraceId)">{{ row.sampleTraceId }}</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- 操作时间线 -->
+          <div v-show="menu === 'operation'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              <code>fromPage</code> → <code>page</code>；
+              <code>action</code> 生成 <code>operationId</code>；同 ID 下挂 <code>api</code>/<code>error</code>。
+              回答：「从哪来、点了什么、打了哪些接口、哪里失败」。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">
+                <span>最近操作</span>
+                <el-select v-model="selectedOpId" size="small" style="width:280px" @change="onSelectOp">
+                  <el-option
+                    v-for="op in operations"
+                    :key="op.operationId"
+                    :label="op.action + ' · ' + op.operationId"
+                    :value="op.operationId"
+                  ></el-option>
+                </el-select>
+              </div>
+              <template v-if="currentOp">
+                <div class="env-grid" style="margin-bottom:12px">
+                  <div><span class="k">操作 </span><strong>{{ currentOp.action }}</strong> {{ currentOp.actionLabel }}</div>
+                  <div><span class="k">operationId </span><span class="mono">{{ currentOp.operationId }}</span></div>
+                  <div><span class="k">路径 </span>{{ currentOp.fromPage || '—' }} → {{ currentOp.page }}</div>
+                  <div><span class="k">结果 </span>
+                    <el-tag :type="currentOp.ok ? 'success' : 'danger'" size="small">{{ currentOp.ok ? '成功' : '失败' }}</el-tag>
+                  </div>
+                  <div><span class="k">用户 </span>{{ currentOp.uin }}</div>
+                  <div><span class="k">时间 </span>{{ currentOp.startedAt }}</div>
+                </div>
+                <div class="timeline">
+                  <div v-for="(step, idx) in currentOp.steps" :key="idx" class="tl-item" :class="{ fail: step.ok === false }">
+                    <div class="meta">{{ step.ts }} · {{ step.kind }}</div>
+                    <div class="body">
+                      <div>{{ step.title }}</div>
+                      <div class="tag-row">
+                        <el-tag v-if="step.traceId" size="small" class="mono" style="cursor:pointer" @click="jumpTrace(step.traceId)">
+                          traceId={{ step.traceId }}
+                        </el-tag>
+                        <el-tag v-if="step.durationMs != null" size="small">{{ step.durationMs }} ms</el-tag>
+                        <el-tag v-if="step.status" size="small" :type="step.ok === false ? 'danger' : 'info'">HTTP {{ step.status }}</el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 全链路 -->
+          <div v-show="menu === 'trace'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              前端 <code>api.traceId</code> + 请求头；后端 access / 业务日志 / 慢 SQL 同记。
+              可对比前端耗时 vs 服务端耗时。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">
+                <span>选择 Trace</span>
+                <el-select v-model="focusTrace" size="small" style="width:260px" @change="noop">
+                  <el-option v-for="t in traces" :key="t.traceId" :label="t.traceId + ' · ' + t.api" :value="t.traceId"></el-option>
+                </el-select>
+              </div>
+              <template v-if="currentTrace">
+                <div class="env-grid" style="margin-bottom:12px">
+                  <div><span class="k">traceId </span><span class="mono">{{ currentTrace.traceId }}</span></div>
+                  <div><span class="k">operationId </span>
+                    <span class="linkish mono" @click="jumpOp(currentTrace.operationId)">{{ currentTrace.operationId }}</span>
+                  </div>
+                  <div><span class="k">接口 </span>{{ currentTrace.api }}</div>
+                  <div><span class="k">页面 </span>{{ currentTrace.fromPage }} → {{ currentTrace.page }}</div>
+                </div>
+                <div class="chain-cols">
+                  <div class="panel" style="margin-top:0">
+                    <div class="panel-title">前端 RUM</div>
+                    <div class="env-grid">
+                      <div><span class="k">前端耗时 </span>{{ currentTrace.fe.durationMs }} ms</div>
+                      <div><span class="k">HTTP </span>{{ currentTrace.fe.status }} / ok={{ currentTrace.fe.ok }}</div>
+                      <div><span class="k">action </span>{{ currentTrace.fe.action }}</div>
+                      <div><span class="k">session </span><span class="mono">{{ currentTrace.fe.sessionId }}</span></div>
+                    </div>
+                  </div>
+                  <div class="panel" style="margin-top:0">
+                    <div class="panel-title">后端日志（同 traceId）</div>
+                    <div class="env-grid">
+                      <div><span class="k">服务端耗时 </span>{{ currentTrace.be.durationMs }} ms</div>
+                      <div><span class="k">状态 </span>{{ currentTrace.be.status }}</div>
+                      <div><span class="k">节点 </span>{{ currentTrace.be.service }}</div>
+                      <div><span class="k">慢 SQL </span>{{ currentTrace.be.slowSql || '无' }}</div>
+                    </div>
+                    <pre class="stack-pre" style="margin-top:10px">{{ currentTrace.be.logSample }}</pre>
+                  </div>
+                </div>
+                <div class="panel">
+                  <div class="panel-title">耗时对比</div>
+                  <div ref="traceChartEl" class="chart-sm"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 环境 -->
+          <div v-show="menu === 'env'">
+            <div class="cap-intro">
+              <strong>依赖字段：</strong>
+              前端 <code>env.ua</code> 等；Ingest <code>clientIp</code>（可选 geo/isp）。
+              适合挂在详情 / 会话个案，而非一上来做地理大盘。
+            </div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">会话个案列表</div>
+              <el-table :data="sessions" size="small" @row-click="openSession">
+                <el-table-column prop="sessionId" label="sessionId" width="140"></el-table-column>
+                <el-table-column prop="uin" label="uin" width="100"></el-table-column>
+                <el-table-column prop="browser" label="浏览器" width="110"></el-table-column>
+                <el-table-column prop="os" label="系统" width="100"></el-table-column>
+                <el-table-column prop="clientIp" label="IP" width="130"></el-table-column>
+                <el-table-column prop="lastPage" label="最近页面"></el-table-column>
+                <el-table-column prop="errorCount" label="错误" width="70"></el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-drawer v-model="issueDrawer" title="Issue 详情" size="480px">
+      <template v-if="currentIssue">
+        <p><strong>指纹</strong> {{ currentIssue.fingerprint }}</p>
+        <p><strong>摘要</strong> {{ currentIssue.message }}</p>
+        <pre class="stack-pre">{{ currentIssue.stack }}</pre>
+        <div class="panel-title" style="margin-top:12px">关联</div>
+        <div class="tag-row">
+          <el-tag v-for="p in currentIssue.pages" :key="p" size="small">{{ p }}</el-tag>
+        </div>
+        <p style="margin-top:12px">
+          <span class="linkish" @click="jumpOp(currentIssue.sampleOperationId)">operationId={{ currentIssue.sampleOperationId }}</span>
+          ·
+          <span class="linkish" @click="jumpTrace(currentIssue.sampleTraceId)">traceId={{ currentIssue.sampleTraceId }}</span>
+        </p>
+        <div class="panel-title">环境快照</div>
+        <div class="env-grid">
+          <div><span class="k">IP </span>{{ currentIssue.clientIp }}</div>
+          <div><span class="k">浏览器 </span>{{ currentIssue.browser }}</div>
+          <div style="grid-column:1/-1"><span class="k">UA </span><span class="mono">{{ currentIssue.ua }}</span></div>
+        </div>
+      </template>
+    </el-drawer>
+
+    <el-drawer v-model="sessionDrawer" title="会话环境" size="440px">
+      <template v-if="currentSession">
+        <div class="env-grid">
+          <div><span class="k">sessionId </span><span class="mono">{{ currentSession.sessionId }}</span></div>
+          <div><span class="k">uin </span>{{ currentSession.uin }}</div>
+          <div><span class="k">clientIp </span>{{ currentSession.clientIp }}</div>
+          <div><span class="k">geo </span>{{ currentSession.geo || '（无 IP 库）' }}</div>
+          <div><span class="k">browser </span>{{ currentSession.browser }}</div>
+          <div><span class="k">os </span>{{ currentSession.os }}</div>
+          <div><span class="k">viewport </span>{{ currentSession.viewport }}</div>
+          <div><span class="k">timezone </span>{{ currentSession.timezone }}</div>
+          <div style="grid-column:1/-1"><span class="k">UA </span><span class="mono">{{ currentSession.ua }}</span></div>
+        </div>
+        <div class="panel-title" style="margin-top:16px">可继续下钻</div>
+        <el-button size="small" @click="jumpOp(currentSession.sampleOperationId)">看操作时间线</el-button>
+        <el-button size="small" @click="jumpTrace(currentSession.sampleTraceId)">看全链路</el-button>
+      </template>
+    </el-drawer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
+
+    function scoreFromErrorRate(rate) {
+      const p = rate * 100;
+      if (p <= 0.5) return 100;
+      if (p >= 10) return 0;
+      return Math.max(0, Math.round(100 - 10 * p));
+    }
+    function scoreFromSuccessRate(rate) { return scoreFromErrorRate(1 - rate); }
+    function rateLevel(rate) { return rate <= 0.005 ? 'ok' : rate < 0.1 ? 'warn' : 'danger'; }
+    function successLevel(rate) { return rate > 0.995 ? 'ok' : rate >= 0.9 ? 'warn' : 'danger'; }
+    function rateColor(rate) { return { ok: '#67c23a', warn: '#e6a23c', danger: '#f56c6c' }[rateLevel(rate)]; }
+    function successColor(rate) { return { ok: '#67c23a', warn: '#e6a23c', danger: '#f56c6c' }[successLevel(rate)]; }
+    function pct(v) { return (v * 100).toFixed(2) + '%'; }
+    function gen(n, base, swing) {
+      return Array.from({ length: n }, (_, i) => Math.max(0, Math.round(base + Math.sin(i / 2) * swing)));
+    }
+
+    const ISSUES = [
+      {
+        fingerprint: 'a1b2c3d4',
+        message: "TypeError: Cannot read properties of undefined (reading 'id')",
+        count: 128,
+        pageCount: 3,
+        pages: ['/users', '/users/detail', '/roles'],
+        lastSeenAt: '2026-08-14 20:48:22',
+        stack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at renderUser (UserList.vue:142)",
+        sampleOperationId: 'op_1001',
+        sampleTraceId: 'tr_9001',
+        clientIp: '112.64.xx.21',
+        browser: 'Chrome 126',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36',
+      },
+      {
+        fingerprint: 'e5f6g7h8',
+        message: 'Unhandled Promise Rejection: Network Error',
+        count: 64,
+        pageCount: 2,
+        pages: ['/orders', '/cart'],
+        lastSeenAt: '2026-08-14 19:55:10',
+        stack: 'Unhandled Promise Rejection: Network Error\\n    at fetchOrders',
+        sampleOperationId: 'op_1002',
+        sampleTraceId: 'tr_9002',
+        clientIp: '36.110.xx.8',
+        browser: 'Edge 126',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/126.0.0.0',
+      },
+    ];
+
+    const API_ROWS = [
+      { api: 'GET /api/order/page', count: 3100, successRate: 0.885, avgMs: 980, failCount: 356, sampleTraceId: 'tr_9002' },
+      { api: 'POST /api/order/create', count: 640, successRate: 0.91, avgMs: 760, failCount: 58, sampleTraceId: 'tr_9001' },
+      { api: 'GET /api/user/list', count: 4200, successRate: 0.992, avgMs: 186, failCount: 34, sampleTraceId: 'tr_9003' },
+      { api: 'POST /api/auth/login', count: 980, successRate: 0.978, avgMs: 320, failCount: 22, sampleTraceId: 'tr_9004' },
+    ];
+
+    const OPERATIONS = [
+      {
+        operationId: 'op_1001',
+        action: 'order.submit',
+        actionLabel: '提交订单',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        uin: 'u_8821',
+        startedAt: '2026-08-14 20:47:01',
+        ok: false,
+        steps: [
+          { ts: '20:47:01.010', kind: 'action', title: '触发 order.submit', ok: true },
+          { ts: '20:47:01.080', kind: 'api', title: 'POST /api/order/create', traceId: 'tr_9001', durationMs: 760, status: 500, ok: false },
+          { ts: '20:47:01.850', kind: 'error', title: "TypeError: Cannot read properties of undefined (reading 'id')", ok: false },
+        ],
+      },
+      {
+        operationId: 'op_1002',
+        action: 'order.search',
+        actionLabel: '查询订单',
+        fromPage: '/dashboard',
+        page: '/orders',
+        uin: 'u_2201',
+        startedAt: '2026-08-14 19:54:40',
+        ok: false,
+        steps: [
+          { ts: '19:54:40.100', kind: 'action', title: '触发 order.search', ok: true },
+          { ts: '19:54:40.160', kind: 'api', title: 'GET /api/order/page', traceId: 'tr_9002', durationMs: 1205, status: 0, ok: false },
+          { ts: '19:54:41.400', kind: 'error', title: 'Unhandled Promise Rejection: Network Error', ok: false },
+        ],
+      },
+      {
+        operationId: 'op_1003',
+        action: 'user.save',
+        actionLabel: '保存用户',
+        fromPage: '/users',
+        page: '/users/detail',
+        uin: 'u_1001',
+        startedAt: '2026-08-14 18:12:08',
+        ok: true,
+        steps: [
+          { ts: '18:12:08.010', kind: 'action', title: '触发 user.save', ok: true },
+          { ts: '18:12:08.050', kind: 'api', title: 'PUT /api/user/profile', traceId: 'tr_9003', durationMs: 210, status: 200, ok: true },
+        ],
+      },
+    ];
+
+    const TRACES = [
+      {
+        traceId: 'tr_9001',
+        operationId: 'op_1001',
+        api: 'POST /api/order/create',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        fe: { durationMs: 760, status: 500, ok: false, action: 'order.submit', sessionId: 'sess_aa11' },
+        be: {
+          durationMs: 702,
+          status: 500,
+          service: 'quickboot-app',
+          slowSql: 'SELECT ... FROM t_order WHERE ... (680ms)',
+          logSample: '[ERROR] traceId=tr_9001 op=createOrder\\nNullPointerException at OrderService.create:88',
+        },
+      },
+      {
+        traceId: 'tr_9002',
+        operationId: 'op_1002',
+        api: 'GET /api/order/page',
+        fromPage: '/dashboard',
+        page: '/orders',
+        fe: { durationMs: 1205, status: 0, ok: false, action: 'order.search', sessionId: 'sess_bb22' },
+        be: {
+          durationMs: 0,
+          status: '-',
+          service: '（未到达 / 网关超时）',
+          slowSql: '',
+          logSample: 'no backend access log for traceId=tr_9002 within window',
+        },
+      },
+      {
+        traceId: 'tr_9003',
+        operationId: 'op_1003',
+        api: 'PUT /api/user/profile',
+        fromPage: '/users',
+        page: '/users/detail',
+        fe: { durationMs: 210, status: 200, ok: true, action: 'user.save', sessionId: 'sess_cc33' },
+        be: {
+          durationMs: 168,
+          status: 200,
+          service: 'quickboot-app',
+          slowSql: '',
+          logSample: '[INFO] traceId=tr_9003 PUT /api/user/profile 200 168ms',
+        },
+      },
+      {
+        traceId: 'tr_9004',
+        operationId: 'op_1004',
+        api: 'POST /api/auth/login',
+        fromPage: '',
+        page: '/login',
+        fe: { durationMs: 320, status: 200, ok: true, action: 'auth.login', sessionId: 'sess_dd44' },
+        be: {
+          durationMs: 260,
+          status: 200,
+          service: 'quickboot-app',
+          slowSql: '',
+          logSample: '[INFO] traceId=tr_9004 login ok uin=u_new',
+        },
+      },
+    ];
+
+    const SESSIONS = [
+      {
+        sessionId: 'sess_aa11',
+        uin: 'u_8821',
+        browser: 'Chrome 126',
+        os: 'Windows 10',
+        clientIp: '112.64.xx.21',
+        geo: '',
+        lastPage: '/orders/confirm',
+        errorCount: 2,
+        viewport: '1440×900',
+        timezone: 'Asia/Shanghai',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36',
+        sampleOperationId: 'op_1001',
+        sampleTraceId: 'tr_9001',
+      },
+      {
+        sessionId: 'sess_bb22',
+        uin: 'u_2201',
+        browser: 'Edge 126',
+        os: 'Windows 10',
+        clientIp: '36.110.xx.8',
+        geo: '',
+        lastPage: '/orders',
+        errorCount: 1,
+        viewport: '1920×1080',
+        timezone: 'Asia/Shanghai',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/126.0.0.0',
+        sampleOperationId: 'op_1002',
+        sampleTraceId: 'tr_9002',
+      },
+    ];
+
+    createApp({
+      setup() {
+        const menu = ref('overview');
+        const range = ref('24h');
+        const focusOp = ref('');
+        const focusTrace = ref('tr_9001');
+        const selectedOpId = ref('op_1001');
+
+        const kpis = reactive({
+          pv: 12840,
+          errorRate: 0.0179,
+          apiSuccessRate: 0.968,
+          apiAvgMs: 268,
+        });
+        const health = computed(() => {
+          const errorScore = scoreFromErrorRate(kpis.errorRate);
+          const apiScore = scoreFromSuccessRate(kpis.apiSuccessRate);
+          return { errorScore, apiScore, total: Math.round(errorScore * 0.5 + apiScore * 0.5) };
+        });
+
+        const errorPageTop = [
+          { page: '/users', errorCount: 86 },
+          { page: '/orders', errorCount: 54 },
+          { page: '/orders/confirm', errorCount: 41 },
+        ];
+        const failApiTop = [...API_ROWS].sort((a, b) => b.failCount - a.failCount).slice(0, 5);
+        const failActionTop = [
+          { action: 'order.submit', failCount: 58, operationId: 'op_1001' },
+          { action: 'order.search', failCount: 36, operationId: 'op_1002' },
+          { action: 'user.save', failCount: 4, operationId: 'op_1003' },
+        ];
+
+        const errorFilter = ref('');
+        const filteredIssues = computed(() => {
+          const q = errorFilter.value.trim();
+          if (!q) return ISSUES;
+          return ISSUES.filter((i) => i.pages.some((p) => p.includes(q)) || i.message.includes(q));
+        });
+        const issueDrawer = ref(false);
+        const currentIssue = ref(null);
+
+        const apiMode = ref('fail');
+        const apiTopRows = computed(() => {
+          const rows = [...API_ROWS];
+          return apiMode.value === 'fail'
+            ? rows.sort((a, b) => b.failCount - a.failCount)
+            : rows.sort((a, b) => b.avgMs - a.avgMs);
+        });
+
+        const operations = OPERATIONS;
+        const currentOp = computed(() => OPERATIONS.find((o) => o.operationId === selectedOpId.value) || OPERATIONS[0]);
+        const traces = TRACES;
+        const currentTrace = computed(() => TRACES.find((t) => t.traceId === focusTrace.value) || TRACES[0]);
+        const sessions = SESSIONS;
+        const sessionDrawer = ref(false);
+        const currentSession = ref(null);
+
+        const alertForm = reactive({
+          enabled: true,
+          metric: 'errorRate',
+          threshold: 1,
+          windowMinutes: 5,
+          cooldownMinutes: 30,
+          webhookUrl: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock',
+        });
+        const alertEvents = ref([
+          { triggeredAt: '2026-08-14 19:05:00', metricLabel: '页面报错率', valueText: '1.79%', note: '超阈值，已通知' },
+          { triggeredAt: '2026-08-14 18:40:00', metricLabel: '页面报错率', valueText: '1.62%', note: '冷却期内未重复通知' },
+        ]);
+
+        const overviewChartEl = ref(null);
+        const apiChartEl = ref(null);
+        const traceChartEl = ref(null);
+        let overviewChart, apiChart, traceChart;
+
+        function msg(text) { ElementPlus.ElMessage.success(text); }
+
+        function renderOverview() {
+          if (!overviewChartEl.value) return;
+          if (!overviewChart) overviewChart = echarts.init(overviewChartEl.value);
+          const n = range.value === '7d' ? 14 : 24;
+          overviewChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['错误率%', 'API成功率%', 'PV'] },
+            grid: { left: 40, right: 40, top: 36, bottom: 28 },
+            xAxis: { type: 'category', data: Array.from({ length: n }, (_, i) => String(i)) },
+            yAxis: [{ type: 'value' }, { type: 'value' }],
+            series: [
+              { name: '错误率%', type: 'line', smooth: true, data: gen(n, 2, 1) },
+              { name: 'API成功率%', type: 'line', smooth: true, data: gen(n, 96, 2) },
+              { name: 'PV', type: 'line', smooth: true, yAxisIndex: 1, data: gen(n, 500, 80) },
+            ],
+          });
+        }
+
+        function renderApi() {
+          if (!apiChartEl.value) return;
+          if (!apiChart) apiChart = echarts.init(apiChartEl.value);
+          const n = 24;
+          apiChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['请求量', '成功率%', '均耗时'] },
+            grid: { left: 40, right: 40, top: 36, bottom: 28 },
+            xAxis: { type: 'category', data: Array.from({ length: n }, (_, i) => String(i)) },
+            yAxis: [{ type: 'value' }, { type: 'value' }],
+            series: [
+              { name: '请求量', type: 'bar', yAxisIndex: 1, data: gen(n, 700, 100) },
+              { name: '成功率%', type: 'line', smooth: true, data: gen(n, 96, 3) },
+              { name: '均耗时', type: 'line', smooth: true, data: gen(n, 280, 40) },
+            ],
+          });
+        }
+
+        function renderTrace() {
+          if (!traceChartEl.value || !currentTrace.value) return;
+          if (!traceChart) traceChart = echarts.init(traceChartEl.value);
+          const fe = currentTrace.value.fe.durationMs;
+          const be = currentTrace.value.be.durationMs || 0;
+          traceChart.setOption({
+            tooltip: { trigger: 'axis' },
+            grid: { left: 80, right: 24, top: 20, bottom: 28 },
+            xAxis: { type: 'value', name: 'ms' },
+            yAxis: { type: 'category', data: ['前端 RUM', '后端服务'] },
+            series: [{ type: 'bar', data: [fe, be], itemStyle: { color: '#409eff' } }],
+          });
+        }
+
+        function go(key) {
+          menu.value = key;
+          nextTick(() => {
+            if (key === 'overview') renderOverview();
+            if (key === 'api') renderApi();
+            if (key === 'trace') renderTrace();
+          });
+        }
+
+        function jumpError(page) {
+          errorFilter.value = page || '';
+          go('error');
+          msg('已跳转异常 Issue');
+        }
+        function jumpApi() { go('api'); msg('已跳转 API 监控'); }
+        function jumpOp(opId) {
+          if (opId) {
+            focusOp.value = opId;
+            selectedOpId.value = opId;
+          }
+          go('operation');
+          msg('已跳转操作时间线');
+        }
+        function jumpTrace(tid) {
+          if (tid) focusTrace.value = tid;
+          go('trace');
+          nextTick(renderTrace);
+          msg('已跳转全链路 Trace');
+        }
+        function onSelectOp(id) { focusOp.value = id; }
+        function onApiRow(row) {
+          if (row && row.sampleTraceId) jumpTrace(row.sampleTraceId);
+        }
+        function openIssue(row) {
+          currentIssue.value = row;
+          issueDrawer.value = true;
+        }
+        function openSession(row) {
+          currentSession.value = row;
+          sessionDrawer.value = true;
+        }
+        function simulateAlert() {
+          alertEvents.value.unshift({
+            triggeredAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
+            metricLabel: alertForm.metric === 'errorRate' ? '页面报错率' : 'API 成功率',
+            valueText: alertForm.metric === 'errorRate' ? pct(kpis.errorRate) : pct(kpis.apiSuccessRate),
+            note: '模拟触发 · 无真实 Webhook',
+          });
+          ElementPlus.ElMessage.warning('已写入触发记录');
+        }
+        function noop() { nextTick(renderTrace); }
+
+        watch(focusTrace, () => nextTick(renderTrace));
+        watch(range, () => {
+          renderOverview();
+          renderApi();
+        });
+
+        onMounted(() => {
+          renderOverview();
+          window.addEventListener('resize', () => {
+            overviewChart && overviewChart.resize();
+            apiChart && apiChart.resize();
+            traceChart && traceChart.resize();
+          });
+        });
+
+        return {
+          menu, range, focusOp, focusTrace, selectedOpId,
+          kpis, health, errorPageTop, failApiTop, failActionTop,
+          errorFilter, filteredIssues, issueDrawer, currentIssue,
+          apiMode, apiTopRows,
+          operations, currentOp, traces, currentTrace,
+          sessions, sessionDrawer, currentSession,
+          alertForm, alertEvents,
+          overviewChartEl, apiChartEl, traceChartEl,
+          pct, rateColor, successColor, msg, go,
+          jumpError, jumpApi, jumpOp, jumpTrace, onSelectOp, onApiRow,
+          openIssue, openSession, simulateAlert, noop,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

@@ -54,10 +54,18 @@ public class OperLogPublishingAspect {
 
   private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+  /** 匹配所有标注 {@code @RestController} 的类。 */
   @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
   public void restControllers() {
   }
 
+  /**
+   * 环绕 RestController 的 public 方法：计时并在 {@code finally} 中发布 {@link OperLogCapturedEvent}。
+   *
+   * @param joinPoint 连接点
+   * @return 原方法返回值
+   * @throws Throwable 原方法抛出的异常
+   */
   @Around("restControllers() && execution(public * *(..))")
   public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
     if (!properties.isCaptureEnabled()) {

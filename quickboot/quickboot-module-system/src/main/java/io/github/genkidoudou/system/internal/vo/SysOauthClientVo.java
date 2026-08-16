@@ -72,8 +72,10 @@ public class SysOauthClientVo implements Serializable {
   @NotBlank(message = "状态不能为空", groups = AddGroup.class)
   private String status;
 
+  /** 备注。 */
   private String remark;
 
+  /** 创建时间。 */
   @ExcelProperty(value = "创建时间", index = 6)
   @com.alibaba.excel.annotation.format.DateTimeFormat(value = DatePattern.NORM_DATETIME_MINUTE_PATTERN)
   @JsonFormat(pattern = DatePattern.NORM_DATETIME_MINUTE_PATTERN)

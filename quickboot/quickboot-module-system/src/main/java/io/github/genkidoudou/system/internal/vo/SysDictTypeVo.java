@@ -19,16 +19,19 @@ import java.util.List;
 @ExcelIgnoreUnannotated
 public class SysDictTypeVo {
 
+  /** 字典类型主键。 */
   @NotNull(groups = UpdateGroup.class)
   @Null(groups = AddGroup.class)
   @ExcelDictFormat(dictType = "sys_normal_disable")
   @ExcelProperty("字典ID")
   private Long dictId;
 
+  /** 字典名称。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("字典名称")
   private String dictName;
 
+  /** 字典类型编码，唯一。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("字典类型")
   private String dictType;
@@ -37,6 +40,7 @@ public class SysDictTypeVo {
   @ExcelProperty("状态")
   private String status;
 
+  /** 备注。 */
   @ExcelProperty("备注")
   private String remark;
 

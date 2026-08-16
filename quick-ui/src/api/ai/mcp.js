@@ -1,3 +1,6 @@
+/**
+ * AI MCP 服务 API：MCP 配置 CRUD、测试连接与下拉选项（/ai/mcp）。
+ */
 import request from '@/utils/request'
 
 /**

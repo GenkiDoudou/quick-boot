@@ -10,6 +10,9 @@
 </template>
 
 <script setup>
+/**
+ * TagsView 横向滚动容器：滚轮平移、自动滚动到当前激活标签。
+ */
 import useTagsViewStore from '@/store/modules/tagsView'
 
 const tagAndTagSpacing = ref(4)
@@ -25,6 +28,7 @@ onBeforeUnmount(() => {
   scrollWrapper.value.removeEventListener('scroll', emitScroll)
 })
 
+/** 滚轮事件：水平滚动标签条 */
 function handleScroll(e) {
   const eventDelta = e.wheelDelta || -e.deltaY * 40
   const $scrollWrapper = scrollWrapper.value
@@ -39,6 +43,7 @@ const emitScroll = () => {
 const tagsViewStore = useTagsViewStore()
 const visitedViews = computed(() => tagsViewStore.visitedViews)
 
+/** 将指定标签滚动到可视区域（首尾直接贴边，中间按前后邻标签计算偏移） */
 function moveToTarget(currentTag) {
   const $container = proxy.$refs.scrollContainer.$el
   const $containerWidth = $container.offsetWidth

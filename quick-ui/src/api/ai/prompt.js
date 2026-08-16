@@ -1,3 +1,6 @@
+/**
+ * AI 提示词 API：提示词 CRUD、分类选项与工作流引用（/ai/prompt）。
+ */
 import request from '@/utils/request'
 
 /**

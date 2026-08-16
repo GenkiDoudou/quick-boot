@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C · IDE 三栏 · 极窄密度</title>
+  <style>
+    :root { --bg:#1e1e1e; --side:#252526; --line:#3c3c3c; --text:#d4d4d4; --muted:#858585; --sel:#094771; --accent:#3794ff; --ok:#89d185; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: Consolas, "Cascadia Code", "PingFang SC", monospace; background: var(--bg); color: var(--text); font-size: 12px; }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar { height: 32px; background: #323233; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-bottom: 1px solid var(--line); }
+    a.back { color: var(--accent); text-decoration: none; }
+    .hint { padding: 4px 10px; color: var(--muted); border-bottom: 1px solid var(--line); background: #2d2d2d; }
+    .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 280px 1fr 300px; }
+    .pane { border-right: 1px solid var(--line); overflow: auto; background: var(--side); }
+    .pane:last-child { border-right: 0; background: #1e1e1e; }
+    .ph { padding: 6px 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line); font-size: 10px; }
+    .row { padding: 6px 8px; cursor: pointer; border-bottom: 1px solid #2a2a2a; }
+    .row:hover { background: #2a2d2e; }
+    .row.on { background: var(--sel); }
+    .muted { color: var(--muted); }
+    .ok { color: var(--ok); }
+    .err { color: #f48771; }
+    .span-line { display: flex; gap: 8px; padding: 4px 8px; cursor: pointer; align-items: center; }
+    .span-line.on { background: var(--sel); }
+    .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+    .dot.pg { background: #4ec9b0; } .dot.api { background: #c586c0; } .dot.sql { background: #dcdcaa; }
+    .detail { padding: 10px; }
+    .detail h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-all; color: #ce9178; background: #111; padding: 8px; border: 1px solid var(--line); max-height: 160px; overflow: auto; }
+    .k { color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <a class="back" href="./lite-trace-page-visit-picker.html">← 选型</a>
+    <strong>C · IDE Split</strong>
+    <span class="muted">页 | Trace | Span 列表 | 属性</span>
+  </div>
+  <div class="hint">风格：VS Code / 调试器密度。无瀑布条，纯列表扫链路；适合同时对比多条接口。</div>
+  <div class="cols">
+    <div class="pane">
+      <div class="ph">Page Visits</div>
+      <div v-for="pv in visits" :key="pv.pageVisitId" class="row" :class="{on:cur===pv}" @click="pick(pv)">
+        <div>{{ pv.pagePath }}</div>
+        <div class="muted">{{ pv.traces.length }} traces · {{ pv.okFlag==='1'?'OK':'ERR' }}</div>
+        <div class="muted">{{ pv.sessionId }}</div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="ph">Traces @ page</div>
+      <template v-if="cur">
+        <div v-for="t in cur.traces" :key="t.traceId" class="row" :class="{on:trace&&trace.traceId===t.traceId}" @click="pickTrace(t)">
+          <div :class="t.okFlag==='1'?'ok':'err'">{{ t.entryName }}</div>
+          <div class="muted">{{ t.traceId }}</div>
+          <div class="muted">{{ t.durationMs }}ms · HTTP {{ t.statusCode }}</div>
+        </div>
+      </template>
+    </div>
+    <div class="pane">
+      <div class="ph">Spans (merged api)</div>
+      <div v-for="s in spans" :key="s.id" class="span-line" :class="{on:sel&&sel.id===s.id}" @click="sel=s">
+        <span class="dot" :class="s.kind==='page'?'pg':(s.kind==='sql'?'sql':'api')"></span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.kindLabel }} {{ s.name }}</span>
+        <span class="muted">{{ s.durationMs }}ms</span>
+      </div>
+    </div>
+    <div class="pane detail">
+      <h4>PROPERTIES</h4>
+      <template v-if="cur">
+        <div class="k">sessionId</div><div>{{ cur.sessionId }}</div>
+        <div class="k">pageVisitId</div><div>{{ cur.pageVisitId }}</div>
+        <div class="k">page / from</div><div>{{ cur.pagePath }} ← {{ cur.fromPage }}</div>
+      </template>
+      <template v-if="sel&&sel.kind==='api'">
+        <div class="k">requestParams</div><pre>{{ sel.requestParams||'—' }}</pre>
+        <div class="k">requestBody</div><pre>{{ sel.requestBody||'—' }}</pre>
+        <div class="k">responsePreview</div><pre>{{ sel.responsePreview||'—' }}</pre>
+        <div class="k">timing</div><div>FE {{ sel.feMs||'—' }} / BE {{ sel.beMs||'—' }}</div>
+      </template>
+      <template v-else-if="sel&&sel.kind==='sql'">
+        <div class="k">sql</div><pre>{{ sel.sql||'—' }}</pre>
+      </template>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="./lite-trace-pv-mock.js"></script>
+<script>
+const { createApp, ref, computed } = Vue
+createApp({
+  setup() {
+    const visits = window.LT_PV_MOCK.visits
+    const cur = ref(visits[0])
+    const trace = ref(visits[0].traces[0])
+    const sel = ref(null)
+    const spans = computed(() => window.LT_PV_MOCK.mergeSpans(trace.value?.spansRaw, trace.value?.durationMs))
+    function pick(pv){ cur.value=pv; pickTrace(pv.traces[0]) }
+    function pickTrace(t){ trace.value=t; const s=spans.value; sel.value=s.find(x=>x.kind==='api')||s[0] }
+    pickTrace(trace.value)
+    return { visits, cur, trace, sel, spans, pick, pickTrace }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>

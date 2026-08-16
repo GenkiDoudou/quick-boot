@@ -41,6 +41,7 @@
 </template>
 
 <script setup>
+/** C7JsonTableColumn 组件 E2E 联调页：覆盖列类型渲染与 order 排序。 */
 import {computed, ref} from 'vue'
 
 const tableRows = ref([

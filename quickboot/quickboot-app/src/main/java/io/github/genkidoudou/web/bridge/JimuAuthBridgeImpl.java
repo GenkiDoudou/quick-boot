@@ -27,6 +27,7 @@ public class JimuAuthBridgeImpl implements JimuAuthBridge {
     private final ISysDictDataService dictDataService;
     private final SysUserQueryFacade sysUserQueryFacade;
 
+    /** {@inheritDoc} */
     @Override
     public List<String> listRoleKeysByToken(String token) {
         long uid = resolveUserId(token);
@@ -36,6 +37,7 @@ public class JimuAuthBridgeImpl implements JimuAuthBridge {
         return permissionService.listRoleKeys(String.valueOf(uid));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<String> listPermissionsByToken(String token) {
         long uid = resolveUserId(token);
@@ -45,6 +47,7 @@ public class JimuAuthBridgeImpl implements JimuAuthBridge {
         return new ArrayList<>(permissionService.listPermissions(String.valueOf(uid)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public String resolveUsername(String token) {
         long uid = resolveUserId(token);
@@ -58,6 +61,7 @@ public class JimuAuthBridgeImpl implements JimuAuthBridge {
         return StrUtil.blankToDefault(user.userName(), String.valueOf(uid));
     }
 
+    /** {@inheritDoc}：优先 token 解析，回退当前 StpUtil 登录态。 */
     @Override
     public long resolveUserId(String token) {
         if (StrUtil.isNotBlank(token)) {
@@ -80,6 +84,7 @@ public class JimuAuthBridgeImpl implements JimuAuthBridge {
         return -1L;
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<JimuDictEntry> listDictByType(String dictType) {
         if (StrUtil.isBlank(dictType)) {

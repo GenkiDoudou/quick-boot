@@ -1,0 +1,84 @@
+<h2>哪种大屏布局更合适？</h2>
+<p class="subtitle">运维投屏墙 · 全指标（用户/登录、访问、请求错误、慢 SQL、定时任务）</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:0;box-shadow:none;">
+        <div class="mockup-body" style="padding:8px;background:#0b1220;color:#9fb3c8;font-size:10px;">
+          <div style="text-align:center;margin-bottom:6px;color:#e8f1ff;">系统监控态势</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:6px;">
+            <div style="background:#152238;padding:6px;border-radius:4px;text-align:center;">KPI</div>
+            <div style="background:#152238;padding:6px;border-radius:4px;text-align:center;">KPI</div>
+            <div style="background:#152238;padding:6px;border-radius:4px;text-align:center;">KPI</div>
+            <div style="background:#152238;padding:6px;border-radius:4px;text-align:center;">KPI</div>
+            <div style="background:#152238;padding:6px;border-radius:4px;text-align:center;">KPI</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">
+            <div style="background:#152238;height:48px;border-radius:4px;display:flex;align-items:center;justify-content:center;">趋势图</div>
+            <div style="background:#152238;height:48px;border-radius:4px;display:flex;align-items:center;justify-content:center;">趋势图</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+            <div style="background:#152238;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;">列表</div>
+            <div style="background:#152238;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;">列表</div>
+            <div style="background:#152238;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;">列表</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 顶 KPI + 中趋势 + 底清单</h3>
+      <p>经典运维墙：一眼看总量，中间看走势，底部看异常明细。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:0;box-shadow:none;">
+        <div class="mockup-body" style="padding:8px;background:#0b1220;color:#9fb3c8;font-size:10px;">
+          <div style="text-align:center;margin-bottom:6px;color:#e8f1ff;">系统监控态势</div>
+          <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:4px;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="background:#152238;flex:1;border-radius:4px;padding:6px;">用户登录</div>
+              <div style="background:#152238;flex:1;border-radius:4px;padding:6px;">访问行为</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="background:#1a2d4a;height:40px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#7dd3fc;">核心态势</div>
+              <div style="background:#152238;flex:1;border-radius:4px;display:flex;align-items:center;justify-content:center;">请求/错误趋势</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="background:#152238;flex:1;border-radius:4px;padding:6px;">慢 SQL</div>
+              <div style="background:#152238;flex:1;border-radius:4px;padding:6px;">定时任务</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 左中右三栏分区</h3>
+      <p>左用户/访问，中核心请求态势，右慢 SQL/任务，适合大屏宽幅。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="margin:0;border:0;box-shadow:none;">
+        <div class="mockup-body" style="padding:8px;background:#0b1220;color:#9fb3c8;font-size:10px;">
+          <div style="text-align:center;margin-bottom:6px;color:#e8f1ff;">系统监控态势</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">用户登录卡片</div>
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">访问行为卡片</div>
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">请求错误卡片</div>
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">慢 SQL 卡片</div>
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">定时任务卡片</div>
+            <div style="background:#152238;height:54px;border-radius:4px;padding:6px;">综合告警</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · 六宫格模块墙</h3>
+      <p>每组指标独立模块，信息均分，适合「全选」但不强调单一焦点。</p>
+    </div>
+  </div>
+</div>

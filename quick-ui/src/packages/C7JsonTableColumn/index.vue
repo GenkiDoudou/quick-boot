@@ -61,6 +61,14 @@ import C7Preview from '../C7Preview/index.vue'
 
 defineOptions({name: 'C7JsonTableColumn', inheritAttrs: false})
 
+/**
+ * C7 表格列渲染器：根据 `columns` 配置生成 `el-table-column`，内置 text/tag/image/link/slot 等列类型，
+ * 与 {@link C7JsonTable} 配合使用；列级 `emptyText` 可覆盖表级默认空占位。
+ *
+ * @prop {Record<string, unknown>[]} columns 列描述数组（必填）
+ * @prop {string} [emptyText] 表级默认空文案，text 列无 formatter 时兜底
+ */
+
 /** 与规范、设计文档一致的单元格空占位（无 formatter 的 text / 空链接 / 缺 slot 等） */
 const EMPTY_PLACEHOLDER = '-'
 

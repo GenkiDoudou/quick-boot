@@ -49,6 +49,9 @@
 </template>
 
 <script setup>
+/**
+ * 字典数据项管理：路由 dictType 限定当前类型下的分页 CRUD 与导入导出。
+ */
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -89,11 +92,13 @@ const tableColumns = [
   { prop: 'action', label: '操作', width: 100, fixed: 'right', columnType: 'slot', slotName: 'action' }
 ]
 
+/** 分页请求强制注入当前路由 dictType */
 function listFn(pageRequest) {
   const param = { ...(pageRequest?.param || {}), dictType: dictType.value }
   return pageDictData({ ...pageRequest, param })
 }
 
+/** 导出快照附带 dictType，与列表筛选一致 */
 function exportFn(snapshot) {
   return exportData({ ...(snapshot || {}), dictType: dictType.value })
 }

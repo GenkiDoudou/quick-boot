@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户行为 · 轨迹原型选型</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #0b1220; color: #e5e7eb; padding: 32px 24px 48px; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .sub { color: #94a3b8; max-width: 780px; line-height: 1.6; font-size: 14px; margin-bottom: 12px; }
+    .rules {
+      max-width: 780px; background: #111827; border: 1px solid #1f2937; border-radius: 10px;
+      padding: 12px 14px; font-size: 13px; color: #cbd5e1; margin-bottom: 24px; line-height: 1.55;
+    }
+    .rules b { color: #93c5fd; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; max-width: 960px; }
+    a.card {
+      display: block; text-decoration: none; color: inherit; background: #111827;
+      border: 1px solid #1f2937; border-radius: 12px; padding: 16px; transition: .15s border-color;
+    }
+    a.card:hover { border-color: #3b82f6; }
+    .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #14532d; color: #86efac; margin-bottom: 8px; }
+    .name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .desc { font-size: 13px; color: #94a3b8; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <h1>用户行为轨迹 · 静态原型（按交互重做）</h1>
+  <p class="sub">三种外观，<b>同一套交互</b>。请优先看清「轨迹 → 页内操作 → 按钮触发的接口」是否符合预期。</p>
+  <div class="rules">
+    <div>① <b>行为轨迹</b>：醒目展示 页面A → 页面B → 页面C</div>
+    <div>② <b>点某个页面</b>：列出该页操作（如列表浏览、点新增、点修改、点删除）</div>
+    <div>③ <b>点某个按钮/操作</b>：右侧展示触发的接口 / SQL，样式对齐「请求链路」瀑布</div>
+  </div>
+  <div class="grid">
+    <a class="card" href="./ub-track-r1-light.html">
+      <span class="tag">推荐先看</span>
+      <div class="name">R1 · 浅色三栏</div>
+      <div class="desc">上：路径条；左：选中页的操作列表；右：请求链路式瀑布。信息层级最直白。</div>
+    </a>
+    <a class="card" href="./ub-track-r2-dark.html">
+      <span class="tag">对齐请求链路</span>
+      <div class="name">R2 · 深色控制台</div>
+      <div class="desc">视觉贴近现网「请求链路」页；轨迹条 + 操作 + 瀑布细节同一气质。</div>
+    </a>
+    <a class="card" href="./ub-track-r3-focus.html">
+      <span class="tag">大轨迹</span>
+      <div class="name">R3 · 大轨迹 + 下钻</div>
+      <div class="desc">轨迹节点更大；选中页后操作以时间线挂在节点下，点操作展开链路抽屉。</div>
+    </a>
+  </div>
+</body>
+</html>

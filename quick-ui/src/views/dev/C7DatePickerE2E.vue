@@ -66,6 +66,7 @@
 </template>
 
 <script setup>
+/** C7DatePicker 组件 E2E 联调页：覆盖 rangeMerge、默认格式与非法串告警。 */
 import {ref} from 'vue'
 
 const rangeArrayVal = ref('2024-06-01,2024-06-30')

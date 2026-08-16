@@ -12,11 +12,17 @@ public final class HttpCodes {
    */
   public static final int OK = 200;
 
+  /** 请求参数或语义非法。 */
   public static final int BAD_REQUEST = 400;
+  /** 未认证或凭证失效。 */
   public static final int UNAUTHORIZED = 401;
+  /** 已认证但无访问权限。 */
   public static final int FORBIDDEN = 403;
+  /** 资源不存在。 */
   public static final int NOT_FOUND = 404;
+  /** 服务器内部错误（默认失败码）。 */
   public static final int INTERNAL_ERROR = 500;
+  /** 依赖服务不可用或系统维护中。 */
   public static final int SERVICE_UNAVAILABLE = 503;
 
 

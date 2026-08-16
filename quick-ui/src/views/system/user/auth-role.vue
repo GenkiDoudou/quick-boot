@@ -18,6 +18,9 @@
 </template>
 
 <script setup>
+/**
+ * 用户分配角色页：路由参数 userId，勾选 roleIds 后提交授权。
+ */
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

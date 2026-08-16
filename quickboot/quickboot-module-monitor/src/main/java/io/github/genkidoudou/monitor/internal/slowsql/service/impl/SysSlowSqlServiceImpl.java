@@ -39,6 +39,7 @@ public class SysSlowSqlServiceImpl implements SysSlowSqlService {
     this.slowSqlProperties = slowSqlProperties;
   }
 
+  /** {@inheritDoc} */
   @Override
   public PageInfo<SysSlowSqlVo> page(SysSlowSqlQueryBo query) {
     int pageNum = query.getPageNum() == null || query.getPageNum() < 1 ? 1 : query.getPageNum();
@@ -55,6 +56,7 @@ public class SysSlowSqlServiceImpl implements SysSlowSqlService {
     return PageInfo.from(voPage);
   }
 
+  /** {@inheritDoc} */
   @Override
   public SysSlowSqlVo getById(Long slowId) {
     SysSlowSql row = mapper.selectById(slowId);
@@ -64,6 +66,7 @@ public class SysSlowSqlServiceImpl implements SysSlowSqlService {
     return BeanUtil.copyProperties(row, SysSlowSqlVo.class);
   }
 
+  /** {@inheritDoc} */
   @Override
   public void export(SysSlowSqlQueryBo query, HttpServletResponse response) {
     int max = Math.max(1, slowSqlProperties.getExportMaxRows());
@@ -87,6 +90,7 @@ public class SysSlowSqlServiceImpl implements SysSlowSqlService {
     return rows;
   }
 
+  /** {@inheritDoc} */
   @Override
   @Transactional(rollbackFor = Exception.class)
   public void removeBatch(List<Long> slowIds) {
@@ -96,6 +100,7 @@ public class SysSlowSqlServiceImpl implements SysSlowSqlService {
     mapper.delete(Wrappers.<SysSlowSql>lambdaQuery().in(SysSlowSql::getSlowId, slowIds));
   }
 
+  /** {@inheritDoc} */
   @Override
   @Transactional(rollbackFor = Exception.class)
   public void cleanAll() {

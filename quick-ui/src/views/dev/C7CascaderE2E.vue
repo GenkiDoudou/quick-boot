@@ -82,6 +82,7 @@
 </template>
 
 <script setup>
+/** C7Cascader 组件 E2E 联调页：覆盖静态/懒加载、多选逗号串与 valueType。 */
 import {ref} from 'vue'
 
 const staticVal = ref([])

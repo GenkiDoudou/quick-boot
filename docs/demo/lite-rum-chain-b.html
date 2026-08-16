@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B · Operation 工作台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --panel2: #182130; --line: #243044;
+      --text: #e8eef7; --muted: #8b9bb4; --accent: #3b82f6; --ok: #22c55e; --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    }
+    .title { font-size: 13px; color: var(--muted); }
+    .title b { color: var(--text); }
+    a.back { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px 1fr; }
+    .left { border-right: 1px solid var(--line); overflow: auto; background: var(--panel); }
+    .row {
+      padding: 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px;
+    }
+    .row:hover, .row.active { background: var(--panel2); }
+    .row .act { font-weight: 600; }
+    .row .path { color: var(--muted); margin-top: 4px; font-family: ui-monospace, Consolas, monospace; }
+    .mono { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+    .badge { font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+    .badge.ok { background: rgba(34,197,94,.15); color: var(--ok); }
+    .badge.bad { background: rgba(239,68,68,.15); color: var(--bad); }
+    .right { overflow: auto; padding: 16px; }
+    .head { font-size: 13px; margin-bottom: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; }
+    .step {
+      border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+      padding: 12px; margin-bottom: 10px; font-size: 12px;
+    }
+    .step.fail { border-color: rgba(239,68,68,.45); }
+    .step .t { color: var(--muted); margin-bottom: 6px; }
+    .step .links { margin-top: 8px; }
+    .step a { color: #93c5fd; cursor: pointer; margin-right: 12px; }
+    .el-input__wrapper { background: #0f1620 !important; box-shadow: 0 0 0 1px var(--line) inset !important; }
+    .el-input__inner { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <div class="title">方案 <b>B</b> · Operation 工作台（一次用户操作）</div>
+      <el-input v-model="q" size="small" placeholder="action / uin / page" style="width:240px" clearable></el-input>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div
+          v-for="op in filtered"
+          :key="op.operationId"
+          class="row"
+          :class="{ active: cur && cur.operationId === op.operationId }"
+          @click="cur = op"
+        >
+          <div>
+            <span class="act">{{ op.action }}</span>
+            <span class="badge" :class="op.ok ? 'ok' : 'bad'">{{ op.ok ? 'OK' : 'FAIL' }}</span>
+          </div>
+          <div class="path">{{ op.fromPage || '∅' }} → {{ op.page }}</div>
+          <div class="path" style="margin-top:4px">
+            <span class="mono">{{ op.operationId }}</span> · {{ op.uin }} · {{ op.startedAt }}
+          </div>
+        </div>
+      </div>
+      <div class="right" v-if="cur">
+        <div class="head">
+          <span>操作 <b style="color:var(--text)">{{ cur.action }}</b> {{ cur.actionLabel }}</span>
+          <span>operationId <span class="mono">{{ cur.operationId }}</span></span>
+          <span>{{ cur.fromPage || '—' }} → {{ cur.page }}</span>
+          <span>{{ cur.uin }} · {{ cur.browser }} · {{ cur.clientIp }}</span>
+        </div>
+        <div v-for="(s, i) in cur.steps" :key="i" class="step" :class="{ fail: s.ok === false }">
+          <div class="t">#{{ i + 1 }} · {{ s.ts }} · {{ s.kind.toUpperCase() }}</div>
+          <div>{{ s.title }}</div>
+          <div v-if="s.detail" style="color:var(--muted);margin-top:4px">{{ s.detail }}</div>
+          <div class="links" v-if="s.traceId">
+            <a @click="showTrace = s.traceId">打开 Trace {{ s.traceId }}</a>
+            <span style="color:var(--muted)">{{ s.durationMs != null ? s.durationMs + 'ms' : '' }} {{ s.status != null ? 'HTTP ' + s.status : '' }}</span>
+          </div>
+        </div>
+        <div v-if="showTrace && traceMap[showTrace]" class="step" style="margin-top:18px;border-color:#3b82f6">
+          <div class="t">关联 Trace 摘要 · {{ showTrace }}</div>
+          <div>前端 {{ traceMap[showTrace].feMs }}ms / 后端 {{ traceMap[showTrace].beMs }}ms</div>
+          <pre style="margin:8px 0 0;white-space:pre-wrap;color:#fecaca;background:#0f1620;padding:10px;border-radius:4px">{{ traceMap[showTrace].beLog }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const OPS = [
+      {
+        operationId: 'op_7c21',
+        action: 'order.submit',
+        actionLabel: '提交订单',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        uin: 'u_8821',
+        browser: 'Chrome/126',
+        clientIp: '112.64.12.21',
+        startedAt: '20:47:01',
+        ok: false,
+        steps: [
+          { ts: '20:47:01.010', kind: 'action', title: 'UI 触发 order.submit', ok: true },
+          { ts: '20:47:01.080', kind: 'api', title: 'POST /api/order/create', traceId: 'tr_9f2a1c', durationMs: 760, status: 500, ok: false, detail: '前端测速 durationMs=760' },
+          { ts: '20:47:01.850', kind: 'error', title: "TypeError: reading 'id'", ok: false, detail: 'OrderConfirm.vue:142' },
+        ],
+      },
+      {
+        operationId: 'op_7c30',
+        action: 'order.search',
+        actionLabel: '查询订单',
+        fromPage: '/dashboard',
+        page: '/orders',
+        uin: 'u_2201',
+        browser: 'Edge/126',
+        clientIp: '36.110.8.2',
+        startedAt: '19:54:40',
+        ok: false,
+        steps: [
+          { ts: '19:54:40.100', kind: 'action', title: 'UI 触发 order.search', ok: true },
+          { ts: '19:54:40.160', kind: 'api', title: 'GET /api/order/page', traceId: 'tr_3aa901', durationMs: 1205, status: 0, ok: false, detail: 'status=0 网络层失败' },
+          { ts: '19:54:41.400', kind: 'error', title: 'Unhandled Rejection: Network Error', ok: false },
+        ],
+      },
+      {
+        operationId: 'op_7c40',
+        action: 'user.save',
+        actionLabel: '保存用户',
+        fromPage: '/users',
+        page: '/users/detail',
+        uin: 'u_1001',
+        browser: 'Chrome/126',
+        clientIp: '101.80.3.9',
+        startedAt: '18:12:08',
+        ok: true,
+        steps: [
+          { ts: '18:12:08.010', kind: 'action', title: 'UI 触发 user.save', ok: true },
+          { ts: '18:12:08.050', kind: 'api', title: 'PUT /api/user/profile', traceId: 'tr_11bb02', durationMs: 210, status: 200, ok: true },
+        ],
+      },
+    ];
+    const TRACE_MAP = {
+      tr_9f2a1c: { feMs: 760, beMs: 702, beLog: '[ERROR] NullPointerException at OrderService.create:88\\nslow sql 680ms' },
+      tr_3aa901: { feMs: 1205, beMs: 0, beLog: 'no backend access log (timeout / offline)' },
+      tr_11bb02: { feMs: 210, beMs: 168, beLog: '[INFO] PUT /api/user/profile 200 168ms' },
+    };
+    const { createApp, ref, computed } = Vue;
+    createApp({
+      setup() {
+        const q = ref('');
+        const cur = ref(OPS[0]);
+        const showTrace = ref('tr_9f2a1c');
+        const filtered = computed(() => {
+          const s = q.value.trim().toLowerCase();
+          if (!s) return OPS;
+          return OPS.filter((o) =>
+            o.action.includes(s) || o.uin.includes(s) || o.page.includes(s) || o.operationId.includes(s)
+          );
+        });
+        return { q, cur, filtered, showTrace, traceMap: TRACE_MAP };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

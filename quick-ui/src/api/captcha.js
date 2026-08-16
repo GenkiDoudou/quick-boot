@@ -1,3 +1,6 @@
+/**
+ * 天爱行为验证码 API：开关配置与 TAC SDK 绝对地址。
+ */
 import request from '@/utils/request'
 
 /**

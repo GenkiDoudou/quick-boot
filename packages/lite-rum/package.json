@@ -1,0 +1,27 @@
+{
+  "name": "@quickboot/lite-rum",
+  "version": "0.1.0",
+  "description": "Quickboot Lite RUM SDK (CDN / npm)",
+  "type": "module",
+  "main": "./dist/lite-rum.min.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "default": "./dist/lite-rum.min.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
+  "devDependencies": {
+    "vite": "5.3.2"
+  },
+  "license": "MIT"
+}

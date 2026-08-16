@@ -31,6 +31,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * 字典类型管理。维护 dictType 元数据及缓存刷新、Excel 导入导出。
+ */
 @Tag(name = "字典类型")
 @RequiredArgsConstructor
 @RestController
@@ -39,6 +42,12 @@ public class SysDictTypeController {
 
   private final ISysDictTypeService service;
 
+  /**
+   * 字典类型分页。
+   *
+   * @param pageRequest 分页参数与查询条件
+   * @return 分页结果
+   */
   @Operation(summary = "分页查询")
   @SaCheckPermission("system:dict:list")
   @PostMapping("page")
@@ -46,6 +55,12 @@ public class SysDictTypeController {
     return R.ok(service.page(pageRequest));
   }
 
+  /**
+   * 字典类型详情。
+   *
+   * @param dictId 字典类型主键
+   * @return Vo
+   */
   @Operation(summary = "字典类型详情")
   @SaCheckPermission(value = {"system:dict:query", "system:dict:list"}, mode = SaMode.OR)
   @GetMapping("/{dictId}")
@@ -53,6 +68,12 @@ public class SysDictTypeController {
     return R.ok(service.getDetail(dictId));
   }
 
+  /**
+   * 新增字典类型；响应 data 为新建 dictId。
+   *
+   * @param vo 可写字段
+   * @return 新建主键
+   */
   @Operation(summary = "新增字典类型")
   @SaCheckPermission("system:dict:add")
   @PostMapping("add")
@@ -61,6 +82,12 @@ public class SysDictTypeController {
     return R.ok(id == null ? null : String.valueOf(id));
   }
 
+  /**
+   * 修改字典类型。
+   *
+   * @param vo 含 dictId 的可写字段
+   * @return 是否成功
+   */
   @Operation(summary = "修改字典类型")
   @SaCheckPermission("system:dict:edit")
   @PostMapping("update")
@@ -68,6 +95,12 @@ public class SysDictTypeController {
     return R.ok(service.update(vo));
   }
 
+  /**
+   * 单条删除字典类型。
+   *
+   * @param dictId 字典类型主键
+   * @return ok
+   */
   @Operation(summary = "删除字典类型")
   @SaCheckPermission("system:dict:remove")
   @GetMapping("remove/{dictId}")
@@ -76,6 +109,12 @@ public class SysDictTypeController {
     return R.ok();
   }
 
+  /**
+   * 批量删除字典类型。
+   *
+   * @param ids 字典类型主键集合
+   * @return ok
+   */
   @Operation(summary = "批量删除字典类型")
   @SaCheckPermission("system:dict:remove")
   @PostMapping("remove")
@@ -84,6 +123,11 @@ public class SysDictTypeController {
     return R.ok();
   }
 
+  /**
+   * 刷新全部字典类型及其数据缓存。
+   *
+   * @return ok；副作用为重建 Redis 字典缓存
+   */
   @Operation(summary = "刷新全部字典缓存")
   @SaCheckPermission("system:dict:refresh")
   @PostMapping("refresh")
@@ -92,6 +136,12 @@ public class SysDictTypeController {
     return R.ok();
   }
 
+  /**
+   * 刷新指定 dictType 的字典数据缓存。
+   *
+   * @param dictType 字典类型编码
+   * @return ok；副作用为重建该类型缓存
+   */
   @Operation(summary = "刷新指定字典缓存")
   @SaCheckPermission("system:dict:refresh")
   @PostMapping("refresh/{dictType}")
@@ -100,6 +150,12 @@ public class SysDictTypeController {
     return R.ok();
   }
 
+  /**
+   * 同步导出字典类型 xlsx。
+   *
+   * @param query    导出筛选条件
+   * @param response 文件流
+   */
   @Operation(summary = "导出字典类型")
   @IgnoreLogger(type = IgnoreLogger.Type.RESULT)
   @SaCheckPermission("system:dict:export")
@@ -108,6 +164,11 @@ public class SysDictTypeController {
     ExcelUtils.exportExcel(service.export(query), "字典类型", SysDictTypeVo.class, response);
   }
 
+  /**
+   * 下载字典类型导入 Excel 模板。
+   *
+   * @param response 文件流
+   */
   @Operation(summary = "导入模板")
   @IgnoreLogger(type = IgnoreLogger.Type.RESULT)
   @SaCheckPermission("system:dict:import")
@@ -116,6 +177,13 @@ public class SysDictTypeController {
     ExcelUtils.exportExcel(Collections.emptyList(), "dict-type-import-template", SysDictTypeImportRow.class, false, true, response);
   }
 
+  /**
+   * 同步导入字典类型；可选更新已存在 dictType。
+   *
+   * @param file          Excel 文件
+   * @param updateSupport 是否更新已存在数据（true/1）
+   * @return 导入统计与失败行
+   */
   @Operation(summary = "导入字典类型")
   @SaCheckPermission("system:dict:import")
   @PostMapping("import")

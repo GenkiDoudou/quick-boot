@@ -73,6 +73,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { cleanSlowSql, getSlowSql, listSlowSql, removeSlowSql } from '@/api/monitor/slowSql'
 import { parseTime } from '@/utils/ruoyi'
 
+/**
+ * 慢 SQL 监控：分页列表、详情、批量删除、清空、导出。
+ */
 defineOptions({ name: 'SysSlowSql' })
 
 const SQL_SOURCE_OPTIONS = [
@@ -202,6 +205,7 @@ function sqlPreview(text, maxLen = 160) {
   return oneLine.length > maxLen ? `${oneLine.slice(0, maxLen)}…` : oneLine
 }
 
+/** C7JsonTable 列表传参适配：日期范围转 beginTime/endTime */
 function normalizeListParams(raw) {
   const p = { ...raw }
   const range = p.createTimeRange

@@ -17,7 +17,9 @@ public final class ErrorCodes {
    * 通用错误码。
    */
   public static final class Common {
+    /** 参数非法（占位 {0} 为字段或说明）。 */
     public static final int INVALID_PARAM = 10001;
+    /** 请求体格式错误或无法解析。 */
     public static final int REQUEST_BODY_INVALID = 10002;
 
     private Common() {
@@ -74,7 +76,9 @@ public final class ErrorCodes {
    * 系统错误码。
    */
   public static final class System {
+    /** 系统内部错误。 */
     public static final int INTERNAL_ERROR = 40000;
+    /** 外部依赖不可用。 */
     public static final int DEPENDENCY_UNAVAILABLE = 40001;
 
     private System() {
@@ -125,9 +129,13 @@ public final class ErrorCodes {
    * 定时任务错误码（2xxxx 段）。
    */
   public static final class Job {
+    /** Cron 表达式非法。 */
     public static final int CRON_INVALID = 20020;
+    /** 调用目标 Bean 不存在。 */
     public static final int INVOKE_TARGET_NOT_FOUND = 20021;
+    /** 调用目标不是可执行任务 Bean。 */
     public static final int INVOKE_TARGET_NOT_TASK = 20022;
+    /** 任务未注册到调度器。 */
     public static final int JOB_NOT_IN_SCHEDULER = 20023;
 
     private Job() {
@@ -138,11 +146,17 @@ public final class ErrorCodes {
    * 代码生成错误码（2xxxx 段）。
    */
   public static final class Gen {
+    /** 表已导入，不可重复。 */
     public static final int TABLE_ALREADY_IMPORTED = 20010;
+    /** 表不存在。 */
     public static final int TABLE_NOT_FOUND = 20011;
+    /** SQL 语句非法。 */
     public static final int SQL_INVALID = 20012;
+    /** 导入表列表为空。 */
     public static final int IMPORT_TABLES_EMPTY = 20013;
+    /** 树形模板暂不支持。 */
     public static final int TREE_TEMPLATE_NOT_SUPPORTED = 20014;
+    /** 自定义路径暂不支持。 */
     public static final int CUSTOM_PATH_NOT_SUPPORTED = 20015;
 
     private Gen() {

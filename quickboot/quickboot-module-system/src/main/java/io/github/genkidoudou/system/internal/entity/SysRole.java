@@ -22,14 +22,17 @@ public class SysRole extends BaseEntity implements Serializable {
   @Serial
   private static final long serialVersionUID = 1L;
 
+  /** 角色主键。 */
   @TableId(value = "role_id", type = IdType.ASSIGN_ID)
   private Long roleId;
 
+  /** 角色名称。 */
   private String roleName;
 
   /** 权限字符，唯一 */
   private String roleKey;
 
+  /** 显示顺序，越小越靠前。 */
   private Integer roleSort;
 
   /**

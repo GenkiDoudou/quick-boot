@@ -20,15 +20,20 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * MyBatis-Plus Service 基类：封装分页查询、Entity/VO 拷贝等常用能力。
+ *
+ * @param <M> Mapper 类型
+ * @param <T> 实体类型
+ */
 public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, T> {
 
 
   /**
-   * 获取IPage 对象
+   * 由 {@link PageRequest} 构造 MyBatis-Plus {@link IPage}。
    *
-   * @param pageRequest
-   * @return
-   * @since 2026/8/1
+   * @param pageRequest 分页参数
+   * @return 未执行查询的分页对象
    */
   public IPage<T> getPage(PageRequest pageRequest) {
     IPage<T> page = new Page<>();
@@ -39,14 +44,13 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
 
 
   /**
-   * 分页
+   * 分页查询并转换为 VO 列表。
    *
    * @param pageRequest 分页参数
-   * @param consumer    参数处理
-   * @param vClass      返回vo类
-   * @param biFunction  列表转换
-   * @return
-   * @since 2026/8/1
+   * @param consumer    可选的 {@link LambdaQueryWrapper} 条件组装
+   * @param vClass      目标 VO 类型
+   * @param biFunction  可选的后处理：入参为实体列表与 VO 列表，返回最终 records
+   * @return 分页结果
    */
   public <V> PageInfo<V> page(PageRequest pageRequest, Consumer<LambdaQueryWrapper<T>> consumer, Class<V> vClass, BiFunction<List<T>, List<V>, List<V>> biFunction) {
     LambdaQueryWrapper<T> queryWrapper = new LambdaQueryWrapper<>();
@@ -59,13 +63,12 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
   }
 
   /**
-   * 分页
+   * 分页查询并转换为 VO（无后处理函数）。
    *
    * @param pageRequest 分页参数
-   * @param consumer    参数处理
-   * @param vClass      返回vo类
-   * @return
-   * @since 2026/8/1
+   * @param consumer    查询条件组装
+   * @param vClass      目标 VO 类型
+   * @return 分页结果
    */
   public <V> PageInfo<V> page(PageRequest pageRequest, Consumer<LambdaQueryWrapper<T>> consumer, Class<V> vClass) {
 
@@ -74,12 +77,11 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
 
 
   /**
-   * 分页
+   * 分页查询，VO 类型与实体相同。
    *
    * @param pageRequest 分页参数
-   * @param consumer    参数处理
-   * @return
-   * @since 2026/8/1
+   * @param consumer    查询条件组装
+   * @return 分页结果
    */
   public <V> PageInfo<V> page(PageRequest pageRequest, Consumer<LambdaQueryWrapper<T>> consumer) {
     Class<T> entityClass = getEntityClass();
@@ -88,6 +90,14 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
   }
 
 
+  /**
+   * 将 MyBatis-Plus 分页结果转换为 {@link PageInfo}，并拷贝 records 为 VO。
+   *
+   * @param page       已查询的分页结果
+   * @param vClass     目标 VO 类型
+   * @param biFunction 可选 records 后处理
+   * @return 业务分页对象
+   */
   public <V> PageInfo<V> buildPageInf(IPage<T> page, Class<V> vClass, BiFunction<List<T>, List<V>, List<V>> biFunction) {
     List<T> records = page.getRecords();
     PageInfo<V> pageInfo = new PageInfo<>();
@@ -109,12 +119,12 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
 
 
   /**
-   * 将实体类转换为vo类
+   * 实体转 VO；类型相同时直接返回原对象。
    *
-   * @param obj    实体类
-   * @param vClass vo类
-   * @return
-   * @since 2026/8/2
+   * @param obj      实体
+   * @param vClass   目标 VO 类型
+   * @param function 可选：在拷贝后基于实体再次加工 VO
+   * @return VO 或 {@code null}（实体为 null）
    */
   public <V> V toVo(T obj, Class<V> vClass, Function<T, V> function) {
     if (null == obj) {
@@ -132,6 +142,12 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
   }
 
 
+  /**
+   * VO 转实体；类型相同时直接强转。
+   *
+   * @param vo 请求 VO 或 DTO
+   * @return 实体实例
+   */
   public T toEntity(Object vo) {
     Class<T> entityClass = getEntityClass();
     if (vo.getClass().equals(entityClass)) {
@@ -145,6 +161,13 @@ public class BaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, 
   }
 
 
+  /**
+   * 按主键查询并转换为 VO。
+   *
+   * @param id     主键
+   * @param vClass 目标 VO 类型
+   * @return VO；不存在时 {@code null}
+   */
   public <V> V getVoById(Serializable id, Class<V> vClass) {
     T t = super.getById(id);
     return toVo(t, vClass);

@@ -102,6 +102,7 @@
 </template>
 
 <script setup>
+/** C7Switch 组件 E2E 联调页：覆盖 beforeChange、确认弹窗与 asyncChange。 */
 import {ref} from 'vue'
 
 const dictVal = ref(0)

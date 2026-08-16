@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @Slf4j
 public abstract class AbstractQuartzJob implements Job {
 
+    /** 统一执行入口：解析快照、执行业务、写调度日志。 */
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         JobTaskSnapshot snapshot = JobTaskSnapshotSupport.resolve(context);

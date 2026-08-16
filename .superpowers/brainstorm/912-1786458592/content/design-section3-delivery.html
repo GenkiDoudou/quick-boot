@@ -1,0 +1,51 @@
+<h2>设计稿 §3：交互 · 图表 · 交付</h2>
+<p class="subtitle">静态原型范围：可切换时间窗看不同 mock；不接后端</p>
+
+<div class="section">
+  <h3>交互</h3>
+  <ul>
+    <li>顶栏时间窗：今日（默认）/ 昨日 / 本周 / 近7天 / 本月</li>
+    <li>切换后整屏 KPI、图表、列表同步换一套 mock</li>
+    <li>右上角实时时钟；可选「模拟刷新」文案（不真实轮询）</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>图表与列表</h3>
+  <ul>
+    <li>左上：登录成功/失败迷你折线或柱图</li>
+    <li>左下：热门页面 Top5 条形/列表</li>
+    <li>中下：请求量 vs 错误量 双轴折线（ECharts）</li>
+    <li>右上：sql_source 饼图 + 最慢 SQL Top5 文本列表</li>
+    <li>右下：成功/失败对比 + 最近失败任务 3～5 条</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>交付物</h3>
+  <ul>
+    <li>单文件：建议 <code>docs/demo/system-monitor-dashboard.html</code></li>
+    <li>CDN：Vue3 + Element Plus（时间切换）+ ECharts</li>
+    <li>深色自定义壳；el 组件成对闭合</li>
+    <li>本期不做：真 API、权限、WebSocket、告警推送</li>
+  </ul>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>本期包含</h4>
+    <ul>
+      <li>完整大屏视觉与分区</li>
+      <li>时间窗切换 + mock 数据集</li>
+      <li>指标口径对齐 DDL</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>明确不做</h4>
+    <ul>
+      <li>接库 / 接 monitor API</li>
+      <li>写入 quick-ui 正式路由</li>
+      <li>告警规则引擎</li>
+    </ul>
+  </div>
+</div>

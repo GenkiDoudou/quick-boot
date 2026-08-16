@@ -121,6 +121,14 @@
 </template>
 
 <script setup>
+/**
+ * Cron 表达式可视化编辑器（若依遗留）：分秒/分/时/日/月/周/年 Tab 配置，实时预览并回填表达式。
+ *
+ * @prop {string[]} [hideComponent] 需隐藏的时间维度（如 `['second','year']`）
+ * @prop {string} [expression] 初始 Cron 表达式
+ * @emits fill 用户确认，载荷为完整 Cron 字符串
+ * @emits hide 用户取消
+ */
 import CrontabSecond from "./second.vue"
 import CrontabMin from "./min.vue"
 import CrontabHour from "./hour.vue"

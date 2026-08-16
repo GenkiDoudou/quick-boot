@@ -14,6 +14,9 @@ final class SensitiveStringSerializer extends ValueSerializer<String> {
   private final SensitiveType type;
   private final String strategy;
 
+  /**
+   * @param sensitive 字段上的 {@link Sensitive} 注解
+   */
   SensitiveStringSerializer(Sensitive ann) {
     this.type = ann.type();
     this.strategy = ann.strategy();

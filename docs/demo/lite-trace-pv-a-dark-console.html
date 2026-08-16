@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A · 深色控制台（搜索类型 / 页概览）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root{--bg:#0b0f14;--panel:#121821;--panel2:#182130;--line:#243044;--text:#e8eef7;--muted:#8b9bb4;--accent:#3b82f6;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}
+    *{box-sizing:border-box} html,body{height:100%;margin:0}
+    body{font-family:"Segoe UI","PingFang SC",sans-serif;background:var(--bg);color:var(--text)}
+    #app{height:100%;display:flex;flex-direction:column}
+    .bar{border-bottom:1px solid var(--line);background:var(--panel);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
+    .bar-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    a.back{color:#93c5fd;text-decoration:none;font-size:12px;white-space:nowrap}
+    .field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .field label{white-space:nowrap}
+    .search-wrap{flex:1;min-width:280px;display:flex;align-items:stretch;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#0f1620}
+    .search-wrap .el-select{width:130px}
+    .search-wrap .el-select .el-input__wrapper{box-shadow:none!important;background:#121821;border-radius:0;border-right:1px solid var(--line)}
+    .search-wrap .el-input .el-input__wrapper{box-shadow:none!important;background:transparent;border-radius:0}
+    .search-wrap .el-input__inner{color:var(--text);font-family:ui-monospace,Consolas,monospace;font-size:12px}
+    .hint{padding:6px 14px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line);background:#0e141c;line-height:1.55}
+    .hint b{color:#93c5fd}
+    .body{flex:1;min-height:0;display:grid;grid-template-columns:300px 1fr}
+    .left{border-right:1px solid var(--line);background:var(--panel);overflow:auto;display:flex;flex-direction:column}
+    .filters{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap}
+    .chip{font-size:11px;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--muted);cursor:pointer;user-select:none}
+    .chip.on{border-color:var(--accent);color:#93c5fd;background:rgba(59,130,246,.12)}
+    .sort-row{padding:8px 12px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .count{padding:6px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line)}
+    .sec-h{padding:8px 12px 4px;font-size:10px;color:var(--muted);letter-spacing:.04em}
+    .item{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12px}
+    .item:hover,.item.on{background:var(--panel2)}
+    .mono{font-family:ui-monospace,Consolas,monospace;color:#93c5fd;word-break:break-all}
+    .meta{color:var(--muted);margin-top:3px}
+    .badge{font-size:10px;padding:1px 5px;border-radius:2px;margin-left:6px}
+    .badge.page{background:rgba(6,182,212,.2);color:#67e8f9}
+    .badge.api{background:rgba(139,92,246,.2);color:#c4b5fd}
+    .badge.job{background:rgba(245,158,11,.2);color:#fcd34d}
+    .badge.ok{background:rgba(34,197,94,.15);color:var(--ok)}
+    .badge.bad{background:rgba(239,68,68,.15);color:var(--bad)}
+    .right{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+    .head{padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .head .ok{color:var(--ok)}.head .bad{color:var(--bad)}
+    .page-body{flex:1;overflow:auto;padding:16px 20px;min-width:0}
+    .intro{
+      background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px;
+    }
+    .intro h2{margin:0 0 10px;font-size:18px;color:var(--text)}
+    .intro-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 16px;font-size:12px}
+    .intro-grid label{display:block;color:var(--muted);margin-bottom:2px;font-size:11px}
+    .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .stat{background:#0f1620;border:1px solid var(--line);border-radius:6px;padding:8px 12px;font-size:12px}
+    .stat b{color:#93c5fd;font-size:16px;margin-right:4px}
+    .trace-table{width:100%;border-collapse:collapse;font-size:12px}
+    .trace-table th,.trace-table td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+    .trace-table th{background:#0e141c;color:var(--muted);font-weight:500}
+    .trace-table tr{cursor:pointer}
+    .trace-table tr:hover td{background:var(--panel2)}
+    .main{flex:1;min-height:0;display:grid}
+    .main.single{grid-template-columns:minmax(0,1fr) 320px}
+    .col{overflow:auto;padding:12px;border-right:1px solid var(--line);min-width:0}
+    .col:last-child{border-right:0;background:#0e141c}
+    .sec{font-size:12px;font-weight:600;margin:0 0 8px}
+    .row{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) 48px;gap:8px;align-items:center;padding:4px;border-radius:4px;cursor:pointer;font-size:11px;margin-bottom:4px}
+    .row.on{background:rgba(59,130,246,.1)}
+    .track{height:18px;background:#0f1620;border:1px solid var(--line);border-radius:3px;position:relative}
+    .bar2{position:absolute;top:2px;height:12px;border-radius:2px;min-width:3px}
+    .fe{background:#3b82f6}.be{background:#8b5cf6}.sql{background:var(--warn)}.pg{background:#06b6d4}
+    .kv{margin-bottom:8px;font-size:11px}.kv label{display:block;color:var(--muted);margin-bottom:2px}
+    .kv pre{margin:0;padding:6px;background:#0b0f14;border:1px solid var(--line);border-radius:4px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow:auto}
+    .call{font-size:11px;color:#93c5fd;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);padding:6px 8px;border-radius:4px;margin-bottom:8px;line-height:1.4}
+    .empty{color:var(--muted);padding:24px;font-size:13px}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <div class="bar-row">
+      <a class="back" href="./lite-trace-page-visit-picker.html">← 选型</a>
+      <strong>A · 深色控制台</strong>
+      <div class="search-wrap">
+        <el-select v-model="searchType" size="small" style="width:130px">
+          <el-option label="全部" value="all"></el-option>
+          <el-option label="页面路径" value="page"></el-option>
+          <el-option label="接口 URL" value="url"></el-option>
+          <el-option label="traceId" value="traceId"></el-option>
+          <el-option label="sessionId" value="sessionId"></el-option>
+          <el-option label="pageVisitId" value="pageVisitId"></el-option>
+          <el-option label="关键字" value="keyword"></el-option>
+        </el-select>
+        <el-input
+          v-model="keyword"
+          size="small"
+          clearable
+          :placeholder="searchPlaceholder"
+          style="flex:1"
+          @keyup.enter="applyFilter"
+        ></el-input>
+      </div>
+      <el-button size="small" type="primary" @click="applyFilter">查询</el-button>
+      <el-button size="small" @click="resetFilter">重置</el-button>
+    </div>
+    <div class="bar-row">
+      <div class="field">
+        <label>时间</label>
+        <el-date-picker
+          v-model="timeRange"
+          type="datetimerange"
+          size="small"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          start-placeholder="开始"
+          end-placeholder="结束"
+          style="width:340px"
+        ></el-date-picker>
+      </div>
+      <div class="field">
+        <label>用户名</label>
+        <el-input v-model="uin" size="small" clearable placeholder="uin / 用户名" style="width:130px" @keyup.enter="applyFilter"></el-input>
+      </div>
+      <div class="field">
+        <label>客户端</label>
+        <el-select v-model="caller" size="small" clearable placeholder="全部" style="width:130px">
+          <el-option label="quick-ui" value="quick-ui"></el-option>
+          <el-option label="partner-sdk" value="partner-sdk"></el-option>
+          <el-option label="quartz" value="quartz"></el-option>
+          <el-option label="curl" value="curl"></el-option>
+        </el-select>
+      </div>
+      <div class="field">
+        <label>结果</label>
+        <el-select v-model="okFlag" size="small" clearable placeholder="全部" style="width:100px">
+          <el-option label="成功" value="1"></el-option>
+          <el-option label="失败" value="0"></el-option>
+        </el-select>
+      </div>
+    </div>
+  </div>
+  <div class="hint">
+    搜索类型下拉限定字段；左侧「页面访问」只显示页面信息（不含接口 URL）。
+    点页面 → <b>先页面介绍 + traceId 列表</b>，再点某条 trace 看瀑布。
+  </div>
+
+  <div class="body">
+    <div class="left">
+      <div class="filters">
+        <span class="chip" :class="{on:scope==='all'}" @click="scope='all'">全部</span>
+        <span class="chip" :class="{on:scope==='page'}" @click="scope='page'">页面访问</span>
+        <span class="chip" :class="{on:scope==='api'}" @click="scope='api'">接口</span>
+        <span class="chip" :class="{on:scope==='job'}" @click="scope='job'">定时任务</span>
+      </div>
+      <div class="sort-row">
+        <span style="font-size:11px;color:var(--muted)">排序</span>
+        <el-select v-model="sortKey" size="small" style="width:120px">
+          <el-option label="时间" value="time"></el-option>
+          <el-option label="耗时" value="duration"></el-option>
+          <el-option label="名称" value="name"></el-option>
+        </el-select>
+        <el-select v-model="sortDir" size="small" style="width:100px">
+          <el-option label="降序" value="desc"></el-option>
+          <el-option label="升序" value="asc"></el-option>
+        </el-select>
+      </div>
+      <div class="count">
+        页 {{ showPages ? filteredVisits.length : 0 }} ·
+        接口 {{ showApis ? filteredApis.length : 0 }} ·
+        任务 {{ showJobs ? filteredJobs.length : 0 }}
+      </div>
+
+      <template v-if="showPages">
+        <div class="sec-h">页面访问</div>
+        <div v-if="!filteredVisits.length" class="empty" style="padding:12px">无匹配页面访问</div>
+        <div
+          v-for="pv in filteredVisits"
+          :key="'pv-'+pv.pageVisitId"
+          class="item"
+          :class="{on: mode==='page' && curVisit && curVisit.pageVisitId===pv.pageVisitId}"
+          @click="pickVisit(pv)"
+        >
+          <!-- 仅页面信息，不展示接口地址 -->
+          <div>
+            <span class="mono">{{ pv.pagePath }}</span>
+            <span class="badge page">页</span>
+            <span class="badge" :class="pv.okFlag==='1'?'ok':'bad'">{{ pv.okFlag==='1'?'OK':'ERR' }}</span>
+          </div>
+          <div class="meta" v-if="pv.fromPage">来自 {{ pv.fromPage }}</div>
+          <div class="meta">{{ pv.traces.length }} 条链路 · {{ pv.durationMs }}ms</div>
+          <div class="meta">{{ pv.uin||'—' }} · {{ pv.endedAt }}</div>
+          <div class="meta">session {{ shortId(pv.sessionId) }}</div>
+        </div>
+      </template>
+
+      <template v-if="showApis">
+        <div class="sec-h">接口（页面内 + 纯 API）</div>
+        <div v-if="!filteredApis.length" class="empty" style="padding:12px">无匹配接口</div>
+        <div
+          v-for="t in filteredApis"
+          :key="'api-'+t.traceId"
+          class="item"
+          :class="{on: mode==='api' && curTrace && curTrace.traceId===t.traceId}"
+          @click="pickApi(t)"
+        >
+          <div>
+            <span class="mono">{{ t.entryName }}</span>
+            <span class="badge api">{{ t.fromPageVisit ? '页内' : '纯API' }}</span>
+            <span class="badge" :class="t.okFlag==='1'?'ok':'bad'">{{ t.okFlag==='1'?'OK':'ERR' }}</span>
+          </div>
+          <div class="meta" v-if="t.pagePath">页 {{ t.pagePath }}</div>
+          <div class="meta">{{ t.callerName||'—' }} · {{ t.uin||'—' }} · {{ t.startedAt }} · {{ t.durationMs }}ms</div>
+        </div>
+      </template>
+
+      <template v-if="showJobs">
+        <div class="sec-h">定时任务</div>
+        <div v-if="!filteredJobs.length" class="empty" style="padding:12px">无匹配任务</div>
+        <div
+          v-for="t in filteredJobs"
+          :key="'job-'+t.traceId"
+          class="item"
+          :class="{on: mode==='job' && curTrace && curTrace.traceId===t.traceId}"
+          @click="pickJob(t)"
+        >
+          <div>
+            <span class="mono">{{ t.entryName }}</span>
+            <span class="badge job">任务</span>
+            <span class="badge" :class="t.okFlag==='1'?'ok':'bad'">{{ t.okFlag==='1'?'OK':'ERR' }}</span>
+          </div>
+          <div class="meta">{{ t.callerName||'quartz' }} · {{ t.startedAt }} · {{ t.durationMs }}ms</div>
+        </div>
+      </template>
+    </div>
+
+    <!-- 页面：先介绍 + trace 列表 -->
+    <div class="right" v-if="mode==='page' && curVisit && pageView==='overview'">
+      <div class="head">
+        <span>页面访问</span>
+        <span class="mono">{{ curVisit.pagePath }}</span>
+        <span :class="curVisit.okFlag==='1'?'ok':'bad'">{{ curVisit.okFlag==='1'?'OK':'ERR' }}</span>
+      </div>
+      <div class="page-body">
+        <div class="intro">
+          <h2>{{ curVisit.pagePath }}</h2>
+          <div class="intro-grid">
+            <div><label>来自</label><span class="mono">{{ curVisit.fromPage||'—' }}</span></div>
+            <div><label>sessionId</label><span class="mono">{{ curVisit.sessionId }}</span></div>
+            <div><label>pageVisitId</label><span class="mono">{{ curVisit.pageVisitId }}</span></div>
+            <div><label>uin</label>{{ curVisit.uin||'—' }}</div>
+            <div><label>开始</label>{{ curVisit.startedAt }}</div>
+            <div><label>结束</label>{{ curVisit.endedAt }}</div>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>{{ curVisit.traces.length }}</b> 条 Trace</div>
+            <div class="stat"><b>{{ curVisit.durationMs }}</b> ms 合计</div>
+            <div class="stat"><b>{{ okTraceCount }}</b> 成功</div>
+            <div class="stat"><b>{{ failTraceCount }}</b> 失败</div>
+          </div>
+        </div>
+        <div class="sec">本页 Trace 列表 · 点击一行查看瀑布</div>
+        <table class="trace-table">
+          <thead>
+            <tr>
+              <th style="width:40%">traceId</th>
+              <th>接口</th>
+              <th style="width:70px">状态</th>
+              <th style="width:70px">耗时</th>
+              <th style="width:90px">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in curVisit.traces" :key="t.traceId" @click="openPageTrace(t)">
+              <td class="mono">{{ t.traceId }}</td>
+              <td>{{ t.entryName }}</td>
+              <td>
+                <span class="badge" :class="t.okFlag==='1'?'ok':'bad'">{{ t.statusCode||(t.okFlag==='1'?'OK':'ERR') }}</span>
+              </td>
+              <td>{{ t.durationMs }}ms</td>
+              <td><el-button link type="primary" size="small" @click.stop="openPageTrace(t)">查看链路</el-button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 页面下某条 trace 瀑布 -->
+    <div class="right" v-else-if="mode==='page' && curVisit && pageView==='trace' && curTrace">
+      <div class="head">
+        <el-button size="small" @click="pageView='overview';curTrace=null;sel=null">← 返回页面</el-button>
+        <span>页 {{ curVisit.pagePath }}</span>
+        <span>traceId <span class="mono">{{ curTrace.traceId }}</span></span>
+        <span>{{ curTrace.entryName }}</span>
+        <span>{{ curTrace.durationMs }}ms</span>
+      </div>
+      <div class="main single">
+        <div class="col">
+          <div class="sec">瀑布（接口已去重）</div>
+          <div class="call">fe_api + service → 1 条接口</div>
+          <div v-for="s in spans" :key="s.id" class="row" :class="{on:sel&&sel.id===s.id}" @click="sel=s">
+            <div>{{ s.name }}<div class="meta">{{ s.kindLabel }}</div></div>
+            <div class="track"><div class="bar2" :class="s.bar" :style="bar(s)"></div></div>
+            <div style="text-align:right;color:var(--muted)">{{ s.durationMs }}ms</div>
+          </div>
+        </div>
+        <div class="col"><div class="sec">{{ detailTitle }}</div><detail-panel :sel="sel" :visit="curVisit"></detail-panel></div>
+      </div>
+    </div>
+
+    <!-- 接口 / 任务 单链 -->
+    <div class="right" v-else-if="(mode==='api'||mode==='job') && curTrace">
+      <div class="head">
+        <span>traceId <span class="mono">{{ curTrace.traceId }}</span></span>
+        <span>{{ mode==='job'?'定时任务':'接口' }}</span>
+        <span v-if="curTrace.fromPageVisit" class="badge page">来自页面</span>
+        <span v-else-if="mode==='api'" class="badge api">纯 API</span>
+        <span class="mono">{{ curTrace.entryName }}</span>
+        <span>客户端 {{ curTrace.callerName||'—' }}</span>
+        <span>uin {{ curTrace.uin||'—' }}</span>
+        <span v-if="curTrace.pagePath">页 {{ curTrace.pagePath }}</span>
+        <span :class="curTrace.okFlag==='1'?'ok':'bad'">{{ curTrace.okFlag==='1'?'OK':'ERR' }}</span>
+        <span>{{ curTrace.durationMs }}ms</span>
+      </div>
+      <div class="main single">
+        <div class="col">
+          <div class="sec">瀑布</div>
+          <div v-for="s in spans" :key="s.id" class="row" :class="{on:sel&&sel.id===s.id}" @click="sel=s">
+            <div>{{ s.name }}<div class="meta">{{ s.kindLabel }}</div></div>
+            <div class="track"><div class="bar2" :class="s.bar" :style="bar(s)"></div></div>
+            <div style="text-align:right;color:var(--muted)">{{ s.durationMs }}ms</div>
+          </div>
+          <el-button v-if="curTrace.pageVisitId" size="small" style="margin-top:10px" @click="jumpVisit(curTrace.pageVisitId)">查看所属页面访问</el-button>
+        </div>
+        <div class="col"><div class="sec">{{ detailTitle }}</div><detail-panel :sel="sel" :visit="null"></detail-panel></div>
+      </div>
+    </div>
+
+    <div class="right" v-else><div class="empty">从左侧选择条目</div></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+<script src="./lite-trace-pv-mock.js"></script>
+<script>
+const { createApp, ref, computed } = Vue
+
+const DetailPanel = {
+  props: ['sel', 'visit'],
+  template: `
+    <template v-if="sel&&sel.kind==='api'">
+      <div class="kv"><label>URL</label><span class="mono">{{ sel.name }}</span></div>
+      <div class="kv"><label>Params</label><pre>{{ sel.requestParams||'—' }}</pre></div>
+      <div class="kv"><label>Body</label><pre>{{ sel.requestBody||'—' }}</pre></div>
+      <div class="kv"><label>响应</label><pre>{{ sel.responsePreview||'—' }}</pre></div>
+      <div class="kv"><label>耗时</label><span>FE {{ sel.feMs??'—' }} / BE {{ sel.beMs??'—' }}</span></div>
+    </template>
+    <template v-else-if="sel&&sel.kind==='page'&&visit">
+      <div class="kv"><label>当前页</label><span class="mono">{{ visit.pagePath }}</span></div>
+      <div class="kv"><label>sessionId</label><span class="mono">{{ visit.sessionId }}</span></div>
+      <div class="kv"><label>pageVisitId</label><span class="mono">{{ visit.pageVisitId }}</span></div>
+    </template>
+    <template v-else-if="sel&&sel.kind==='sql'">
+      <div class="kv"><label>SQL</label><pre>{{ sel.sql||'—' }}</pre></div>
+    </template>
+    <div v-else class="meta">点选 Span</div>
+  `
+}
+
+function defaultRange() {
+  const end = new Date()
+  const start = new Date(end.getTime() - 10 * 60 * 1000)
+  const fmt = (d) => {
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  }
+  return [fmt(start), fmt(end)]
+}
+
+function parseTs(s) {
+  if (!s) return 0
+  return new Date(String(s).replace(' ', 'T')).getTime() || 0
+}
+
+createApp({
+  components: { DetailPanel },
+  setup() {
+    const visits = window.LT_PV_MOCK.visits
+    const pureAll = window.LT_PV_MOCK.pureApiTraces
+
+    const searchType = ref('all')
+    const keyword = ref('')
+    const appliedKw = ref('')
+    const appliedType = ref('all')
+    const timeRange = ref(defaultRange())
+    const uin = ref('')
+    const caller = ref('')
+    const okFlag = ref('')
+    const scope = ref('all')
+    const sortKey = ref('time')
+    const sortDir = ref('desc')
+
+    const mode = ref('page')
+    const pageView = ref('overview') // overview | trace
+    const curVisit = ref(null)
+    const curTrace = ref(null)
+    const sel = ref(null)
+
+    const searchPlaceholder = computed(() => {
+      const m = {
+        all: '页面路径 / 接口 URL / ID…',
+        page: '例如 /system/role',
+        url: '例如 /sys/role/page',
+        traceId: '粘贴完整或前缀 traceId',
+        sessionId: '粘贴 sessionId',
+        pageVisitId: '粘贴 pageVisitId',
+        keyword: '任意关键字'
+      }
+      return m[searchType.value] || '输入查询内容'
+    })
+
+    const allApiItems = computed(() => {
+      const fromPage = []
+      for (const pv of visits) {
+        for (const t of pv.traces) {
+          fromPage.push({
+            ...t,
+            rootSource: 'browser',
+            fromPageVisit: true,
+            pageVisitId: pv.pageVisitId,
+            pagePath: pv.pagePath,
+            fromPage: pv.fromPage,
+            sessionId: pv.sessionId,
+            uin: t.uin || pv.uin,
+            callerName: t.callerName || 'quick-ui',
+            startedAt: t.startedAt || pv.startedAt
+          })
+        }
+      }
+      const pure = pureAll.filter(t => t.rootSource !== 'job').map(t => ({ ...t, fromPageVisit: false }))
+      return [...fromPage, ...pure]
+    })
+
+    const allJobItems = computed(() =>
+      pureAll.filter(t => t.rootSource === 'job').map(t => ({ ...t, fromPageVisit: false }))
+    )
+
+    const showPages = computed(() => scope.value === 'all' || scope.value === 'page')
+    const showApis = computed(() => scope.value === 'all' || scope.value === 'api')
+    const showJobs = computed(() => scope.value === 'all' || scope.value === 'job')
+
+    function inTime(ts) {
+      if (!timeRange.value || timeRange.value.length !== 2) return true
+      const t = parseTs(ts)
+      if (!t) return true
+      return t >= parseTs(timeRange.value[0]) && t <= parseTs(timeRange.value[1])
+    }
+    function matchOk(flag) {
+      if (!okFlag.value) return true
+      return flag === okFlag.value
+    }
+    function matchUin(v) {
+      if (!uin.value.trim()) return true
+      return String(v || '').toLowerCase().includes(uin.value.trim().toLowerCase())
+    }
+    function matchCaller(v) {
+      if (!caller.value) return true
+      return String(v || '') === caller.value
+    }
+
+    /** 按搜索类型精确匹配 */
+    function matchByType(fields) {
+      const k = appliedKw.value.trim().toLowerCase()
+      if (!k) return true
+      const t = appliedType.value
+      if (t === 'page') return String(fields.page || '').toLowerCase().includes(k)
+      if (t === 'url') return String(fields.url || '').toLowerCase().includes(k)
+      if (t === 'traceid') return String(fields.traceId || '').toLowerCase().includes(k)
+      if (t === 'sessionid') return String(fields.sessionId || '').toLowerCase().includes(k)
+      if (t === 'pagevisitid') return String(fields.pageVisitId || '').toLowerCase().includes(k)
+      if (t === 'keyword' || t === 'all') {
+        return String(fields.blob || '').toLowerCase().includes(k)
+      }
+      return String(fields.blob || '').toLowerCase().includes(k)
+    }
+
+    function sortList(list, nameFn, timeFn, durFn) {
+      const dir = sortDir.value === 'asc' ? 1 : -1
+      return [...list].sort((a, b) => {
+        if (sortKey.value === 'duration') return (durFn(a) - durFn(b)) * dir
+        if (sortKey.value === 'name') return String(nameFn(a)).localeCompare(String(nameFn(b)), 'zh') * dir
+        return (timeFn(a) - timeFn(b)) * dir
+      })
+    }
+
+    const filteredVisits = computed(() => {
+      const list = visits.filter(pv => {
+        if (!inTime(pv.endedAt || pv.startedAt)) return false
+        if (!matchOk(pv.okFlag)) return false
+        if (!matchUin(pv.uin)) return false
+        // 按页面路径搜：只看 page/from；按 url/trace 搜：看下属 traces
+        const urls = pv.traces.map(t => t.entryName).join(' ')
+        const tids = pv.traces.map(t => t.traceId).join(' ')
+        return matchByType({
+          page: pv.pagePath + ' ' + (pv.fromPage || ''),
+          url: urls,
+          traceId: tids,
+          sessionId: pv.sessionId,
+          pageVisitId: pv.pageVisitId,
+          blob: [pv.pagePath, pv.fromPage, pv.sessionId, pv.pageVisitId, pv.uin, urls, tids].join(' ')
+        })
+      })
+      return sortList(list, x => x.pagePath, x => parseTs(x.endedAt || x.startedAt), x => x.durationMs || 0)
+    })
+
+    const filteredApis = computed(() => {
+      const list = allApiItems.value.filter(t => {
+        if (!inTime(t.startedAt)) return false
+        if (!matchOk(t.okFlag)) return false
+        if (!matchUin(t.uin)) return false
+        if (!matchCaller(t.callerName)) return false
+        return matchByType({
+          page: t.pagePath || '',
+          url: t.entryName,
+          traceId: t.traceId,
+          sessionId: t.sessionId || '',
+          pageVisitId: t.pageVisitId || '',
+          blob: [t.traceId, t.entryName, t.pagePath, t.sessionId, t.pageVisitId, t.uin, t.callerName].join(' ')
+        })
+      })
+      return sortList(list, x => x.entryName, x => parseTs(x.startedAt), x => x.durationMs || 0)
+    })
+
+    const filteredJobs = computed(() => {
+      const list = allJobItems.value.filter(t => {
+        if (!inTime(t.startedAt)) return false
+        if (!matchOk(t.okFlag)) return false
+        if (!matchUin(t.uin)) return false
+        if (!matchCaller(t.callerName)) return false
+        return matchByType({
+          page: '',
+          url: t.entryName,
+          traceId: t.traceId,
+          sessionId: '',
+          pageVisitId: '',
+          blob: [t.traceId, t.entryName, t.callerName, t.uin].join(' ')
+        })
+      })
+      return sortList(list, x => x.entryName, x => parseTs(x.startedAt), x => x.durationMs || 0)
+    })
+
+    const spans = computed(() => {
+      if (!curTrace.value) return []
+      let list = window.LT_PV_MOCK.mergeSpans(curTrace.value.spansRaw, curTrace.value.durationMs)
+      if (mode.value === 'job' || (mode.value === 'api' && !curTrace.value.fromPageVisit)) {
+        list = list.filter(s => s.kind !== 'page')
+      }
+      return list
+    })
+
+    const detailTitle = computed(() => sel.value ? ((sel.value.kindLabel || 'Span') + '详情') : '详情')
+    const okTraceCount = computed(() => curVisit.value ? curVisit.value.traces.filter(t => t.okFlag === '1').length : 0)
+    const failTraceCount = computed(() => curVisit.value ? curVisit.value.traces.filter(t => t.okFlag !== '1').length : 0)
+
+    function applyFilter() {
+      appliedKw.value = keyword.value
+      appliedType.value = searchType.value
+      ElementPlus.ElMessage.success('已按「' + searchType.value + '」过滤')
+    }
+    function resetFilter() {
+      searchType.value = 'all'
+      keyword.value = ''
+      appliedKw.value = ''
+      appliedType.value = 'all'
+      timeRange.value = defaultRange()
+      uin.value = ''
+      caller.value = ''
+      okFlag.value = ''
+      scope.value = 'all'
+      sortKey.value = 'time'
+      sortDir.value = 'desc'
+    }
+
+    function pickVisit(pv) {
+      mode.value = 'page'
+      pageView.value = 'overview'
+      curVisit.value = pv
+      curTrace.value = null
+      sel.value = null
+    }
+    function openPageTrace(t) {
+      pageView.value = 'trace'
+      pickTrace(t)
+    }
+    function pickApi(t) {
+      mode.value = 'api'
+      pageView.value = 'overview'
+      curVisit.value = null
+      pickTrace(t)
+    }
+    function pickJob(t) {
+      mode.value = 'job'
+      curVisit.value = null
+      pickTrace(t)
+    }
+    function pickTrace(t) {
+      curTrace.value = t
+      const list = window.LT_PV_MOCK.mergeSpans(t.spansRaw, t.durationMs)
+        .filter(s => {
+          if (mode.value === 'job') return s.kind !== 'page'
+          if (mode.value === 'api' && !t.fromPageVisit) return s.kind !== 'page'
+          return true
+        })
+      sel.value = list.find(x => x.kind === 'api') || list[0] || null
+    }
+    function jumpVisit(id) {
+      const pv = visits.find(v => v.pageVisitId === id)
+      if (pv) pickVisit(pv)
+    }
+
+    function bar(s) {
+      const t = Math.max(s.totalMs || 1, 1)
+      return { left: ((s.start || 0) / t * 100) + '%', width: Math.max((s.durationMs || 1) / t * 100, 1) + '%' }
+    }
+    function shortId(id) {
+      return id && id.length > 14 ? id.slice(0, 8) + '…' + id.slice(-4) : id
+    }
+
+    function shiftMockToNow() {
+      const now = Date.now()
+      const fmt = (ms) => {
+        const d = new Date(ms)
+        const p = (n) => String(n).padStart(2, '0')
+        return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+      }
+      visits.forEach((pv, i) => {
+        const base = now - (8 - i) * 60 * 1000
+        pv.startedAt = fmt(base)
+        pv.endedAt = fmt(base + 2000)
+        pv.traces.forEach((t, j) => { t.startedAt = fmt(base + j * 400) })
+      })
+      pureAll.forEach((t, i) => { t.startedAt = fmt(now - (3 - i) * 90 * 1000) })
+    }
+    shiftMockToNow()
+    timeRange.value = defaultRange()
+    pickVisit(visits[0])
+
+    return {
+      searchType, keyword, searchPlaceholder, timeRange, uin, caller, okFlag, scope, sortKey, sortDir,
+      mode, pageView, curVisit, curTrace, sel,
+      showPages, showApis, showJobs,
+      filteredVisits, filteredApis, filteredJobs,
+      spans, detailTitle, okTraceCount, failTraceCount,
+      applyFilter, resetFilter, pickVisit, openPageTrace, pickApi, pickJob, jumpVisit,
+      bar, shortId
+    }
+  }
+}).use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

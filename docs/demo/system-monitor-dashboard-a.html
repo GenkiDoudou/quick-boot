@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>方案 A · 青蓝科技三栏 · QUICKBOOT 监控态势</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #070d1a;
+      --panel: #101b2d;
+      --panel-2: #132338;
+      --border: #1e3a5f;
+      --text: #c5d4e8;
+      --title: #e8f1ff;
+      --accent: #38bdf8;
+      --accent-2: #22d3ee;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --muted: #7a8fa8;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "DIN Alternate", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(56, 189, 248, 0.12), transparent 60%),
+        radial-gradient(800px 400px at 10% 100%, rgba(34, 211, 238, 0.06), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+    #app { height: 100vh; display: flex; flex-direction: column; padding: 12px 16px 16px; }
+    .header {
+      display: grid;
+      grid-template-columns: 260px 1fr 260px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .header::after {
+      content: "";
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      bottom: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+    .header-left, .header-right { display: flex; align-items: center; gap: 10px; }
+    .header-right { justify-content: flex-end; color: var(--muted); font-size: 13px; }
+    .clock { font-variant-numeric: tabular-nums; color: var(--title); font-size: 15px; }
+    .refresh-hint { font-size: 12px; opacity: 0.75; }
+    .header-title {
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 0.35em;
+      color: var(--title);
+      font-weight: 700;
+      text-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+    }
+    .board {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1.35fr 1fr;
+      gap: 12px;
+    }
+    .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+    .panel {
+      background: linear-gradient(180deg, rgba(19, 35, 56, 0.95), rgba(16, 27, 45, 0.98));
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.06), transparent 40%);
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+    .panel-title .badge {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+    .grow { flex: 1; }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .kpi {
+      background: rgba(11, 21, 36, 0.9);
+      border: 1px solid rgba(30, 58, 95, 0.9);
+      border-radius: 6px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .kpi .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi .value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--title);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .kpi.danger .value { color: var(--danger); }
+    .kpi.warn .value { color: var(--warn); }
+    .kpi.ok .value { color: var(--ok); }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stat {
+      background: rgba(11, 21, 36, 0.85);
+      border-radius: 6px;
+      padding: 10px 8px;
+      text-align: center;
+      border: 1px solid rgba(30, 58, 95, 0.7);
+    }
+    .stat .n {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--title);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat .l { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .stat.ok .n { color: var(--ok); }
+    .stat.danger .n { color: var(--danger); }
+    .chart {
+      width: 100%;
+      flex: 1;
+      min-height: 120px;
+    }
+    .chart-sm { min-height: 110px; flex: 0 0 110px; }
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .list li {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 4px;
+      border-bottom: 1px dashed rgba(30, 58, 95, 0.7);
+      font-size: 12px;
+    }
+    .list li:last-child { border-bottom: 0; }
+    .list .idx { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+    .list .main {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .list .sub {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .sql-list li { grid-template-columns: 28px 1fr; }
+    .sql-list .main { white-space: normal; line-height: 1.35; }
+    .sql-list .meta { color: var(--warn); font-size: 11px; margin-top: 2px; }
+    .job-list li { grid-template-columns: 1fr auto; }
+    .tag-fail {
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+    .footer-note {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    /* Element Plus dark-ish overrides for select */
+    .range-select .el-select__wrapper {
+      background: rgba(11, 21, 36, 0.9) !important;
+      box-shadow: 0 0 0 1px var(--border) inset !important;
+    }
+    .range-select .el-select__placeholder,
+    .range-select .el-select__selected-item { color: var(--title) !important; }
+    @media (max-width: 1200px) {
+      body { overflow: auto; }
+      #app { height: auto; min-height: 100vh; }
+      .board { grid-template-columns: 1fr; }
+      .header { grid-template-columns: 1fr; gap: 8px; }
+      .header-title { font-size: 20px; letter-spacing: 0.2em; }
+      .header-left, .header-right { justify-content: center; }
+      .chart, .chart-sm { min-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="header-left">
+        <el-select
+          class="range-select"
+          v-model="range"
+          size="small"
+          style="width: 140px"
+          @change="onRangeChange"
+        >
+          <el-option label="今日" value="today"></el-option>
+          <el-option label="昨日" value="yesterday"></el-option>
+          <el-option label="本周" value="week"></el-option>
+          <el-option label="近7天" value="last7"></el-option>
+          <el-option label="本月" value="month"></el-option>
+        </el-select>
+        <span class="refresh-hint">mock · 对齐 DDL 口径</span>
+      </div>
+      <div class="header-title">方案 A · 系统监控态势</div>
+      <div class="header-right">
+        <span class="refresh-hint">模拟刷新 {{ lastRefresh }}</span>
+        <span class="clock">{{ clock }}</span>
+      </div>
+    </header>
+
+    <main class="board">
+      <!-- 左栏 -->
+      <section class="col">
+        <div class="panel grow">
+          <div class="panel-title">
+            <span>用户与登录</span>
+            <span class="badge">sys_user / sys_logininfor</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="n">{{ data.totalUsers }}</div>
+              <div class="l">总用户</div>
+            </div>
+            <div class="stat ok">
+              <div class="n">{{ data.loginUsers }}</div>
+              <div class="l">登录用户数</div>
+            </div>
+            <div class="stat">
+              <div class="n">{{ data.loginSuccess }}</div>
+              <div class="l">登录成功</div>
+            </div>
+          </div>
+          <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="stat danger">
+              <div class="n">{{ data.loginFail }}</div>
+              <div class="l">登录失败</div>
+            </div>
+            <div class="stat">
+              <div class="n">{{ loginRate }}%</div>
+              <div class="l">成功率</div>
+            </div>
+          </div>
+          <div ref="loginChartEl" class="chart chart-sm"></div>
+        </div>
+
+        <div class="panel grow">
+          <div class="panel-title">
+            <span>访问与行为</span>
+            <span class="badge">sys_client_track</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="n">{{ data.pageVisits }}</div>
+              <div class="l">访问页数</div>
+            </div>
+            <div class="stat">
+              <div class="n">{{ data.sessions }}</div>
+              <div class="l">会话数</div>
+            </div>
+            <div class="stat ok">
+              <div class="n">{{ data.activeUsers }}</div>
+              <div class="l">活跃用户</div>
+            </div>
+          </div>
+          <div class="panel-title" style="margin-top: 4px; font-size: 12px; color: var(--muted);">
+            <span>热门页面 Top5</span>
+          </div>
+          <ul class="list">
+            <li v-for="(item, i) in data.hotPages" :key="item.path">
+              <span class="idx">{{ i + 1 }}</span>
+              <span class="main" :title="item.path">{{ item.path }}</span>
+              <span class="sub">{{ item.count }}</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 中栏 -->
+      <section class="col">
+        <div class="panel">
+          <div class="panel-title">
+            <span>核心态势</span>
+            <span class="badge">oper_log / slow_sql / job_log</span>
+          </div>
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="label">请求次数</div>
+              <div class="value">{{ data.requestCount }}</div>
+            </div>
+            <div class="kpi danger">
+              <div class="label">错误次数</div>
+              <div class="value">{{ data.errorCount }}</div>
+            </div>
+            <div class="kpi warn">
+              <div class="label">慢 SQL</div>
+              <div class="value">{{ data.slowSqlCount }}</div>
+            </div>
+            <div class="kpi" :class="data.jobFailCount > 0 ? 'danger' : 'ok'">
+              <div class="label">任务失败</div>
+              <div class="value">{{ data.jobFailCount }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel grow">
+          <div class="panel-title">
+            <span>请求 / 错误趋势</span>
+            <span class="badge">sys_oper_log · {{ trendGranularity }}</span>
+          </div>
+          <div ref="trendChartEl" class="chart"></div>
+        </div>
+      </section>
+
+      <!-- 右栏 -->
+      <section class="col">
+        <div class="panel grow">
+          <div class="panel-title">
+            <span>慢 SQL</span>
+            <span class="badge">sys_slow_sql</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat warn">
+              <div class="n">{{ data.slowSqlCount }}</div>
+              <div class="l">次数</div>
+            </div>
+            <div class="stat">
+              <div class="n">{{ data.slowAvgMs }}</div>
+              <div class="l">均耗时 ms</div>
+            </div>
+            <div class="stat danger">
+              <div class="n">{{ data.slowMaxMs }}</div>
+              <div class="l">最大 ms</div>
+            </div>
+          </div>
+          <div ref="slowPieEl" class="chart chart-sm"></div>
+          <div class="panel-title" style="margin-top: 4px; font-size: 12px; color: var(--muted);">
+            <span>最慢 SQL Top5</span>
+          </div>
+          <ul class="list sql-list">
+            <li v-for="(item, i) in data.slowTop" :key="i">
+              <span class="idx">{{ i + 1 }}</span>
+              <div>
+                <div class="main" :title="item.sqlText">{{ item.sqlText }}</div>
+                <div class="meta">{{ item.costTime }}ms · {{ item.sqlSource }} · {{ item.mapperId }}</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel grow">
+          <div class="panel-title">
+            <span>定时任务</span>
+            <span class="badge">sys_job_log</span>
+          </div>
+          <div class="stat-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="stat ok">
+              <div class="n">{{ data.jobSuccess }}</div>
+              <div class="l">成功</div>
+            </div>
+            <div class="stat danger">
+              <div class="n">{{ data.jobFailCount }}</div>
+              <div class="l">失败</div>
+            </div>
+            <div class="stat">
+              <div class="n">{{ jobFailRate }}%</div>
+              <div class="l">失败率</div>
+            </div>
+          </div>
+          <div class="panel-title" style="margin-top: 4px; font-size: 12px; color: var(--muted);">
+            <span>最近失败任务</span>
+          </div>
+          <ul class="list job-list">
+            <li v-for="(item, i) in data.jobFails" :key="i">
+              <div>
+                <div class="main">{{ item.jobName }}</div>
+                <div class="sub">{{ item.createTime }} · {{ item.jobMessage }}</div>
+              </div>
+              <span class="tag-fail">失败</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer-note">
+      静态原型 · 数据为 mock · 口径对齐 quickboot.sql（sys_user / logininfor / client_track / oper_log / slow_sql / job_log）
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    /* 假设：按 2026-08-11-system-monitor-dashboard-design.md；时间窗切换仅换 mock */
+    const { createApp, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } = Vue;
+
+    const RANGE_LABEL = {
+      today: '今日',
+      yesterday: '昨日',
+      week: '本周',
+      last7: '近7天',
+      month: '本月',
+    };
+
+    function hoursLabels() {
+      return Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    }
+    function dayLabels(n) {
+      const out = [];
+      const now = new Date();
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        out.push(`${d.getMonth() + 1}/${d.getDate()}`);
+      }
+      return out;
+    }
+    function series(n, base, swing) {
+      return Array.from({ length: n }, (_, i) =>
+        Math.max(0, Math.round(base + Math.sin(i / 2.2) * swing + (i % 5) * (swing / 8)))
+      );
+    }
+
+    const MOCK = {
+      today: {
+        totalUsers: 1286,
+        loginUsers: 342,
+        loginSuccess: 896,
+        loginFail: 38,
+        loginTrend: { labels: hoursLabels(), success: series(24, 28, 18), fail: series(24, 2, 2) },
+        pageVisits: 2156,
+        sessions: 687,
+        activeUsers: 318,
+        hotPages: [
+          { path: '/system/user', count: 412 },
+          { path: '/monitor/operlog', count: 286 },
+          { path: '/system/role', count: 198 },
+          { path: '/tool/gen', count: 156 },
+          { path: '/monitor/job', count: 121 },
+        ],
+        requestCount: 18420,
+        errorCount: 126,
+        slowSqlCount: 47,
+        jobFailCount: 3,
+        trend: { labels: hoursLabels(), req: series(24, 620, 220), err: series(24, 6, 5) },
+        slowAvgMs: 1280,
+        slowMaxMs: 8640,
+        slowSource: [
+          { name: 'BUSINESS', value: 34 },
+          { name: 'JIMU', value: 13 },
+        ],
+        slowTop: [
+          { sqlText: 'SELECT * FROM sys_oper_log WHERE oper_time >= ? ORDER BY oper_id DESC', costTime: 8640, sqlSource: 'BUSINESS', mapperId: 'OperLogMapper.selectPage' },
+          { sqlText: 'SELECT COUNT(1) FROM sys_client_track WHERE create_time BETWEEN ? AND ?', costTime: 5120, sqlSource: 'BUSINESS', mapperId: 'ClientTrackMapper.countRange' },
+          { sqlText: 'SELECT ... FROM jimu_report_db JOIN jimu_report ...', costTime: 4360, sqlSource: 'JIMU', mapperId: 'JimuReportDbMapper.join' },
+          { sqlText: 'UPDATE sys_user SET update_time = NOW() WHERE user_id = ?', costTime: 2105, sqlSource: 'BUSINESS', mapperId: 'SysUserMapper.updateById' },
+          { sqlText: 'SELECT ... FROM gen_table_column WHERE table_id = ?', costTime: 1860, sqlSource: 'BUSINESS', mapperId: 'GenTableColumnMapper.list' },
+        ],
+        jobSuccess: 118,
+        jobFails: [
+          { jobName: '清理临时导出文件', createTime: '14:22:08', jobMessage: '目录不存在' },
+          { jobName: '同步字典缓存', createTime: '11:05:41', jobMessage: 'Redis timeout' },
+          { jobName: '慢 SQL 归档检查', createTime: '09:31:02', jobMessage: '锁等待超时' },
+        ],
+      },
+      yesterday: {
+        totalUsers: 1286,
+        loginUsers: 298,
+        loginSuccess: 764,
+        loginFail: 52,
+        loginTrend: { labels: hoursLabels(), success: series(24, 24, 16), fail: series(24, 3, 2) },
+        pageVisits: 1890,
+        sessions: 602,
+        activeUsers: 276,
+        hotPages: [
+          { path: '/system/user', count: 356 },
+          { path: '/system/menu', count: 240 },
+          { path: '/monitor/operlog', count: 210 },
+          { path: '/login', count: 188 },
+          { path: '/system/dept', count: 97 },
+        ],
+        requestCount: 16210,
+        errorCount: 168,
+        slowSqlCount: 61,
+        jobFailCount: 5,
+        trend: { labels: hoursLabels(), req: series(24, 540, 200), err: series(24, 8, 6) },
+        slowAvgMs: 1420,
+        slowMaxMs: 10240,
+        slowSource: [
+          { name: 'BUSINESS', value: 41 },
+          { name: 'JIMU', value: 20 },
+        ],
+        slowTop: [
+          { sqlText: 'SELECT ... FROM sys_slow_sql ORDER BY cost_time DESC LIMIT 100', costTime: 10240, sqlSource: 'BUSINESS', mapperId: 'SlowSqlMapper.top' },
+          { sqlText: 'SELECT ... FROM jimu_report WHERE del_flag = 0', costTime: 6880, sqlSource: 'JIMU', mapperId: 'JimuReportMapper.list' },
+          { sqlText: 'SELECT * FROM sys_logininfor WHERE login_time >= ?', costTime: 4520, sqlSource: 'BUSINESS', mapperId: 'LogininforMapper.selectPage' },
+          { sqlText: 'DELETE FROM sys_job_log WHERE create_time < ?', costTime: 3210, sqlSource: 'BUSINESS', mapperId: 'JobLogMapper.clean' },
+          { sqlText: 'SELECT COUNT(*) FROM sys_client_track', costTime: 2980, sqlSource: 'BUSINESS', mapperId: 'ClientTrackMapper.count' },
+        ],
+        jobSuccess: 110,
+        jobFails: [
+          { jobName: '报表缓存预热', createTime: '22:10:15', jobMessage: 'OutOfMemory' },
+          { jobName: '清理临时导出文件', createTime: '18:00:02', jobMessage: '权限拒绝' },
+          { jobName: '同步字典缓存', createTime: '12:00:11', jobMessage: '连接重置' },
+          { jobName: '在线用户扫描', createTime: '08:15:44', jobMessage: 'NPE' },
+          { jobName: '慢 SQL 归档检查', createTime: '03:00:09', jobMessage: '超时' },
+        ],
+      },
+      week: {
+        totalUsers: 1286,
+        loginUsers: 812,
+        loginSuccess: 4520,
+        loginFail: 210,
+        loginTrend: { labels: dayLabels(7), success: series(7, 620, 120), fail: series(7, 30, 12) },
+        pageVisits: 12680,
+        sessions: 3980,
+        activeUsers: 756,
+        hotPages: [
+          { path: '/system/user', count: 2100 },
+          { path: '/monitor/operlog', count: 1680 },
+          { path: '/tool/gen', count: 980 },
+          { path: '/system/role', count: 860 },
+          { path: '/monitor/job', count: 640 },
+        ],
+        requestCount: 98600,
+        errorCount: 842,
+        slowSqlCount: 286,
+        jobFailCount: 18,
+        trend: { labels: dayLabels(7), req: series(7, 12000, 2500), err: series(7, 100, 40) },
+        slowAvgMs: 1355,
+        slowMaxMs: 15200,
+        slowSource: [
+          { name: 'BUSINESS', value: 198 },
+          { name: 'JIMU', value: 88 },
+        ],
+        slowTop: [
+          { sqlText: '复杂联表查询 · oper_log + client_track', costTime: 15200, sqlSource: 'BUSINESS', mapperId: 'TraceChainMapper.graph' },
+          { sqlText: 'JIMU dataset 全量扫描', costTime: 12100, sqlSource: 'JIMU', mapperId: 'OnlDragDatasetMapper.scan' },
+          { sqlText: 'sys_oper_log 大范围导出', costTime: 9800, sqlSource: 'BUSINESS', mapperId: 'OperLogMapper.export' },
+          { sqlText: 'sys_client_track events_json 解析统计', costTime: 7600, sqlSource: 'BUSINESS', mapperId: 'ClientTrackMapper.agg' },
+          { sqlText: 'qrtz 触发器状态汇总', costTime: 5100, sqlSource: 'BUSINESS', mapperId: 'JobMapper.stateAgg' },
+        ],
+        jobSuccess: 802,
+        jobFails: [
+          { jobName: '全量报表导出', createTime: '周一 02:00', jobMessage: '磁盘空间不足' },
+          { jobName: '同步字典缓存', createTime: '周三 12:00', jobMessage: 'Redis timeout' },
+          { jobName: '清理临时导出文件', createTime: '周五 18:00', jobMessage: 'IOException' },
+        ],
+      },
+      last7: {
+        totalUsers: 1286,
+        loginUsers: 798,
+        loginSuccess: 4388,
+        loginFail: 198,
+        loginTrend: { labels: dayLabels(7), success: series(7, 600, 110), fail: series(7, 28, 10) },
+        pageVisits: 12110,
+        sessions: 3810,
+        activeUsers: 742,
+        hotPages: [
+          { path: '/system/user', count: 1980 },
+          { path: '/monitor/operlog', count: 1590 },
+          { path: '/system/config', count: 920 },
+          { path: '/system/role', count: 810 },
+          { path: '/login', count: 700 },
+        ],
+        requestCount: 95200,
+        errorCount: 790,
+        slowSqlCount: 268,
+        jobFailCount: 16,
+        trend: { labels: dayLabels(7), req: series(7, 11500, 2300), err: series(7, 95, 35) },
+        slowAvgMs: 1310,
+        slowMaxMs: 14100,
+        slowSource: [
+          { name: 'BUSINESS', value: 190 },
+          { name: 'JIMU', value: 78 },
+        ],
+        slowTop: [
+          { sqlText: 'SELECT ... FROM sys_oper_log 7 日窗口聚合', costTime: 14100, sqlSource: 'BUSINESS', mapperId: 'OperLogMapper.agg7d' },
+          { sqlText: 'JIMU sheet 渲染预取', costTime: 9900, sqlSource: 'JIMU', mapperId: 'JimuReportSheetMapper.prefetch' },
+          { sqlText: 'sys_slow_sql 成本分布统计', costTime: 7200, sqlSource: 'BUSINESS', mapperId: 'SlowSqlMapper.costDist' },
+          { sqlText: 'sys_client_track 热门 path', costTime: 5400, sqlSource: 'BUSINESS', mapperId: 'ClientTrackMapper.hotPath' },
+          { sqlText: 'sys_job_log 失败率日报', costTime: 4100, sqlSource: 'BUSINESS', mapperId: 'JobLogMapper.failDaily' },
+        ],
+        jobSuccess: 790,
+        jobFails: [
+          { jobName: '慢 SQL 归档检查', createTime: '2天前', jobMessage: '锁等待超时' },
+          { jobName: '同步字典缓存', createTime: '4天前', jobMessage: '连接重置' },
+          { jobName: '在线用户扫描', createTime: '6天前', jobMessage: 'NPE' },
+        ],
+      },
+      month: {
+        totalUsers: 1286,
+        loginUsers: 1102,
+        loginSuccess: 18640,
+        loginFail: 860,
+        loginTrend: { labels: dayLabels(30), success: series(30, 580, 140), fail: series(30, 28, 14) },
+        pageVisits: 52800,
+        sessions: 16420,
+        activeUsers: 980,
+        hotPages: [
+          { path: '/system/user', count: 8200 },
+          { path: '/monitor/operlog', count: 6400 },
+          { path: '/tool/gen', count: 3900 },
+          { path: '/system/role', count: 3200 },
+          { path: '/monitor/job', count: 2600 },
+        ],
+        requestCount: 412800,
+        errorCount: 3280,
+        slowSqlCount: 1120,
+        jobFailCount: 64,
+        trend: { labels: dayLabels(30), req: series(30, 11800, 2800), err: series(30, 90, 45) },
+        slowAvgMs: 1390,
+        slowMaxMs: 22800,
+        slowSource: [
+          { name: 'BUSINESS', value: 780 },
+          { name: 'JIMU', value: 340 },
+        ],
+        slowTop: [
+          { sqlText: '月度 oper_log 全量扫描导出', costTime: 22800, sqlSource: 'BUSINESS', mapperId: 'OperLogMapper.exportMonth' },
+          { sqlText: 'JIMU 大报表数据集物化', costTime: 18600, sqlSource: 'JIMU', mapperId: 'JimuReportDbMapper.materialize' },
+          { sqlText: 'sys_client_track 月活聚合', costTime: 12400, sqlSource: 'BUSINESS', mapperId: 'ClientTrackMapper.mau' },
+          { sqlText: 'sys_slow_sql 月度 TopN', costTime: 9800, sqlSource: 'BUSINESS', mapperId: 'SlowSqlMapper.monthTop' },
+          { sqlText: 'sys_job_log 清理历史', costTime: 7600, sqlSource: 'BUSINESS', mapperId: 'JobLogMapper.purge' },
+        ],
+        jobSuccess: 3420,
+        jobFails: [
+          { jobName: '全量报表导出', createTime: '月初', jobMessage: '磁盘空间不足' },
+          { jobName: '数据源连通性检查', createTime: '月中', jobMessage: '连接拒绝' },
+          { jobName: '同步字典缓存', createTime: '月末', jobMessage: 'Redis timeout' },
+        ],
+      },
+    };
+
+    createApp({
+      setup() {
+        const range = ref('today');
+        const data = ref(MOCK.today);
+        const clock = ref('');
+        const lastRefresh = ref('--:--:--');
+        const loginChartEl = ref(null);
+        const trendChartEl = ref(null);
+        const slowPieEl = ref(null);
+
+        let loginChart;
+        let trendChart;
+        let slowPie;
+        let clockTimer;
+
+        const loginRate = computed(() => {
+          const t = data.value.loginSuccess + data.value.loginFail;
+          if (!t) return 0;
+          return Math.round((data.value.loginSuccess / t) * 1000) / 10;
+        });
+        const jobFailRate = computed(() => {
+          const t = data.value.jobSuccess + data.value.jobFailCount;
+          if (!t) return 0;
+          return Math.round((data.value.jobFailCount / t) * 1000) / 10;
+        });
+        const trendGranularity = computed(() =>
+          range.value === 'today' || range.value === 'yesterday' ? '按小时' : '按日'
+        );
+
+        function pad(n) {
+          return String(n).padStart(2, '0');
+        }
+        function formatNow() {
+          const d = new Date();
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+        function tickClock() {
+          clock.value = formatNow();
+        }
+
+        function chartTextStyle() {
+          return { color: '#7a8fa8', fontSize: 11 };
+        }
+
+        function renderLoginChart() {
+          if (!loginChartEl.value) return;
+          if (!loginChart) loginChart = echarts.init(loginChartEl.value);
+          const t = data.value.loginTrend;
+          loginChart.setOption({
+            color: ['#34d399', '#f87171'],
+            grid: { left: 36, right: 12, top: 28, bottom: 24 },
+            legend: { data: ['成功', '失败'], textStyle: chartTextStyle(), top: 0, right: 0, itemWidth: 10, itemHeight: 8 },
+            tooltip: { trigger: 'axis' },
+            xAxis: {
+              type: 'category',
+              data: t.labels,
+              axisLabel: { ...chartTextStyle(), interval: Math.ceil(t.labels.length / 6) - 1 },
+              axisLine: { lineStyle: { color: '#1e3a5f' } },
+            },
+            yAxis: {
+              type: 'value',
+              splitLine: { lineStyle: { color: 'rgba(30,58,95,0.45)' } },
+              axisLabel: chartTextStyle(),
+            },
+            series: [
+              { name: '成功', type: 'line', smooth: true, showSymbol: false, data: t.success, areaStyle: { opacity: 0.12 } },
+              { name: '失败', type: 'line', smooth: true, showSymbol: false, data: t.fail },
+            ],
+          }, true);
+        }
+
+        function renderTrendChart() {
+          if (!trendChartEl.value) return;
+          if (!trendChart) trendChart = echarts.init(trendChartEl.value);
+          const t = data.value.trend;
+          trendChart.setOption({
+            color: ['#38bdf8', '#f87171'],
+            grid: { left: 48, right: 48, top: 36, bottom: 28 },
+            legend: { data: ['请求次数', '错误次数'], textStyle: chartTextStyle(), top: 0 },
+            tooltip: { trigger: 'axis' },
+            xAxis: {
+              type: 'category',
+              data: t.labels,
+              axisLabel: { ...chartTextStyle(), interval: Math.ceil(t.labels.length / 8) - 1 },
+              axisLine: { lineStyle: { color: '#1e3a5f' } },
+            },
+            yAxis: [
+              {
+                type: 'value',
+                name: '请求',
+                nameTextStyle: chartTextStyle(),
+                splitLine: { lineStyle: { color: 'rgba(30,58,95,0.45)' } },
+                axisLabel: chartTextStyle(),
+              },
+              {
+                type: 'value',
+                name: '错误',
+                nameTextStyle: chartTextStyle(),
+                splitLine: { show: false },
+                axisLabel: chartTextStyle(),
+              },
+            ],
+            series: [
+              { name: '请求次数', type: 'line', smooth: true, showSymbol: false, data: t.req, areaStyle: { opacity: 0.1 } },
+              { name: '错误次数', type: 'line', smooth: true, showSymbol: false, yAxisIndex: 1, data: t.err },
+            ],
+          }, true);
+        }
+
+        function renderSlowPie() {
+          if (!slowPieEl.value) return;
+          if (!slowPie) slowPie = echarts.init(slowPieEl.value);
+          slowPie.setOption({
+            color: ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24'],
+            tooltip: { trigger: 'item' },
+            legend: { orient: 'vertical', right: 4, top: 'middle', textStyle: chartTextStyle(), itemWidth: 10, itemHeight: 8 },
+            series: [{
+              type: 'pie',
+              radius: ['42%', '68%'],
+              center: ['38%', '50%'],
+              label: { color: '#c5d4e8', fontSize: 11 },
+              data: data.value.slowSource,
+            }],
+          }, true);
+        }
+
+        function renderAllCharts() {
+          renderLoginChart();
+          renderTrendChart();
+          renderSlowPie();
+        }
+
+        function onRangeChange() {
+          data.value = MOCK[range.value] || MOCK.today;
+          lastRefresh.value = formatNow().slice(11);
+          nextTick(() => renderAllCharts());
+        }
+
+        function onResize() {
+          loginChart && loginChart.resize();
+          trendChart && trendChart.resize();
+          slowPie && slowPie.resize();
+        }
+
+        onMounted(() => {
+          tickClock();
+          lastRefresh.value = formatNow().slice(11);
+          clockTimer = setInterval(tickClock, 1000);
+          nextTick(() => {
+            renderAllCharts();
+            window.addEventListener('resize', onResize);
+          });
+        });
+
+        onBeforeUnmount(() => {
+          clearInterval(clockTimer);
+          window.removeEventListener('resize', onResize);
+          loginChart && loginChart.dispose();
+          trendChart && trendChart.dispose();
+          slowPie && slowPie.dispose();
+        });
+
+        watch(range, () => {}, { flush: 'post' });
+
+        return {
+          range,
+          data,
+          clock,
+          lastRefresh,
+          loginChartEl,
+          trendChartEl,
+          slowPieEl,
+          loginRate,
+          jobFailRate,
+          trendGranularity,
+          onRangeChange,
+          RANGE_LABEL,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

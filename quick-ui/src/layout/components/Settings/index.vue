@@ -92,6 +92,9 @@
 </template>
 
 <script setup>
+/**
+ * 布局设置抽屉：导航模式、主题色、TagsView/固定 Header/Logo 等偏好，持久化到 localStorage。
+ */
 import { ElLoading, ElMessage } from 'element-plus'
 import useAppStore from '@/store/modules/app'
 import useSettingsStore from '@/store/modules/settings'
@@ -111,16 +114,19 @@ const sideTheme = ref(settingsStore.sideTheme)
 const storeSettings = computed(() => settingsStore)
 const predefineColors = ref(['#409EFF', '#ff4500', '#ff8c00', '#ffd700', '#90ee90', '#00ced1', '#1e90ff', '#c71585'])
 
+/** 切换主题色并应用到 CSS 变量 */
 function themeChange(val) {
   settingsStore.theme = val
   handleThemeStyle(val)
 }
 
+/** 切换侧栏深色/浅色主题 */
 function handleTheme(val) {
   settingsStore.sideTheme = val
   sideTheme.value = val
 }
 
+/** 切换导航布局类型并同步侧栏/顶栏路由 */
 function handleNavType(val) {
   const type = normalizeNavType(val)
   settingsStore.navType = type

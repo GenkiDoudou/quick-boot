@@ -25,26 +25,35 @@ public class SysMenu extends BaseEntity implements Serializable {
   @Serial
   private static final long serialVersionUID = 1L;
 
+  /** 菜单主键。 */
   @TableId(value = "menu_id", type = IdType.ASSIGN_ID)
   private Long menuId;
 
+  /** 上级菜单 ID；根为 0。 */
   private Long parentId;
 
+  /** 菜单名称。 */
   private String menuName;
 
   /** M / C / F */
   private String menuType;
 
+  /** 路由地址。 */
   private String path;
 
+  /** 组件路径。 */
   private String component;
 
+  /** 路由名称（Vue Router name）。 */
   private String routeName;
 
+  /** 权限标识。 */
   private String perms;
 
+  /** 菜单图标。 */
   private String icon;
 
+  /** 显示顺序。 */
   private Integer orderNum;
 
   /** 路由 query 串 */

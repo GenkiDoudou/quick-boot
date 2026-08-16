@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户行为 · C 旅程卡片流</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f0f2f5; color: #303133; }
+    .top {
+      background: #fff; border-bottom: 1px solid #e4e7ed; padding: 12px 20px;
+      display: flex; gap: 12px; align-items: center;
+    }
+    .top a { color: #409eff; text-decoration: none; font-size: 13px; }
+    .top h1 { font-size: 16px; margin: 0; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; max-width: 1100px; margin: 16px auto; gap: 12px; padding: 0 12px 40px; }
+    .side, .main { background: #fff; border-radius: 8px; border: 1px solid #e4e7ed; }
+    .side { padding: 12px; }
+    .main { padding: 16px 18px; }
+    .sess {
+      padding: 10px; border-radius: 6px; background: #ecf5ff; border: 1px solid #b3d8ff;
+      font-size: 12px; margin-bottom: 8px;
+    }
+    .flow-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+    .visit {
+      border: 1px solid #e4e7ed; border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+    }
+    .visit-h {
+      background: linear-gradient(90deg, #ecf5ff, #fff); padding: 12px 14px;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+    }
+    .badge {
+      font-size: 11px; background: #409eff; color: #fff; padding: 2px 8px; border-radius: 999px;
+    }
+    .path { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #909399; }
+    .from { font-size: 12px; color: #67c23a; margin-top: 4px; }
+    .visit-b { padding: 10px 14px 14px; }
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 10px 12px; border: 1px solid #f0f2f5; border-radius: 8px;
+      background: #fafafa; margin-bottom: 8px; cursor: pointer;
+    }
+    .row:hover { border-color: #e6a23c; background: #fdf6ec; }
+    .empty { color: #c0c4cc; font-size: 12px; padding: 6px 0; }
+    .arrow { text-align: center; color: #909399; font-size: 12px; margin: -6px 0 10px; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <h1>C · 旅程卡片流 + 抽屉下钻</h1>
+  </div>
+  <div id="app" class="layout">
+    <div class="side">
+      <div style="font-size:12px;color:#909399;margin-bottom:8px">会话列表</div>
+      <div class="sess">
+        <div><b>sess_demo_8f2a</b></div>
+        <div style="margin-top:4px;color:#606266">admin · home → form</div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="flow-title">本会话旅程（按页面访问分段）</div>
+      <template v-for="(v, i) in visits" :key="v.id">
+        <div class="visit">
+          <div class="visit-h">
+            <div>
+              <span class="badge">第 {{ i + 1 }} 站</span>
+              <div style="font-size:16px;font-weight:700;margin-top:6px">{{ v.title }}</div>
+              <div class="path">{{ v.path }}</div>
+              <div class="from" v-if="v.from">从 {{ v.from }} 进入</div>
+            </div>
+            <div style="font-size:12px;color:#909399">{{ v.time }}</div>
+          </div>
+          <div class="visit-b">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px">本页操作</div>
+            <div v-if="!v.actions.length" class="empty">无显式点击（仅浏览）</div>
+            <div v-for="a in v.actions" :key="a.id" class="row" @click="open(a, v)">
+              <div>
+                <div style="font-weight:600">点击「{{ a.name }}」</div>
+                <div style="font-size:12px;color:#909399">{{ a.time }} · 查看触发的接口 / SQL</div>
+              </div>
+              <el-button type="warning" size="small" plain>下钻</el-button>
+            </div>
+          </div>
+        </div>
+        <div v-if="i < visits.length - 1" class="arrow">↓ 进入下一页 {{ visits[i + 1].path }}</div>
+      </template>
+    </div>
+
+    <el-drawer v-model="drawer" title="操作触发的接口 / SQL" size="420px">
+      <template v-if="cur">
+        <p style="font-size:13px;margin-top:0">
+          在 <b class="path">{{ cur.page.path }}</b> 点击「{{ cur.action.name }}」
+        </p>
+        <h4 style="margin:12px 0 8px;font-size:13px;color:#409eff">接口</h4>
+        <el-table :data="cur.action.apis" size="small" border>
+          <el-table-column prop="name" label="接口" min-width="180"></el-table-column>
+          <el-table-column prop="ms" label="耗时" width="70"></el-table-column>
+          <el-table-column prop="status" label="状态" width="70"></el-table-column>
+        </el-table>
+        <h4 style="margin:16px 0 8px;font-size:13px;color:#409eff">SQL</h4>
+        <div v-for="(s, i) in cur.action.sqls" :key="i" style="margin-bottom:10px;padding:8px;background:#f5f7fa;border-radius:6px;font-size:12px">
+          <div style="font-family:monospace">{{ s.mapper }} · {{ s.ms }}ms</div>
+          <pre style="margin:6px 0 0;white-space:pre-wrap;word-break:break-all;font-size:11px">{{ s.sql }}</pre>
+        </div>
+        <el-button type="primary" @click="tip">打开完整请求链路</el-button>
+      </template>
+    </el-drawer>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+    createApp({
+      setup() {
+        const drawer = ref(false)
+        const cur = ref(null)
+        const visits = [
+          { id: 'v1', title: '工作台', path: '/home', from: '', time: '16:40:01', actions: [] },
+          {
+            id: 'v2', title: '用户管理', path: '/system/user', from: '/home', time: '16:40:18',
+            actions: [{
+              id: 'a1', name: '新增', time: '16:40:25',
+              apis: [
+                { name: 'GET /system/user/deptTree', ms: 42, status: 200 },
+                { name: 'GET /dict/sys_user_sex', ms: 18, status: 200 }
+              ],
+              sqls: [{ mapper: 'SysDeptMapper.selectList', ms: 3, sql: 'SELECT ... FROM sys_dept' }]
+            }]
+          },
+          {
+            id: 'v3', title: '新建用户', path: '/system/user/form', from: '/system/user', time: '16:40:26',
+            actions: [{
+              id: 'a2', name: '保存', time: '16:41:05',
+              apis: [{ name: 'POST /system/user', ms: 86, status: 200 }],
+              sqls: [
+                { mapper: 'SysUserMapper.insert', ms: 5, sql: 'INSERT INTO sys_user ...' },
+                { mapper: 'SysUserRoleMapper.insertBatch', ms: 2, sql: 'INSERT INTO sys_user_role ...' }
+              ]
+            }]
+          }
+        ]
+        function open(action, page) {
+          cur.value = { action, page }
+          drawer.value = true
+        }
+        function tip() {
+          ElementPlus.ElMessage.success('原型：跳转请求链路')
+        }
+        return { visits, drawer, cur, open, tip }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

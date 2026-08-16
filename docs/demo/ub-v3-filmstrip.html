@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V3 分镜胶片</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; font-family: "Georgia", "Songti SC", serif; background: #1a1a1a; color: #f5f5f4; }
+    .bar {
+      background: #292524; padding: 12px 18px; display: flex; gap: 12px; align-items: center;
+      border-bottom: 1px solid #44403c; font-family: "Segoe UI", sans-serif;
+    }
+    .bar a { color: #fbbf24; text-decoration: none; font-size: 13px; }
+    .stage { padding: 28px 0 20px; }
+    .strip {
+      display: flex; gap: 14px; overflow-x: auto; padding: 8px 24px 20px;
+      scroll-snap-type: x mandatory;
+    }
+    .frame {
+      flex: 0 0 220px; scroll-snap-align: start; cursor: pointer;
+      background: #0c0a09; border: 3px solid #57534e; border-radius: 4px;
+      box-shadow: inset 0 0 0 6px #292524;
+    }
+    .frame.on { border-color: #f59e0b; box-shadow: inset 0 0 0 6px #292524, 0 0 0 2px #f59e0b; }
+    .hole-row { display: flex; justify-content: space-between; padding: 6px 10px; background: #292524; }
+    .hole { width: 10px; height: 10px; border-radius: 50%; background: #1a1a1a; }
+    .shot {
+      height: 140px; display: flex; flex-direction: column; justify-content: center;
+      padding: 12px; text-align: center; background: linear-gradient(160deg, #44403c, #1c1917);
+    }
+    .shot .no { font-family: "Segoe UI", sans-serif; font-size: 11px; color: #a8a29e; letter-spacing: .2em; }
+    .shot h2 { margin: 8px 0 4px; font-size: 22px; font-weight: 400; }
+    .shot .path { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #d6d3d1; }
+    .below {
+      max-width: 920px; margin: 0 auto; padding: 8px 24px 40px;
+      font-family: "Segoe UI", sans-serif;
+    }
+    .slate {
+      background: #292524; border-radius: 12px; padding: 18px 20px; border: 1px solid #44403c;
+    }
+    .act {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; margin-top: 10px; background: #1c1917; border-radius: 8px;
+      border: 1px solid #44403c; cursor: pointer;
+    }
+    .act:hover, .act.on { border-color: #f59e0b; }
+    .detail {
+      margin-top: 10px; padding: 12px; background: #0c0a09; border-radius: 8px;
+      font-size: 12px; font-family: ui-monospace, Consolas, monospace; display: none;
+    }
+    .detail.show { display: block; }
+    .detail pre { white-space: pre-wrap; word-break: break-all; color: #d6d3d1; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <strong>V3 · 分镜胶片</strong>
+    <span style="color:#a8a29e;font-size:12px">横向选帧 · 下方看该页操作</span>
+  </div>
+  <div id="app">
+    <div class="stage">
+      <div class="strip">
+        <div
+          v-for="(f, i) in frames"
+          :key="f.id"
+          class="frame"
+          :class="{ on: cur === f.id }"
+          @click="cur = f.id; openAct = ''"
+        >
+          <div class="hole-row"><span class="hole"></span><span class="hole"></span><span class="hole"></span><span class="hole"></span><span class="hole"></span></div>
+          <div class="shot">
+            <div class="no">SCENE {{ String(i + 1).padStart(2, '0') }}</div>
+            <h2>{{ f.title }}</h2>
+            <div class="path">{{ f.path }}</div>
+          </div>
+          <div class="hole-row"><span class="hole"></span><span class="hole"></span><span class="hole"></span><span class="hole"></span><span class="hole"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="below" v-if="current">
+      <div class="slate">
+        <div style="font-size:13px;color:#a8a29e">当前帧 · {{ current.time }} · 来自 {{ current.from || '—' }}</div>
+        <div style="font-size:20px;margin-top:4px">{{ current.title }} <span class="path" style="font-size:13px;color:#a8a29e">{{ current.path }}</span></div>
+        <div v-if="!current.actions.length" style="margin-top:12px;color:#78716c">本帧无点击操作（纯浏览）</div>
+        <div
+          v-for="a in current.actions"
+          :key="a.id"
+          class="act"
+          :class="{ on: openAct === a.id }"
+          @click="openAct = openAct === a.id ? '' : a.id"
+        >
+          <div>
+            <div style="font-weight:700">点击「{{ a.name }}」</div>
+            <div style="font-size:12px;color:#a8a29e">{{ a.time }}</div>
+          </div>
+          <span style="color:#f59e0b;font-size:12px">{{ openAct === a.id ? '收起' : '展开链路' }}</span>
+        </div>
+        <div
+          v-for="a in current.actions"
+          :key="'d'+a.id"
+          class="detail"
+          :class="{ show: openAct === a.id }"
+        >
+          <div v-for="(line, j) in a.apis" :key="'x'+j" style="margin-bottom:4px;color:#fbbf24">{{ line }}</div>
+          <pre v-for="(s, j) in a.sqls" :key="'y'+j">{{ s }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    createApp({
+      setup() {
+        const frames = [
+          { id: 'f1', title: '工作台', path: '/home', from: '', time: '16:40:01', actions: [] },
+          {
+            id: 'f2', title: '用户管理', path: '/system/user', from: '/home', time: '16:40:18',
+            actions: [{
+              id: 'a1', name: '新增', time: '16:40:25',
+              apis: ['GET /system/user/deptTree · 42ms', 'GET /dict/sys_user_sex · 18ms'],
+              sqls: ['SELECT ... FROM sys_dept WHERE del_flag = 0']
+            }]
+          },
+          {
+            id: 'f3', title: '新建用户', path: '/system/user/form', from: '/system/user', time: '16:40:26',
+            actions: [{
+              id: 'a2', name: '保存', time: '16:41:05',
+              apis: ['POST /system/user · 86ms'],
+              sqls: ['INSERT INTO sys_user ...', 'INSERT INTO sys_user_role ...']
+            }]
+          }
+        ]
+        const cur = ref('f2')
+        const openAct = ref('a1')
+        const current = computed(() => frames.find((f) => f.id === cur.value))
+        return { frames, cur, openAct, current }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

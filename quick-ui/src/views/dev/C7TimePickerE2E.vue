@@ -77,6 +77,7 @@
 </template>
 
 <script setup>
+/** C7TimePicker 组件 E2E 联调页：覆盖范围合并、默认格式与 change 归一化。 */
 import {ref} from 'vue'
 
 const singleVal = ref(null)

@@ -2,7 +2,8 @@
 
 ## 本地默认
 
-- **数据库**：H2 内存库，`MODE=MySQL`
+- **数据库**：进程内 MariaDB Embedded（mariadb4j，默认 `127.0.0.1:3307` / 库 `quickboot`）
+- **数据目录**：`./data/mariadb`（二进制解压缓存 `./data/mariadb-base`）
 - **Redis**：进程内 Luban-RDS（默认 `127.0.0.1:6379`）
 - **端口**：`9993`
 - **Issuer**：`http://127.0.0.1:9993`
@@ -11,15 +12,17 @@
 
 ```bash
 cd quickboot
-mvn -pl quickboot-web -am install -DskipTests
-mvn -pl quickboot-web spring-boot:run
+mvn -pl quickboot-app -am install -DskipTests
+mvn -pl quickboot-app spring-boot:run
 ```
 
-- H2 控制台：`http://127.0.0.1:9993/h2-console`
-  - JDBC URL：与 `application-dev.yml` 中 `spring.datasource.url` 一致
-  - 用户：`sa`，密码空
+- JDBC：与 `application-dev.yml` 中 `spring.datasource.url` 一致（默认 `jdbc:mariadb://127.0.0.1:3307/quickboot`）
+- 用户：`root`，密码空
 
+关闭嵌入式 MariaDB：`qc.dev.embedded-mariadb.enabled=false`，并自行配置外部 MariaDB/MySQL。  
 关闭嵌入式 Redis：`qc.dev.embedded-redis.enabled=false`，并自行配置外部 Redis。
+
+首次切换自 H2 时不会自动迁移旧 `./data/quickboot.mv.db`；可归档后使用新数据目录。
 
 ## 认证概要
 
@@ -38,8 +41,14 @@ mvn -pl quickboot-web spring-boot:run
 种子客户端（`client_secret` **明文**入库；用户密码仍 BCrypt）：
 
 - `quick-ui` / `quick-ui-secret`：password + refresh + authorization_code（第一方，可跳过 consent）
+- `quick-h5` / `quick-h5-secret`：H5 / 微信小程序客户端（`sys_oauth_client`，见 `V19__oauth_client_quick_h5.sql`）
 - `demo-app` / `demo-app-secret`：authorization_code（需 consent）
 - `job-runner` / `job-runner-secret`：client_credentials → `token_kind=client`
+
+前端工程：
+
+- 管理端：`quick-ui/`
+- 移动端：`quick-h5/`（uni-app；详见该目录 README）
 
 任意 RegisteredClient 只要注册了 `password` grant，即可走 password 发牌（管理端创建时可选）。  
 社交发牌客户端由配置 `qc.oauth.social-issue-client-id` 指定（开发默认与种子 `quick-ui` 一致）。

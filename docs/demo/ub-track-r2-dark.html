@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R2 用户行为轨迹 · 深色控制台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --bg:#0b0f14; --panel:#121821; --line:#243044; --text:#e8eef7; --muted:#8b9bb4; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    .top { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 12px; align-items: center; }
+    .top a { color: #93c5fd; text-decoration: none; font-size: 13px; }
+    .trail-wrap { padding: 12px 14px; border-bottom: 1px solid var(--line); background: #0e141c; }
+    .trail-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .trail { display: flex; align-items: stretch; overflow-x: auto; gap: 0; }
+    .node {
+      flex: 0 0 160px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; cursor: pointer; background: #0f1620;
+    }
+    .node.on { border-color: var(--accent); background: rgba(59,130,246,.12); }
+    .node .t { font-weight: 700; font-size: 13px; }
+    .node .p { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+    .node .cnt { font-size: 11px; color: #93c5fd; margin-top: 6px; }
+    .arrow { flex: 0 0 40px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 700; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px 1fr; }
+    .left { overflow: auto; border-right: 1px solid var(--line); padding: 12px; background: var(--panel); }
+    .right { overflow: auto; padding: 12px 14px; }
+    .h { font-size: 12px; font-weight: 700; margin: 0 0 8px; }
+    .meta { font-size: 11px; color: var(--muted); }
+    .act { padding: 10px; border-radius: 6px; border: 1px solid var(--line); margin-bottom: 8px; cursor: pointer; background: #0f1620; }
+    .act.on { border-color: var(--accent); background: rgba(59,130,246,.1); }
+    .act .name { font-size: 13px; font-weight: 650; }
+    .badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #422006; color: #fcd34d; margin-right: 6px; }
+    .wf-row { display: grid; grid-template-columns: minmax(120px, 42%) 1fr 52px; gap: 8px; align-items: start; padding: 6px 4px; font-size: 11px; margin-bottom: 4px; border-radius: 4px; }
+    .wf-row:hover { background: rgba(255,255,255,.03); }
+    .track { height: 18px; background: #0f1620; border: 1px solid var(--line); border-radius: 3px; position: relative; margin-top: 2px; }
+    .bar { position: absolute; top: 2px; height: 12px; border-radius: 2px; min-width: 3px; }
+    .bar.api { background: #8b5cf6; }
+    .bar.sql { background: #f59e0b; }
+    .ms { text-align: right; color: var(--muted); }
+    .mono { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+    .sql { margin-top: 10px; padding: 8px; background: #05080c; border: 1px solid var(--line); border-radius: 4px; white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 160px; overflow: auto; color: #cbd5e1; }
+    .path-sum { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .path-sum b { color: #93c5fd; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <strong>R2 · 深色控制台（对齐请求链路）</strong>
+  </div>
+  <div id="app" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="trail-wrap">
+      <div class="trail-label">行为轨迹 · 页面 A → B → C（点击切换）</div>
+      <div class="trail">
+        <template v-for="(pg, i) in pages" :key="pg.id">
+          <div class="node" :class="{ on: pageId === pg.id }" @click="selectPage(pg.id)">
+            <div class="t">{{ i + 1 }}. {{ pg.title }}</div>
+            <div class="p">{{ pg.path }}</div>
+            <div class="cnt">{{ pg.actions.length }} 个操作</div>
+          </div>
+          <div v-if="i < pages.length - 1" class="arrow">→</div>
+        </template>
+      </div>
+      <div class="path-sum">摘要：<b>{{ pathText }}</b></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="h">在「{{ currentPage?.title }}」上的操作</div>
+        <div class="meta mono" style="margin-bottom:10px">{{ currentPage?.path }}</div>
+        <div
+          v-for="a in currentPage?.actions || []"
+          :key="a.id"
+          class="act"
+          :class="{ on: actionId === a.id }"
+          @click="actionId = a.id"
+        >
+          <div class="name"><span class="badge">{{ a.typeLabel }}</span>{{ a.name }}</div>
+          <div class="meta" style="margin-top:4px">{{ a.time }}</div>
+        </div>
+      </div>
+      <div class="right">
+        <template v-if="currentAction">
+          <div class="h">瀑布 · 该按钮触发的接口 / SQL</div>
+          <div class="meta" style="margin-bottom:10px">{{ currentAction.name }} · {{ currentAction.traceId }}</div>
+          <div v-for="(s, i) in currentAction.spans" :key="i" class="wf-row">
+            <div>
+              <div class="mono">{{ s.name }}</div>
+              <div class="meta">{{ s.kindLabel }}</div>
+            </div>
+            <div class="track"><div class="bar" :class="s.kind" :style="{ left: s.start + '%', width: Math.max(s.width, 1.5) + '%' }"></div></div>
+            <div class="ms">{{ s.ms }}ms</div>
+          </div>
+          <pre v-if="currentAction.sqlPreview" class="sql">{{ currentAction.sqlPreview }}</pre>
+        </template>
+        <div v-else class="meta" style="padding:24px">点左侧操作</div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    const pages = [
+      { id: 'p1', title: '工作台', path: '/home', actions: [{ id: 'a0', typeLabel: '浏览', name: '停留浏览', time: '16:40:01', traceId: '—', spans: [], sqlPreview: '' }] },
+      {
+        id: 'p2', title: '用户管理', path: '/system/user',
+        actions: [
+          { id: 'a1', typeLabel: '列表', name: '加载用户列表', time: '16:40:18', traceId: 'tr_list_01',
+            spans: [
+              { name: 'GET /system/user/list', kind: 'api', kindLabel: '接口', start: 0, width: 55, ms: 120 },
+              { name: 'SysUserMapper.selectPage', kind: 'sql', kindLabel: 'SQL', start: 8, width: 12, ms: 8 }
+            ], sqlPreview: 'SELECT * FROM sys_user WHERE del_flag = 0 LIMIT 10' },
+          { id: 'a2', typeLabel: '点击', name: '点击「新增」按钮', time: '16:40:25', traceId: 'tr_add_02',
+            spans: [
+              { name: 'GET /system/user/deptTree', kind: 'api', kindLabel: '接口', start: 0, width: 40, ms: 42 },
+              { name: 'GET /system/dict/.../sys_user_sex', kind: 'api', kindLabel: '接口', start: 5, width: 22, ms: 18 },
+              { name: 'SysDeptMapper.selectList', kind: 'sql', kindLabel: 'SQL', start: 6, width: 8, ms: 3 }
+            ], sqlPreview: 'SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0' },
+          { id: 'a3', typeLabel: '点击', name: '点击「修改」按钮', time: '16:40:40', traceId: 'tr_edit_03',
+            spans: [
+              { name: 'GET /system/user/1152', kind: 'api', kindLabel: '接口', start: 0, width: 48, ms: 56 },
+              { name: 'SysUserMapper.selectById', kind: 'sql', kindLabel: 'SQL', start: 4, width: 10, ms: 2 }
+            ], sqlPreview: 'SELECT * FROM sys_user WHERE user_id = 1152' },
+          { id: 'a4', typeLabel: '点击', name: '点击「删除」按钮', time: '16:40:55', traceId: 'tr_del_04',
+            spans: [
+              { name: 'DELETE /system/user/1201', kind: 'api', kindLabel: '接口', start: 0, width: 60, ms: 78 },
+              { name: 'SysUserMapper.updateDelFlag', kind: 'sql', kindLabel: 'SQL', start: 10, width: 14, ms: 4 }
+            ], sqlPreview: 'UPDATE sys_user SET del_flag = 1 WHERE user_id = 1201' }
+        ]
+      },
+      {
+        id: 'p3', title: '新建用户', path: '/system/user/form',
+        actions: [
+          { id: 'a5', typeLabel: '点击', name: '点击「保存」按钮', time: '16:41:05', traceId: 'tr_save_05',
+            spans: [
+              { name: 'POST /system/user', kind: 'api', kindLabel: '接口', start: 0, width: 70, ms: 86 },
+              { name: 'SysUserMapper.insert', kind: 'sql', kindLabel: 'SQL', start: 12, width: 10, ms: 5 },
+              { name: 'SysUserRoleMapper.insertBatch', kind: 'sql', kindLabel: 'SQL', start: 22, width: 8, ms: 2 }
+            ], sqlPreview: "INSERT INTO sys_user ..." }
+        ]
+      }
+    ]
+    createApp({
+      setup() {
+        const pageId = ref('p2')
+        const actionId = ref('a2')
+        const currentPage = computed(() => pages.find((p) => p.id === pageId.value))
+        const currentAction = computed(() => (currentPage.value?.actions || []).find((a) => a.id === actionId.value))
+        const pathText = computed(() => pages.map((p) => p.path).join(' → '))
+        function selectPage(id) {
+          pageId.value = id
+          actionId.value = pages.find((p) => p.id === id)?.actions?.[0]?.id || ''
+        }
+        return { pages, pageId, actionId, currentPage, currentAction, pathText, selectPage }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

@@ -6,12 +6,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 密码工厂
- *
- * @author luyanan
- * @since 2026/7/27
+ * 多算法委托编解码器：密文形如 {@code {id}encoded}，加密使用默认 id，校验按前缀路由到子实现。
+ * <p>
+ * 无前缀的历史存根可通过 {@link #setDefaultPasswordEncoderForMatches(PasswordCodec)} 指定默认 bcrypt 校验器。
  */
-
 public class DelegatingPasswordCodec extends AbstractValidatingPasswordCodec {
   private static final String DEFAULT_ID_PREFIX = "{";
 
@@ -31,10 +29,20 @@ public class DelegatingPasswordCodec extends AbstractValidatingPasswordCodec {
   private PasswordCodec defaultPasswordEncoderForMatches;
 
 
+  /**
+   * @param idForEncode          默认加密算法 id
+   * @param idToPasswordEncoder  id → 实现映射（须包含 {@code idForEncode}）
+   */
   public DelegatingPasswordCodec(String idForEncode, Map<String, PasswordCodec> idToPasswordEncoder) {
     this(idForEncode, idToPasswordEncoder, DEFAULT_ID_PREFIX, DEFAULT_ID_SUFFIX);
   }
 
+  /**
+   * @param idForEncode          默认加密算法 id
+   * @param idToPasswordEncoder  id → 实现映射
+   * @param idPrefix             算法 id 前缀，默认 {@code "{"}
+   * @param idSuffix             算法 id 后缀，默认 {@code "}"}
+   */
   public DelegatingPasswordCodec(String idForEncode, Map<String, PasswordCodec> idToPasswordEncoder,
                                  String idPrefix, String idSuffix) {
 
@@ -74,6 +82,11 @@ public class DelegatingPasswordCodec extends AbstractValidatingPasswordCodec {
   }
 
 
+  /**
+   * 无前缀密文校验时的回退实现（通常为 {@link BCryptPasswordCodec}）。
+   *
+   * @param defaultPasswordEncoderForMatches 默认匹配用编解码器
+   */
   public void setDefaultPasswordEncoderForMatches(PasswordCodec defaultPasswordEncoderForMatches) {
     if (defaultPasswordEncoderForMatches == null) {
       throw new IllegalArgumentException("defaultPasswordEncoderForMatches cannot be null");
@@ -126,10 +139,20 @@ public class DelegatingPasswordCodec extends AbstractValidatingPasswordCodec {
   }
 
 
+  /**
+   * 注册或覆盖子编解码器。
+   *
+   * @param idForEncode   算法 id
+   * @param passwordCodec 实现
+   */
   public void register(String idForEncode, PasswordCodec passwordCodec) {
     this.idToPasswordEncoder.put(idForEncode, passwordCodec);
   }
 
+  /**
+   * @param idForEncode 算法 id
+   * @return 已注册实现；不存在时 {@code null}
+   */
   public PasswordCodec get(String idForEncode) {
     return this.idToPasswordEncoder.get(idForEncode);
   }

@@ -67,8 +67,14 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 defineOptions({ name: 'C7ExcelUpload', inheritAttrs: false })
 
 /**
- * 精简同步导入：无导入导出中心 / 异步任务依赖。
- * uploadFn(file, strategy) → Promise&lt;result|R&gt;，strategy 为 overwrite|ignore。
+ * C7 Excel 同步导入：拖拽/点选 xls/xlsx，调用 `uploadFn(file, strategy)` 完成导入；
+ * 无导入导出中心依赖；可选模板下载与失败明细下载。
+ *
+ * @prop {function(File, 'overwrite'|'ignore'): Promise} uploadFn 导入函数
+ * @prop {function(): Promise<Blob>} [templateDownloadFn] 模板下载
+ * @emits success 导入完成，载荷为后端返回的结果对象
+ * @emits error 导入失败
+ * @emits cancel 用户点击取消
  */
 const props = defineProps({
   accept: { type: String, default: '.xls,.xlsx' },

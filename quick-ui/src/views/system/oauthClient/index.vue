@@ -189,6 +189,9 @@
 </template>
 
 <script setup>
+/**
+ * OAuth2 客户端管理：C7JsonTable 分页 CRUD、API 路径多行编辑、创建后展示密钥。
+ */
 import { Plus, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'

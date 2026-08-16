@@ -1,3 +1,6 @@
+/**
+ * 浏览器缓存插件（$cache）：封装 sessionStorage / localStorage 的 get/set/remove/clear。
+ */
 export default {
   install(Vue) {
     Vue.config.globalProperties.$cache = {

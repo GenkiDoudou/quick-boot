@@ -255,6 +255,7 @@
 </template>
 
 <script setup>
+/** C7Button 组件 E2E 联调页：覆盖预设类型、流水线、防抖与 after-click 等用例。 */
 import {computed, nextTick, ref} from 'vue'
 
 const presetTypes = ['add', 'edit', 'delete', 'query', 'refresh', 'upload', 'download', 'submit', 'cancel']

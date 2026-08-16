@@ -43,6 +43,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * 用户管理实现：部门树筛选、角色绑定、导入导出及 Sa-Token 权限缓存失效。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -111,6 +114,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     return vo;
   }
 
+  /**
+   * 新增用户并写入角色关联；密码经 {@link PasswordCodec} 加密后入库。
+   */
   @Transactional(rollbackFor = Exception.class)
   @Override
   public Long add(SysUserVo vo) {
@@ -134,6 +140,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     return entity.getUserId();
   }
 
+  /**
+   * 更新用户；deptId 允许清空，需额外 {@code LambdaUpdateWrapper} 显式写入 null。
+   */
   @Transactional(rollbackFor = Exception.class)
   @Override
   public boolean update(SysUserVo vo) {
@@ -163,6 +172,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     return ok;
   }
 
+  /**
+   * 删除用户及其角色关联，并清理对应用户的 Session 权限缓存。
+   */
   @Transactional(rollbackFor = Exception.class)
   @Override
   public void remove(Collection<Long> userIds) {
@@ -181,6 +193,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     }
   }
 
+  /**
+   * 变更状态后清理该用户权限缓存，避免停用账号仍持有旧 Session 权限。
+   */
   @Override
   public void changeStatus(Long userId, String status) {
     if (!"0".equals(status) && !"1".equals(status)) {
@@ -249,6 +264,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     }).collect(Collectors.toList());
   }
 
+  /**
+   * 批量导入用户；校验通过后 {@code saveOrUpdateBatch} 一次性落库。
+   */
   @Transactional(rollbackFor = Exception.class)
   @Override
   public ExcelResult<SysUserImportRow> importExcel(MultipartFile file, boolean updateSupport) throws IOException {
@@ -313,6 +331,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     return matched.get(0).getDeptId();
   }
 
+  /**
+   * 全量替换用户角色关联，并清理该用户权限缓存。
+   */
   private void saveRoles(Long userId, List<Long> roleIds) {
     userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, String.valueOf(userId)));
     if (CollUtil.isNotEmpty(roleIds)) {
@@ -367,6 +388,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     return this.list(q);
   }
 
+  /**
+   * 部门筛选时包含所选部门及其全部下级部门。
+   */
   private void applyDeptIdFilter(LambdaQueryWrapper<SysUser> q, Long deptId) {
     if (deptId == null) {
       return;

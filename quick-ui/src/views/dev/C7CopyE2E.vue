@@ -59,6 +59,7 @@
 </template>
 
 <script setup>
+/** C7Copy 组件 E2E 联调页：覆盖多 mode、notify 自定义与 beforeCopy 拦截。 */
 import {ref} from 'vue'
 
 const notifyLog = ref('（无）')

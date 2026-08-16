@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@quickboot/lite-rum': path.resolve(__dirname, '../packages/lite-rum/src/index.js'),
     },
   },
   test: {

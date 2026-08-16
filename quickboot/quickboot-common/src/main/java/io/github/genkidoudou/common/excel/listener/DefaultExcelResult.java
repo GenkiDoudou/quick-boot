@@ -22,11 +22,8 @@ public class DefaultExcelResult<T> implements ExcelResult<T> {
   private String failRows;
 
   /**
-   * 错误文件内容Base64
-   *
-   * @since 2026/8/2
+   * 错误明细文件的 Base64 内容（由 {@link #writeErrorFile()} 生成）。
    */
-
   private String errorFileBase64;
 
 

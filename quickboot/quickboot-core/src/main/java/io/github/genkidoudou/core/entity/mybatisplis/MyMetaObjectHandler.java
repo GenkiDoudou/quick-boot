@@ -7,7 +7,18 @@ import org.apache.ibatis.reflection.MetaObject;
 
 import java.time.LocalDateTime;
 
+/**
+ * MyBatis-Plus 审计字段自动填充：写入 createTime/updateTime 及 createBy/updateBy。
+ * <p>
+ * 操作人取自当前登录用户；无登录上下文时仅填充时间戳。
+ */
 public class MyMetaObjectHandler implements MetaObjectHandler {
+
+  /**
+   * INSERT 时填充创建/更新时间与操作人。
+   *
+   * @param metaObject 待填充实体元对象
+   */
   @Override
   public void insertFill(MetaObject metaObject) {
     LoginUser loginUser = LoginUserUtils.getLoginUser();
@@ -23,6 +34,11 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 
   }
 
+  /**
+   * UPDATE 时填充更新时间与操作人。
+   *
+   * @param metaObject 待填充实体元对象
+   */
   @Override
   public void updateFill(MetaObject metaObject) {
     LoginUser loginUser = LoginUserUtils.getLoginUser();

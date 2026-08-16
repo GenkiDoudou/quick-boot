@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * 字典类型实现：删除前校验是否仍有关联字典项；refresh 方法通过注解驱逐缓存。
+ */
 @Service
 @RequiredArgsConstructor
 @CacheConfig(cacheNames = "sys-dict#3600")
@@ -108,6 +111,9 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, S
     return this.updateById(entity);
   }
 
+  /**
+   * 删除字典类型前先统计其下字典项数量，非空则拒绝。
+   */
   @CacheEvict(allEntries = true)
   @Transactional(rollbackFor = Exception.class)
   @Override
@@ -132,12 +138,18 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, S
     }
   }
 
+  /**
+   * 驱逐全部字典缓存；方法体为空，失效由 {@link CacheEvict} 完成。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public void refreshAll() {
     // cache eviction via annotation
   }
 
+  /**
+   * 驱逐全部字典缓存（含指定 dictType 对应的 listByType 条目）。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public void refresh(String dictType) {

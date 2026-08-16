@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>链路监控 · 五版方案对比（开发向）</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --line: #2d3a4d;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+    .note {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .note strong { color: var(--text); }
+    .grid { display: grid; gap: 14px; }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 14px;
+      align-items: start;
+    }
+    .ver {
+      width: 56px; height: 56px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px; background: #243044;
+      color: var(--accent);
+    }
+    .card h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+    .card p { margin: 0; font-size: 13px; color: var(--muted); }
+    .card ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #c5d0e0; }
+    .card a {
+      align-self: center;
+      text-decoration: none;
+      color: #fff;
+      background: var(--accent);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .card a:hover { filter: brightness(1.08); }
+    code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #93c5fd; }
+    @media (max-width: 800px) {
+      .card { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>开发向 · 链路监控 · 五版交互方案</h1>
+    <p class="sub">定位：个案排障与前后端对齐，不是 PV/健康分大盘。打开各版对比信息架构，选一版再深化。</p>
+    <div class="note">
+      <strong>共同数据底座：</strong>
+      <code>page</code> <code>fromPage</code> <code>action</code> <code>operationId</code> <code>traceId</code>
+      <code>api.*</code> <code>error.*</code> <code>ua</code> <code>clientIp</code> + 后端同 <code>traceId</code> 日志。
+      <br />五版差异在<strong>入口与主工作面</strong>，不在采集字段。
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="ver">A′</div>
+        <div>
+          <h2>Trace 统一入口（含纯后端）</h2>
+          <p>同一 Trace 列表覆盖浏览器 / OpenAPI / Job；无页面时用 entry + caller 作根。</p>
+          <ul>
+            <li>过滤：全部 · 浏览器 · 纯 API · 任务</li>
+            <li>与原版 A 同瀑布，不绑 UI 字段</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-a-unified.html">打开 A′</a>
+      </div>
+      <div class="card">
+        <div class="ver">D′</div>
+        <div>
+          <h2>Issue 统一（FE 错误 + BE 异常）</h2>
+          <p>前端 JS 与后端异常同一收件箱，均可下钻 Chain / Trace。</p>
+          <ul>
+            <li>纯 API 场景用后端 fingerprint</li>
+            <li>有前端时 FE/BE Issue 可同时出现</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-d-unified.html">打开 D′</a>
+      </div>
+      <div class="card">
+        <div class="ver">A</div>
+        <div>
+          <h2>Trace-first · 调用链瀑布（类 Jaeger / Zipkin）</h2>
+          <p>以 <code>traceId</code> 为第一公民。检索 → Span 瀑布图 → Span 详情（FE/BE/SQL）。</p>
+          <ul>
+            <li>适合：已知 traceId，或从网关/日志抄 ID 进来</li>
+            <li>强项：耗时分布、父子 span、前后端对齐一目了然</li>
+            <li>弱项：从「业务操作/报错」切入要多一步</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-a.html">打开 A</a>
+      </div>
+      <div class="card">
+        <div class="ver">B</div>
+        <div>
+          <h2>Operation 工作台 · 一次用户操作</h2>
+          <p>以 <code>operationId</code> / <code>action</code> 为入口。操作列表 → 步骤时间线 → 展开各 API 的 trace。</p>
+          <ul>
+            <li>适合：产品反馈「点了提交就挂」</li>
+            <li>强项：还原用户路径与按钮语义</li>
+            <li>弱项：无操作埋点时链路不完整</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-b.html">打开 B</a>
+      </div>
+      <div class="card">
+        <div class="ver">C</div>
+        <div>
+          <h2>双栏对照 · Frontend | Backend</h2>
+          <p>固定左右分栏，选中一条请求后两侧同步展示事件与日志，高亮耗时差。</p>
+          <ul>
+            <li>适合：前后端联调、扯皮「前端慢还是后端慢」</li>
+            <li>强项：对比心智最直接</li>
+            <li>弱项：多 span / 多服务时屏幕挤</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-c.html">打开 C</a>
+      </div>
+      <div class="card">
+        <div class="ver">D</div>
+        <div>
+          <h2>Issue → Chain · 错误收件箱下钻链路</h2>
+          <p>类 Sentry：指纹列表 → stack；一键「查看完整链路」进入 operation/trace。</p>
+          <ul>
+            <li>适合：日常修线上 JS/接口异常</li>
+            <li>强项：从症状进，符合修 bug 习惯</li>
+            <li>弱项：纯性能慢、无报错的链路不够显眼</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-d.html">打开 D</a>
+      </div>
+      <div class="card">
+        <div class="ver">E</div>
+        <div>
+          <h2>查询控制台 · 开发者命令条</h2>
+          <p>顶部统一查询：<code>traceId:</code> <code>operationId:</code> <code>uin:</code> <code>page:</code>，结果可展开为链路树。</p>
+          <ul>
+            <li>适合：熟手、从工单粘贴 ID 排查</li>
+            <li>强项：密度高、快、可扩展查询语法</li>
+            <li>弱项：新人学习成本略高</li>
+          </ul>
+        </div>
+        <a href="./lite-rum-chain-e.html">打开 E</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

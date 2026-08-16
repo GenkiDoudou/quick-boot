@@ -12,24 +12,39 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 
+/**
+ * Long 型大数 Excel 转换器：超过 15 位以字符串写入，避免 Excel 精度丢失。
+ */
 @Slf4j
 public class ExcelBigNumberConvert implements Converter<Long> {
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public Class<Long> supportJavaTypeKey() {
     return Long.class;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public CellDataTypeEnum supportExcelTypeKey() {
     return CellDataTypeEnum.STRING;
   }
 
+  /**
+   * 读取单元格为 Long；委托 Hutool {@link Convert#toLong(Object)}。
+   */
   @Override
   public Long convertToJavaData(ReadCellData<?> cellData, ExcelContentProperty contentProperty, GlobalConfiguration globalConfiguration) {
     return Convert.toLong(cellData.getData());
   }
 
+  /**
+   * 写入 Excel：字符串长度超过 15 时用文本单元格，否则用数值单元格。
+   */
   @Override
   public WriteCellData<Object> convertToExcelData(Long object, ExcelContentProperty contentProperty, GlobalConfiguration globalConfiguration) {
     if (ObjectUtil.isNotNull(object)) {

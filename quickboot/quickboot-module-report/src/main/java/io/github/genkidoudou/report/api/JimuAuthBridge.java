@@ -7,12 +7,36 @@ import java.util.List;
  */
 public interface JimuAuthBridge {
 
+    /**
+     * 按 token 解析用户并返回角色标识列表。
+     *
+     * @param token Sa-Token 或积木请求 token
+     * @return 角色 key 列表，无效 token 时为空列表
+     */
     List<String> listRoleKeysByToken(String token);
 
+    /**
+     * 按 token 解析用户并返回权限字符列表。
+     *
+     * @param token Sa-Token 或积木请求 token
+     * @return 权限列表，无效 token 时为空列表
+     */
     List<String> listPermissionsByToken(String token);
 
+    /**
+     * 按 token 解析登录用户名。
+     *
+     * @param token Sa-Token 或积木请求 token
+     * @return 用户名，无法解析时返回 {@code null}
+     */
     String resolveUsername(String token);
 
+    /**
+     * 按 token 解析用户主键。
+     *
+     * @param token Sa-Token 或积木请求 token
+     * @return 用户 ID，无效时返回 {@code -1}
+     */
     long resolveUserId(String token);
 
     /**

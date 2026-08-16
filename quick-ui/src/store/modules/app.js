@@ -1,3 +1,7 @@
+/**
+ * 应用壳层 Store：侧栏开合、设备类型（desktop/mobile）、Element Plus 组件尺寸。
+ * 侧栏状态持久化至 Cookie（sidebarStatus）。
+ */
 import Cookies from 'js-cookie'
 import { defineStore } from 'pinia'
 

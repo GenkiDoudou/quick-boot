@@ -102,6 +102,7 @@
 </template>
 
 <script setup>
+/** C7Checkbox 组件 E2E 联调页：覆盖 joinValue、全选与静态/异步选项。 */
 import {ref} from 'vue'
 
 const joinVal = ref('apple,banana')

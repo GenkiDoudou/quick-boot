@@ -100,6 +100,7 @@ public class SlowSqlCaptureSupport {
 
     /**
      * 截断落库 SQL，保留格式化换行（不再压成单行），便于列表与详情阅读。
+     * 最终串（含截断后缀）长度不超过 {@code maxSqlLength}，避免超出列宽。
      */
     private String truncateSql(String sql) {
         if (sql == null) {
@@ -110,7 +111,9 @@ public class SlowSqlCaptureSupport {
         if (trimmed.length() <= max) {
             return trimmed;
         }
-        return trimmed.substring(0, max) + "\n-- ... truncated";
+        String suffix = "\n-- ... truncated";
+        int keep = Math.max(0, max - suffix.length());
+        return trimmed.substring(0, keep) + suffix;
     }
 
     private static String currentOperName() {

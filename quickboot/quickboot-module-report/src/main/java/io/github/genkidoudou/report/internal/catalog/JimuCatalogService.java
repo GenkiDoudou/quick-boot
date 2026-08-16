@@ -34,10 +34,12 @@ public class JimuCatalogService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** 查询 jimu_report 表，供菜单绑定报表预览地址。 */
     public List<JimuCatalogItemVo> listReports() {
         return queryCatalog(SQL_REPORTS);
     }
 
+    /** 查询 onl_drag_page 表，供菜单绑定 BI 大屏预览地址。 */
     public List<JimuCatalogItemVo> listBiPages() {
         return queryCatalog(SQL_BI_PAGES);
     }

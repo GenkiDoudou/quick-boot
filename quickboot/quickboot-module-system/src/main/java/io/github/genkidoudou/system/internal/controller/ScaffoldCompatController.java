@@ -30,7 +30,7 @@ public class ScaffoldCompatController {
   /**
    * 若依形态动态路由：按当前用户角色从 sys_menu 组装。
    *
-   * @return 路由树（Map 结构与前端脚手架契约对齐）
+   * @return 路由树（Map 结构与前端脚手架契约对齐）；未登录或无 userId 时返回空列表
    */
   @Operation(summary = "获取动态路由")
   @GetMapping("/getRouters")

@@ -75,6 +75,7 @@
 </template>
 
 <script setup>
+/** C7Select 组件 E2E 联调页：覆盖静态/远程/多选 separator 与选项保留策略。 */
 import {ref} from 'vue'
 
 const staticVal = ref('')

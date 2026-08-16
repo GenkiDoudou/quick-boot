@@ -1,3 +1,6 @@
+/**
+ * 全局插件注册：将 $tab、$auth、$cache、$modal、$download 挂载到 app.config.globalProperties。
+ */
 import tab from './tab'
 import auth from './auth'
 import cache from './cache'

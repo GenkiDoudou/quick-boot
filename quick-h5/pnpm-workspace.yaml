@@ -1,0 +1,6 @@
+allowBuilds:
+  '@uni-helper/unocss-preset-uni': false
+  bufferutil: false
+  core-js: false
+  esbuild: false
+  vue-demi: false

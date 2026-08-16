@@ -17,6 +17,10 @@
 </template>
 
 <script setup>
+/**
+ * 应用主布局：侧栏 + 顶栏 + TagsView + 主内容区；
+ * 响应式切换移动端抽屉，并按 navType 应用混合/顶部导航布局。
+ */
 import { useWindowSize } from '@vueuse/core'
 import Sidebar from './components/Sidebar/index.vue'
 import { AppMain, Navbar, Settings, TagsView } from './components'
@@ -75,11 +79,13 @@ watch(
   { immediate: true }
 )
 
+/** 点击移动端遮罩关闭侧栏 */
 function handleClickOutside() {
   appStore.closeSideBar({ withoutAnimation: false })
 }
 
 const settingRef = ref(null)
+/** 打开布局设置抽屉（由 Navbar 触发） */
 function setLayout() {
   settingRef.value.openSetting()
 }

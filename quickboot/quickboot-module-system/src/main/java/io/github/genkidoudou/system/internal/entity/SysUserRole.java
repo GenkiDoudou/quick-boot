@@ -17,7 +17,9 @@ public class SysUserRole implements Serializable {
   @Serial
   private static final long serialVersionUID = 1L;
 
+  /** 用户 ID，对齐 {@code sys_user.user_id}。 */
   private String userId;
 
+  /** 角色 ID。 */
   private Long roleId;
 }

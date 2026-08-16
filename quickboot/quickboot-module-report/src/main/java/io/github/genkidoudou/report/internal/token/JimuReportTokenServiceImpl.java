@@ -61,6 +61,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
 
     private final JimuAuthBridge jimuAuthBridge;
 
+    /** 从请求中提取 token；分享态不写入 StpUtil 上下文。 */
     @Override
     public String getToken(HttpServletRequest request) {
         String token = extractBearer(request);
@@ -90,6 +91,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         return token;
     }
 
+    /** 无参版本：优先当前请求，否则读 StpUtil 当前 token。 */
     @Override
     public String getToken() {
         HttpServletRequest request = currentRequest();
@@ -103,6 +105,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         }
     }
 
+    /** 分享态固定返回 {@code share}，否则按 token 解析用户名。 */
     @Override
     public String getUsername(String token) {
         if (isShareContext(currentRequest())) {
@@ -126,6 +129,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         }
     }
 
+    /** 分享态返回空角色；否则走 quickboot 角色桥接。 */
     @Override
     public String[] getRoles(String token) {
         if (isShareContext(currentRequest())) {
@@ -134,6 +138,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         return jimuAuthBridge.listRoleKeysByToken(token).toArray(String[]::new);
     }
 
+    /** 分享态返回只读权限；管理员合并 BI 设计器敏感权限。 */
     @Override
     public String[] getPermissions(String token) {
         if (isShareContext(currentRequest())) {
@@ -157,6 +162,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         return roles != null && roles.stream().anyMatch(r -> "admin".equalsIgnoreCase(r));
     }
 
+    /** 字典项对接 quickboot sys_dict。 */
     @Override
     public List<JmDictModel> getDictItems(String dictCode) {
         if (StrUtil.isBlank(dictCode)) {
@@ -176,6 +182,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         return out;
     }
 
+    /** 分享态校验 shareToken/IS_PASS；登录态校验 Sa-Token。 */
     @Override
     public Boolean verifyToken(String token) {
         HttpServletRequest request = currentRequest();
@@ -207,6 +214,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         }
     }
 
+    /** 从 Header/参数读取租户 ID，默认 {@code 0}。 */
     @Override
     public String getTenantId() {
         HttpServletRequest request = JimuSpringContextUtils.getHttpServletRequest();
@@ -225,6 +233,7 @@ public class JimuReportTokenServiceImpl implements JmReportTokenServiceI {
         return "0";
     }
 
+    /** 为积木内部 HTTP 调用附加 Bearer / token / X-Access-Token Header。 */
     @Override
     public HttpHeaders customApiHeader() {
         HttpHeaders headers = new HttpHeaders();

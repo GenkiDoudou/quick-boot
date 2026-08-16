@@ -71,6 +71,9 @@ public class SysLogininforServiceImpl extends BaseServiceImpl<SysLogininforMappe
     return list.stream().map(x -> toVo(x, SysLogininforVo.class)).collect(Collectors.toList());
   }
 
+  /**
+   * 登录失败/成功均异步落库；持久化异常仅打日志，不影响登录主流程。
+   */
   @Override
   public void record(String username, Long userId, String clientId, String ip, String userAgent,
                      String status, String msg) {

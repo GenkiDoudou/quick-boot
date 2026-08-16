@@ -1,3 +1,7 @@
+/**
+ * 系统文件管理 API。
+ * 封装上传、预览、下载、删除；预览优先走 fileId 鉴权 Blob 接口。
+ */
 import request from '@/utils/request'
 import { listFileClassifies } from '@/api/common/file'
 
@@ -33,7 +37,25 @@ export function uploadFile(file, classify) {
 }
 
 /**
- * 构建按相对路径预览的 URL（GET 返回 inline 文件流，供 img/video 或新窗口打开）。
+ * 将相对路径规范为 `/system/file/view/` 后的 path 段（分段 encode）。
+ * @param {string} relativePath 列表返回的 relativePath
+ * @returns {string} 空字符串表示无效
+ */
+function encodeViewRelativePath(relativePath) {
+  if (relativePath == null || String(relativePath).trim() === '') {
+    return ''
+  }
+  const raw = String(relativePath).trim()
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return ''
+  }
+  const normalized = raw.replace(/^\/+/, '')
+  return normalized.split('/').map((s) => encodeURIComponent(s)).join('/')
+}
+
+/**
+ * 构建按相对路径预览的 URL（裸链，无 Authorization；仅调试/外链场景）。
+ * 管理端弹窗预览请用 {@link fetchFileViewBlob}。
  * @param {string} relativePath 列表返回的 relativePath
  * @returns {string}
  */
@@ -45,10 +67,46 @@ export function buildFileViewUrl(relativePath) {
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     return raw
   }
+  const encodedPath = encodeViewRelativePath(raw)
+  if (!encodedPath) {
+    return ''
+  }
   const base = (import.meta.env.VITE_APP_BASE_API || '').replace(/\/$/, '')
-  const normalized = raw.replace(/^\/+/, '')
-  const encodedPath = normalized.split('/').map((s) => encodeURIComponent(s)).join('/')
   return `${base}/system/file/view/${encodedPath}`
+}
+
+/**
+ * 鉴权拉取预览文件流（Blob），供 createObjectURL 后给 img/video/iframe 使用。
+ * @param {string} relativePath 列表返回的 relativePath
+ * @returns {Promise<Blob>}
+ * @deprecated 管理端预览请用 {@link fetchFilePreviewBlob}
+ */
+export function fetchFileViewBlob(relativePath) {
+  const encodedPath = encodeViewRelativePath(relativePath)
+  if (!encodedPath) {
+    return Promise.reject(new Error('文件路径无效'))
+  }
+  return request({
+    url: '/system/file/view/' + encodedPath,
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+/**
+ * 按 fileId 鉴权拉取 inline 预览流（后端设置 Content-Type）。
+ * @param {number|string} fileId 文件主键
+ * @returns {Promise<Blob>}
+ */
+export function fetchFilePreviewBlob(fileId) {
+  if (fileId == null || fileId === '') {
+    return Promise.reject(new Error('文件 ID 无效'))
+  }
+  return request({
+    url: '/system/file/preview/' + fileId,
+    method: 'get',
+    responseType: 'blob'
+  })
 }
 
 /**

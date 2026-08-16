@@ -1,3 +1,6 @@
+/**
+ * 积木报表 API：报表与 BI 大屏目录列表，供菜单绑定（/report/jimu）。
+ */
 import request from '@/utils/request'
 
 /**

@@ -35,6 +35,12 @@ public class SysSlowSqlController {
 
     private final SysSlowSqlService slowSqlService;
 
+    /**
+     * 分页查询慢 SQL 记录。
+     *
+     * @param query 筛选与分页条件
+     * @return 慢 SQL 分页列表
+     */
     @Operation(summary = "慢 SQL 分页列表")
     @SaCheckPermission("monitor:slowSql:query")
     @GetMapping("/list")
@@ -42,6 +48,12 @@ public class SysSlowSqlController {
         return R.ok(slowSqlService.page(query));
     }
 
+    /**
+     * 按主键查询慢 SQL 详情。
+     *
+     * @param slowId 慢 SQL 主键
+     * @return 慢 SQL 详情；不存在时抛业务异常
+     */
     @Operation(summary = "慢 SQL 详情")
     @SaCheckPermission("monitor:slowSql:query")
     @GetMapping("/{slowId}")
@@ -49,6 +61,12 @@ public class SysSlowSqlController {
         return R.ok(slowSqlService.getById(slowId));
     }
 
+    /**
+     * 按条件导出慢 SQL 为 Excel。
+     *
+     * @param query    筛选条件
+     * @param response HTTP 响应，直接写入文件流
+     */
     @Operation(summary = "导出慢 SQL")
     @SaCheckPermission("monitor:slowSql:export")
     @PostMapping("/export")
@@ -56,6 +74,12 @@ public class SysSlowSqlController {
         slowSqlService.export(query, response);
     }
 
+    /**
+     * 批量删除慢 SQL 记录。
+     *
+     * @param slowIds 待删除主键列表
+     * @return 空成功响应；副作用：物理删除 sys_slow_sql 行
+     */
     @Operation(summary = "批量删除慢 SQL")
     @SaCheckPermission("monitor:slowSql:remove")
     @PostMapping("/remove")
@@ -64,6 +88,11 @@ public class SysSlowSqlController {
         return R.ok();
     }
 
+    /**
+     * 清空全部慢 SQL 记录。
+     *
+     * @return 空成功响应；副作用：物理删除 sys_slow_sql 全表
+     */
     @Operation(summary = "清空慢 SQL")
     @SaCheckPermission("monitor:slowSql:remove")
     @PostMapping("/clean")

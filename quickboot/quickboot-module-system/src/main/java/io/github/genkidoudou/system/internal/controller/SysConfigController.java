@@ -31,6 +31,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * 系统参数配置管理。维护 configKey/configValue 及缓存刷新、Excel 导入导出。
+ */
 @Tag(name = "参数配置")
 @RequiredArgsConstructor
 @RestController
@@ -39,6 +42,12 @@ public class SysConfigController {
 
   private final ISysConfigService service;
 
+  /**
+   * 参数配置分页。
+   *
+   * @param pageRequest 分页参数与查询条件
+   * @return 分页结果
+   */
   @Operation(summary = "分页查询")
   @SaCheckPermission("system:config:list")
   @PostMapping("page")
@@ -46,6 +55,12 @@ public class SysConfigController {
     return R.ok(service.page(pageRequest));
   }
 
+  /**
+   * 参数详情。
+   *
+   * @param configId 参数主键
+   * @return Vo
+   */
   @Operation(summary = "参数详情")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
   @GetMapping("/{configId}")
@@ -53,6 +68,12 @@ public class SysConfigController {
     return R.ok(service.getDetail(configId));
   }
 
+  /**
+   * 按 configKey 查询参数值（运行时读取）。
+   *
+   * @param configKey 参数键名
+   * @return 参数值字符串，不存在时 data 可能为 null
+   */
   @Operation(summary = "按键名查询值")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
   @GetMapping("/configKey/{configKey}")
@@ -60,6 +81,12 @@ public class SysConfigController {
     return R.ok(service.getConfigValueByKey(configKey));
   }
 
+  /**
+   * 新增参数；响应 data 为新建 configId。
+   *
+   * @param vo 可写字段
+   * @return 新建主键
+   */
   @Operation(summary = "新增参数")
   @SaCheckPermission("system:config:add")
   @PostMapping("add")
@@ -68,6 +95,12 @@ public class SysConfigController {
     return R.ok(id == null ? null : String.valueOf(id));
   }
 
+  /**
+   * 修改参数。
+   *
+   * @param vo 含 configId 的可写字段
+   * @return 是否成功
+   */
   @Operation(summary = "修改参数")
   @SaCheckPermission("system:config:edit")
   @PostMapping("update")
@@ -75,6 +108,12 @@ public class SysConfigController {
     return R.ok(service.update(vo));
   }
 
+  /**
+   * 单条删除参数。
+   *
+   * @param configId 参数主键
+   * @return ok
+   */
   @Operation(summary = "删除参数")
   @SaCheckPermission("system:config:remove")
   @GetMapping("remove/{configId}")
@@ -83,6 +122,12 @@ public class SysConfigController {
     return R.ok();
   }
 
+  /**
+   * 批量删除参数。
+   *
+   * @param ids 参数主键集合
+   * @return ok
+   */
   @Operation(summary = "批量删除参数")
   @SaCheckPermission("system:config:remove")
   @PostMapping("/remove")
@@ -91,6 +136,11 @@ public class SysConfigController {
     return R.ok();
   }
 
+  /**
+   * 刷新全部参数缓存。
+   *
+   * @return ok；副作用为重建 Redis 参数缓存
+   */
   @Operation(summary = "刷新参数缓存")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
   @PostMapping("/refreshCache")
@@ -99,6 +149,12 @@ public class SysConfigController {
     return R.ok();
   }
 
+  /**
+   * 同步导出参数配置 xlsx。
+   *
+   * @param request  导出筛选条件
+   * @param response 文件流
+   */
   @Operation(summary = "导出参数")
   @IgnoreLogger(type = IgnoreLogger.Type.RESULT)
   @SaCheckPermission("system:config:export")
@@ -108,6 +164,11 @@ public class SysConfigController {
     ExcelUtils.exportExcel(export, "参数配置", SysConfigVo.class, response);
   }
 
+  /**
+   * 下载参数导入 Excel 模板。
+   *
+   * @param response 文件流
+   */
   @Operation(summary = "导入模板")
   @IgnoreLogger(type = IgnoreLogger.Type.RESULT)
   @SaCheckPermission("system:config:import")
@@ -117,6 +178,13 @@ public class SysConfigController {
       SysConfigImportRow.class, false, true, response);
   }
 
+  /**
+   * 同步导入参数；可选更新已存在 configKey。
+   *
+   * @param file          Excel 文件
+   * @param updateSupport 是否更新已存在数据（true/1）
+   * @return 导入统计与失败行
+   */
   @Operation(summary = "导入参数")
   @SaCheckPermission("system:config:import")
   @PostMapping("/import")

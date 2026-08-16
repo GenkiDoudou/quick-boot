@@ -1,3 +1,6 @@
+/**
+ * 知识库基础 API：知识库 CRUD 与状态管理（/knowledge/base）。
+ */
 import request from '@/utils/request'
 
 /**

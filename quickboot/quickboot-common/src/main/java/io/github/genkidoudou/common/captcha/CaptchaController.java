@@ -59,6 +59,7 @@ public class CaptchaController {
     return response;
   }
 
+  /** 校验请求体：验证码实例 id + 前端采集的轨迹数据。 */
   @lombok.Data
   public static class Data {
     private String id;

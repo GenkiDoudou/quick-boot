@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+/** C7Preview 组件 E2E 联调页：覆盖多图/视频/文件预览与 onPreview 拦截。 */
 import {ref} from 'vue'
 
 const log = ref('')

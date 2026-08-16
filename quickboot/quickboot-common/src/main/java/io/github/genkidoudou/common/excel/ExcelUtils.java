@@ -36,19 +36,36 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * excel 导出工具类
- *
- * @author luyanan
- * @since 2026/8/2
+ * Excel 导入导出工具：封装 EasyExcel 读写、字典/大数转换、模板填充与 HTTP 下载响应头。
  */
 @UtilityClass
 public class ExcelUtils {
 
   /*******************导出******************************/
+
+  /**
+   * 导出 Excel 到 HTTP 响应（无合并、无模板约束）。
+   *
+   * @param list      数据行
+   * @param sheetName sheet 名兼下载文件名前缀
+   * @param clazz     行模型
+   * @param response  HTTP 响应
+   * @param <T>       行类型
+   */
   public static <T> void exportExcel(List<T> list, String sheetName, Class<T> clazz, HttpServletResponse response) {
     exportExcel(list, sheetName, clazz, false, false, response);
   }
 
+  /**
+   * 导出 Excel，可选启用 {@link CellMergeStrategy} 单元格合并。
+   *
+   * @param list      数据行
+   * @param sheetName sheet 名
+   * @param clazz     行模型
+   * @param merge     是否合并
+   * @param response  HTTP 响应
+   * @param <T>       行类型
+   */
   public static <T> void exportExcel(List<T> list,
                                      String sheetName,
                                      Class<T> clazz,
@@ -92,6 +109,14 @@ public class ExcelUtils {
     }
   }
 
+  /**
+   * 按 classpath 模板填充数据并导出；数据为空时抛出 {@link ExcelException}。
+   *
+   * @param data         填充数据（至少一条）
+   * @param filename     下载文件名前缀
+   * @param templatePath classpath 模板路径
+   * @param response     HTTP 响应
+   */
   public static void exportTemplate(List<Object> data,
                                     String filename,
                                     String templatePath,
@@ -128,11 +153,24 @@ public class ExcelUtils {
     response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8");
   }
 
+  /**
+   * 生成带 {@code .xlsx} 后缀的安全文件名。
+   *
+   * @param filename 文件名前缀，空白时默认为 {@code export}
+   * @return 完整文件名
+   */
   public static String encodingFilename(String filename) {
     String safeName = StringUtils.defaultIfBlank(filename, "export");
     return safeName + ".xlsx";
   }
 
+  /**
+   * 设置附件下载响应头（含 CORS 暴露头 {@code download-filename}）。
+   *
+   * @param response    HTTP 响应
+   * @param realFileName 原始文件名
+   * @throws UnsupportedEncodingException URL 编码失败
+   */
   public static void setAttachmentResponseHeader(HttpServletResponse response, String realFileName) throws UnsupportedEncodingException {
     String percentEncodedFileName = percentEncode(realFileName);
 
@@ -148,6 +186,13 @@ public class ExcelUtils {
     response.setHeader("download-filename", percentEncodedFileName);
   }
 
+  /**
+   * RFC 5987 风格百分号编码（空格编码为 {@code %20}）。
+   *
+   * @param s 待编码字符串
+   * @return 编码结果
+   * @throws UnsupportedEncodingException 编码失败
+   */
   public static String percentEncode(String s) throws UnsupportedEncodingException {
     String encode = URLEncoder.encode(s, StandardCharsets.UTF_8);
     return encode.replaceAll("\\+", "%20");
@@ -181,6 +226,18 @@ public class ExcelUtils {
 
 
 
+  /**
+   * 监听器模式导入：支持校验、分批回调与行/批消费。
+   *
+   * @param is           输入流
+   * @param clazz        行模型
+   * @param isValidate   是否 Bean Validation 校验
+   * @param batchSize    批大小，{@code null} 表示不分批
+   * @param lineConsumer 行级回调，可为 {@code null}
+   * @param listConsumer 批级回调，可为 {@code null}
+   * @param <T>          行类型
+   * @return 导入统计与错误明细
+   */
   public static <T> ExcelResult<T> importExcel(InputStream is,
                                                Class<T> clazz,
                                                boolean isValidate,
@@ -204,6 +261,16 @@ public class ExcelUtils {
     });
   }
 
+  /**
+   * 监听器模式导入（默认开启校验、不分批）。
+   *
+   * @param is           输入流
+   * @param clazz        行模型
+   * @param lineConsumer 行级回调
+   * @param listConsumer 批级回调
+   * @param <T>          行类型
+   * @return 导入统计与错误明细
+   */
   public static <T> ExcelResult<T> importExcel(InputStream is,
                                                Class<T> clazz,
                                                BiConsumer<T, AnalysisContext> lineConsumer,
@@ -211,6 +278,15 @@ public class ExcelUtils {
     return importExcel(is, clazz, true, null, lineConsumer, listConsumer);
   }
 
+  /**
+   * 使用自定义 {@link ExcelListener} 导入；读取完成后返回监听器内的结果对象。
+   *
+   * @param is       输入流
+   * @param clazz    行模型
+   * @param listener 监听器
+   * @param <T>      行类型
+   * @return 监听器累积的导入结果
+   */
   public static <T> ExcelResult<T> importExcel(InputStream is, Class<T> clazz, ExcelListener<T> listener) {
     registerConverters(EasyExcel.read(is, clazz, listener)).sheet().doRead();
     return listener.getExcelResult();

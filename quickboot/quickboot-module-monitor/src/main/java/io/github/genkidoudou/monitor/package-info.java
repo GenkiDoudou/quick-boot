@@ -3,6 +3,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
   displayName = "monitor",
-  allowedDependencies = {"system :: api"}
+  allowedDependencies = {"system :: api", "quartz :: api"}
 )
 package io.github.genkidoudou.monitor;

@@ -1,3 +1,6 @@
+/**
+ * 全局消息/弹窗插件（$modal）：封装 ElMessage、ElMessageBox、ElNotification、ElLoading 常用操作。
+ */
 import { ElMessage, ElMessageBox, ElNotification, ElLoading } from 'element-plus'
 
 let loadingInstance;

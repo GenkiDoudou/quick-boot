@@ -1,3 +1,6 @@
+/**
+ * AI 应用 API：应用 CRUD、嵌入对话 SSE、访客标识与 OAuth Client 鉴权（/ai/app）。
+ */
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'

@@ -1,3 +1,7 @@
+/**
+ * OAuth2 客户端管理 API。
+ * 封装 `/sys/oauthclient` 分页、CRUD 及 Excel 导入导出；详情含 clientSecret。
+ */
 import request from '@/utils/request'
 
 /**

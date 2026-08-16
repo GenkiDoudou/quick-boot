@@ -25,6 +25,9 @@
 </template>
 
 <script setup>
+/**
+ * 顶部导航（navType=3）：全量路由横向菜单，超出宽度收入「更多菜单」。
+ */
 import SidebarItem from '../Sidebar/SidebarItem.vue'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'

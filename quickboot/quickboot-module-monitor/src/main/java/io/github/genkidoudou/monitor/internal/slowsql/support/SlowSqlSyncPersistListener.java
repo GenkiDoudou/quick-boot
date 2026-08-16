@@ -16,6 +16,11 @@ public class SlowSqlSyncPersistListener {
 
     private final SlowSqlPersistSupport persistSupport;
 
+    /**
+     * 同步监听慢 SQL 采集事件并落库。
+     *
+     * @param event 慢 SQL 采集事件
+     */
     @EventListener
     public void onSlowSqlCaptured(SlowSqlCapturedEvent event) {
         persistSupport.persist(event);

@@ -23,6 +23,9 @@ public class ExcelDictConvert implements Converter<String> {
     return String.class;
   }
 
+  /**
+   * 导入：带 {@link ExcelDictFormat} 的字段 label→value，否则原样返回。
+   */
   @Override
   public String convertToJavaData(ReadCellData<?> cellData,
                                   ExcelContentProperty contentProperty,
@@ -35,6 +38,9 @@ public class ExcelDictConvert implements Converter<String> {
     return DictConvertEngine.toValues(raw, format, fieldName(contentProperty));
   }
 
+  /**
+   * 导出：带 {@link ExcelDictFormat} 的字段 value→label，否则原样写入。
+   */
   @Override
   public WriteCellData<?> convertToExcelData(String value,
                                              ExcelContentProperty contentProperty,

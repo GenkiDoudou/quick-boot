@@ -18,6 +18,7 @@
 </template>
 
 <script setup>
+/** 侧栏顶部 Logo 与应用标题，折叠时仅显示图标/短标题 */
 import variables from '@/assets/styles/variables.module.scss'
 import useSettingsStore from '@/store/modules/settings'
 import { appConfig } from '@/config/env'

@@ -15,12 +15,15 @@ import java.sql.Connection;
 import java.util.Properties;
 
 /**
- * Quartz JDBC 调度配置：MySQL 开启集群；H2（本地 dev）关闭集群以免锁/校验异常。
+ * Quartz JDBC 调度配置：生产 MySQL 开启集群；本地 H2 / 回环嵌入式库关闭集群。
  */
 @Configuration
 @EnableScheduling
 public class ScheduleConfig {
 
+    /**
+     * 创建 JDBC JobStore 调度工厂；本地 H2/回环库关闭集群，远程 MySQL 开启集群。
+     */
     @Bean
     public SchedulerFactoryBean schedulerFactoryBean(
         DataSource dataSource,
@@ -52,6 +55,7 @@ public class ScheduleConfig {
         return factory;
     }
 
+    /** 暴露 Quartz {@link Scheduler} Bean 供业务层注册/暂停任务。 */
     @Bean
     public Scheduler scheduler(SchedulerFactoryBean schedulerFactoryBean) throws SchedulerException {
         return schedulerFactoryBean.getScheduler();
@@ -60,21 +64,27 @@ public class ScheduleConfig {
     private static final String JDBC_DELEGATE_STD = "org.quartz.impl.jdbcjobstore.StdJDBCDelegate";
 
     /**
-     * StdJDBCDelegate；H2 关闭集群，MySQL 等开启集群。
+     * StdJDBCDelegate；本地单机库关闭集群，远程 MySQL/MariaDB 开启集群。
      */
     private static void applyJobStoreDialect(Properties prop, DataSource dataSource) {
         prop.put("org.quartz.jobStore.driverDelegateClass", JDBC_DELEGATE_STD);
-        boolean clustered = !isH2(dataSource);
+        boolean clustered = !isLocalSingleNodeDb(dataSource);
         prop.put("org.quartz.jobStore.isClustered", Boolean.toString(clustered));
         if (clustered) {
             prop.put("org.quartz.jobStore.clusterCheckinInterval", "15000");
         }
     }
 
-    private static boolean isH2(DataSource dataSource) {
+    private static boolean isLocalSingleNodeDb(DataSource dataSource) {
         try (Connection connection = dataSource.getConnection()) {
             String url = connection.getMetaData().getURL();
-            return url != null && url.toLowerCase().contains("jdbc:h2:");
+            if (url == null) {
+                return false;
+            }
+            String lower = url.toLowerCase();
+            return lower.contains("jdbc:h2:")
+                || lower.contains("127.0.0.1")
+                || lower.contains("localhost");
         } catch (Exception ignored) {
             return false;
         }

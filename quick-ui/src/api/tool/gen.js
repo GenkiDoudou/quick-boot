@@ -1,3 +1,6 @@
+/**
+ * 代码生成 API：表元数据查询、配置编辑、预览与生成下载（/tool/gen）。
+ */
 import request from '@/utils/request'
 
 /** 代码生成配置列表 */

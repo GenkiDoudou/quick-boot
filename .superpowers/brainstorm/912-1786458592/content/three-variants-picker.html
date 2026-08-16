@@ -1,0 +1,91 @@
+<h2>请选择一套大屏视觉方案</h2>
+<p class="subtitle">三套指标相同（mock），布局与风格不同。也可直接打开 docs/demo 下对应 HTML 全屏预览。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#070d1a;padding:10px;color:#9fb3c8;font-size:10px;border-radius:4px;">
+        <div style="text-align:center;color:#38bdf8;margin-bottom:6px;letter-spacing:2px;">A · 青蓝科技三栏</div>
+        <div style="display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:4px;min-height:120px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:3px;padding:4px;">登录</div>
+            <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:3px;padding:4px;">访问</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="background:#132338;border:1px solid #2a5080;height:28px;border-radius:3px;text-align:center;line-height:28px;color:#7dd3fc;">KPI</div>
+            <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:3px;display:flex;align-items:center;justify-content:center;">趋势</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:3px;padding:4px;">慢SQL</div>
+            <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:3px;padding:4px;">任务</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 青蓝科技三栏</h3>
+      <p>现有方案升级：左中右分区，青蓝光效，适合宽屏投屏。</p>
+      <p class="subtitle">文件：system-monitor-dashboard-a.html</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0c0a09;padding:10px;color:#d6d3d1;font-size:10px;border-radius:4px;">
+        <div style="text-align:center;color:#f59e0b;margin-bottom:6px;letter-spacing:2px;">B · 琥珀指挥舱</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:4px;">
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+          <div style="background:#1c1410;border:1px solid #78350f;padding:6px;text-align:center;border-radius:2px;">KPI</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
+          <div style="background:#1c1410;height:70px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+          <div style="background:#1c1410;height:70px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+          <div style="background:#1c1410;height:70px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+          <div style="background:#1c1410;height:50px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+          <div style="background:#1c1410;height:50px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+          <div style="background:#1c1410;height:50px;border:1px solid #78350f;border-radius:2px;display:flex;align-items:center;justify-content:center;">模块</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 琥珀指挥舱</h3>
+      <p>顶栏 6 KPI + 下方六宫格模块墙，琥珀/警戒色，偏指挥调度。</p>
+      <p class="subtitle">文件：system-monitor-dashboard-b.html</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0a1210;padding:10px;color:#a7f3d0;font-size:10px;border-radius:4px;">
+        <div style="text-align:center;color:#34d399;margin-bottom:6px;letter-spacing:2px;">C · 翠绿环心</div>
+        <div style="display:grid;grid-template-columns:0.9fr 1.4fr 0.9fr;gap:4px;min-height:120px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1;background:#102018;border:1px solid #14532d;border-radius:3px;padding:4px;">用户</div>
+            <div style="flex:1;background:#102018;border:1px solid #14532d;border-radius:3px;padding:4px;">访问</div>
+            <div style="flex:1;background:#102018;border:1px solid #14532d;border-radius:3px;padding:4px;">任务</div>
+          </div>
+          <div style="background:#102018;border:1px solid #166534;border-radius:3px;display:flex;flex-direction:column;padding:6px;">
+            <div style="display:flex;gap:4px;margin-bottom:4px;">
+              <div style="flex:1;background:#0b1510;padding:4px;text-align:center;border-radius:2px;">请求</div>
+              <div style="flex:1;background:#0b1510;padding:4px;text-align:center;border-radius:2px;">错误</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,#14532d55,transparent);">主趋势大图</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1.4;background:#102018;border:1px solid #14532d;border-radius:3px;padding:4px;">慢SQL</div>
+            <div style="flex:1;background:#102018;border:1px solid #14532d;border-radius:3px;padding:4px;">列表</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · 翠绿环心</h3>
+      <p>中心放大趋势主视觉，两侧竖向堆叠模块，翠绿健康感。</p>
+      <p class="subtitle">文件：system-monitor-dashboard-c.html</p>
+    </div>
+  </div>
+</div>

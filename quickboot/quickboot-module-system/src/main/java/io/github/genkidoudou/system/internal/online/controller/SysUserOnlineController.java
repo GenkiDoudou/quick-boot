@@ -31,6 +31,12 @@ public class SysUserOnlineController {
 
     private final SysUserOnlineService onlineService;
 
+    /**
+     * 在线用户分页列表。
+     *
+     * @param query 用户名、IP 等筛选与分页参数
+     * @return 当前活跃会话分页
+     */
     @Operation(summary = "在线用户分页列表")
     @SaCheckPermission("monitor:online:list")
     @GetMapping("/list")
@@ -38,6 +44,12 @@ public class SysUserOnlineController {
         return R.ok(onlineService.page(query));
     }
 
+    /**
+     * 强退指定在线会话。
+     *
+     * @param req 待强退的 token 或会话标识
+     * @return 空；副作用为注销对应 Sa-Token 会话
+     */
     @Operation(summary = "强退在线会话")
     @SaCheckPermission("monitor:online:forceLogout")
     @PostMapping("/forceLogout")

@@ -18,6 +18,11 @@ public class SlowSqlPersistSupport {
     private final SysSlowSqlMapper slowSqlMapper;
     private final SlowSqlAssembler slowSqlAssembler;
 
+    /**
+     * 将采集事件组装为实体并插入 sys_slow_sql；失败仅记录日志。
+     *
+     * @param event 慢 SQL 采集事件
+     */
     public void persist(SlowSqlCapturedEvent event) {
         try {
             SysSlowSql row = slowSqlAssembler.assemble(event.getPayload());

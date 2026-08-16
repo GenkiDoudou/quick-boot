@@ -19,6 +19,7 @@ public class QuartzJobStorePostReconciler {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** 任务加载完成后二次对账，清理孤儿 CRON 触发器。 */
     @EventListener(ApplicationReadyEvent.class)
     @Order(Ordered.HIGHEST_PRECEDENCE + 15)
     public void reconcileAfterJobLoad() {

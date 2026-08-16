@@ -14,6 +14,9 @@ import io.github.genkidoudou.common.utils.ServletUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.experimental.UtilityClass;
 
+/**
+ * OAuth 客户端工具：读取当前请求客户端、生成 Basic 头、判断是否需验证码。
+ */
 @UtilityClass
 public class OauthClientUtils {
 
@@ -61,6 +64,11 @@ public class OauthClientUtils {
   }
 
 
+  /**
+   * 当前请求是否需校验验证码：全局开关开启且客户端 {@code checkCaptcha=1}。
+   *
+   * @return {@code true} 表示登录前需完成验证码
+   */
   public boolean isEnable() {
     CaptchaProperties captchaProperties = SpringUtil.getBean(CaptchaProperties.class);
     if (null == captchaProperties) {

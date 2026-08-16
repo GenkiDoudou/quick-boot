@@ -60,6 +60,9 @@
 </template>
 
 <script setup>
+/**
+ * 多页签 TagsView：已访问路由标签、右键菜单、快捷关闭/刷新/全屏。
+ */
 import ScrollPane from './ScrollPane.vue'
 import { getNormalPath } from '@/utils/ruoyi'
 import useTagsViewStore from '@/store/modules/tagsView'
@@ -149,6 +152,7 @@ function isLastView() {
   }
 }
 
+/** 从路由树提取 meta.affix 固定标签（如首页） */
 function filterAffixTags(routes, basePath = '') {
   let tags = []
   routes.forEach(route => {
@@ -181,6 +185,7 @@ function initTags() {
   }
 }
 
+/** 路由变化时登记 visited/cached/iframe 视图 */
 function addTags() {
   const { name } = route
   // 积木/外链菜单（meta.link）可无路由名称，须登记 iframe 否则主区域空白
@@ -256,6 +261,7 @@ function closeAllTags(view) {
   })
 }
 
+/** 关闭标签后若当前页被关，跳转到最后一个或首页 */
 function toLastView(visitedViews, view) {
   const latestView = visitedViews.slice(-1)[0]
   if (latestView) {

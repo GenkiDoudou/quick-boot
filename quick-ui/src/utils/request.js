@@ -1,3 +1,9 @@
+/**
+ * Axios 请求封装：统一 baseURL、Sa-Token 注入、OAuth Client Basic、重复提交防护、
+ * 401 重登提示、Blob 下载与 Lite RUM 请求观测。
+ *
+ * 导出：`service`（默认 axios 实例）、`download`（表单 POST 下载文件）。
+ */
 import axios, { AxiosHeaders } from 'axios'
 import {ElMessageBox, ElMessage, ElLoading} from 'element-plus'
 import {getToken, removeToken} from '@/utils/auth'
@@ -6,6 +12,7 @@ import {tansParams, blobValidate} from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import {saveAs} from 'file-saver'
 import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'
+import { clearSessionId } from '@/monitor/sessionContext'
 import { isMonitorEnabled } from '@/monitor/config'
 import {
     beginRequestObservation,
@@ -60,6 +67,7 @@ function handleUnauthorized(msg = '登录状态已过期，请重新登录') {
     if (!isShowReloginDialog) {
         isShowReloginDialog = true
         removeToken()
+        clearSessionId()
         ElMessageBox.close()
         ElMessageBox.confirm(msg, '系统提示', {
             confirmButtonText: '重新登录',

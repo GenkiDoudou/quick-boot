@@ -32,6 +32,9 @@
 </template>
 
 <script setup>
+/**
+ * 混合导航顶栏（navType=2）：一级菜单横向展示，选中后联动侧栏子菜单。
+ */
 import { isHttp } from '@/utils/validate'
 import {
   applyMixSidebar,
@@ -71,6 +74,7 @@ const activeMenu = computed(() => {
   return resolveMixTopPath(route)
 })
 
+/** 根据当前路由同步混合模式下侧栏显示的子菜单 */
 function syncSidebarByRoute() {
   if (!routers.value.length) {
     return
@@ -83,11 +87,13 @@ function syncSidebarByRoute() {
   })
 }
 
+/** 顶栏可见一级菜单数量（随窗口宽度自适应） */
 function setVisibleNumber() {
   const width = document.body.getBoundingClientRect().width / 3
   visibleNumber.value = Math.max(3, parseInt(width / 85, 10))
 }
 
+/** 选中顶栏一级菜单：有子菜单则展开侧栏，无子菜单则直接跳转并隐藏侧栏 */
 function handleSelect(key) {
   const matched = routers.value.find((item) => item.path === key)
   if (isHttp(key)) {

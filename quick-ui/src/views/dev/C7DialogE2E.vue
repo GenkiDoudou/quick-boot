@@ -80,6 +80,7 @@
 </template>
 
 <script setup>
+/** C7Dialog 组件 E2E 联调页：覆盖 dialog/drawer 模式、异步确定与双 v-model。 */
 import {ref} from 'vue'
 
 const openDialog = ref(false)

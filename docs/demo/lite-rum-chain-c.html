@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C · 双栏 FE | BE</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --line: #243044; --text: #e8eef7; --muted: #8b9bb4;
+      --fe: #3b82f6; --be: #8b5cf6; --bad: #ef4444; --ok: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px;
+    }
+    a.back { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+    .list {
+      border-bottom: 1px solid var(--line); background: var(--panel);
+      padding: 8px 12px; display: flex; gap: 8px; overflow-x: auto;
+    }
+    .chip {
+      border: 1px solid var(--line); padding: 6px 10px; border-radius: 4px; cursor: pointer;
+      font-size: 12px; white-space: nowrap;
+    }
+    .chip.active { border-color: var(--fe); background: rgba(59,130,246,.12); }
+    .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; }
+    .col { overflow: auto; border-right: 1px solid var(--line); }
+    .col:last-child { border-right: 0; }
+    .col-h {
+      position: sticky; top: 0; z-index: 1;
+      padding: 10px 14px; background: #152033; border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 600; letter-spacing: .06em;
+    }
+    .col-h.fe { color: var(--fe); }
+    .col-h.be { color: #c4b5fd; }
+    .block { padding: 14px; font-size: 12px; border-bottom: 1px solid var(--line); }
+    .kv { display: grid; grid-template-columns: 100px 1fr; gap: 6px; margin-bottom: 6px; }
+    .kv .k { color: var(--muted); }
+    pre {
+      margin: 8px 0 0; background: #0f1620; border: 1px solid var(--line);
+      padding: 10px; border-radius: 4px; white-space: pre-wrap; color: #cbd5e1;
+    }
+    .diff {
+      margin: 10px 14px; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+      font-size: 12px; background: var(--panel);
+    }
+    .barline { height: 10px; background: #0f1620; border-radius: 2px; margin-top: 6px; position: relative; }
+    .barline i { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+    .el-input__wrapper { background: #0f1620 !important; box-shadow: 0 0 0 1px var(--line) inset !important; }
+    .el-input__inner { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <span>方案 <b>C</b> · 双栏对照 Frontend | Backend</span>
+      <el-input v-model="traceId" size="small" placeholder="traceId" style="width:220px" class="mono"></el-input>
+      <el-button size="small" type="primary" @click="pick(traceId)">对齐</el-button>
+    </div>
+    <div class="list">
+      <div
+        v-for="t in traces"
+        :key="t.traceId"
+        class="chip"
+        :class="{ active: cur && cur.traceId === t.traceId }"
+        @click="cur = t; traceId = t.traceId"
+      >
+        <span class="mono">{{ t.traceId }}</span> · {{ t.api }}
+      </div>
+    </div>
+    <div class="diff" v-if="cur">
+      耗时对照：前端 <b>{{ cur.fe.durationMs }}ms</b>
+      vs 后端 <b>{{ cur.be.durationMs }}ms</b>
+      · 差 <b :style="{ color: deltaColor }">{{ delta }}ms</b>
+      （正值=前端更大，含网络/排队）
+      <div class="barline">
+        <i :style="{ left:0, width: fePct + '%', background:'var(--fe)' }"></i>
+        <i :style="{ left:0, width: bePct + '%', background:'var(--be)', opacity:.85, top:0 }"></i>
+      </div>
+    </div>
+    <div class="cols" v-if="cur">
+      <div class="col">
+        <div class="col-h fe">FRONTEND RUM</div>
+        <div class="block">
+          <div class="kv"><span class="k">action</span><span>{{ cur.fe.action }}</span></div>
+          <div class="kv"><span class="k">page</span><span>{{ cur.fromPage || '—' }} → {{ cur.page }}</span></div>
+          <div class="kv"><span class="k">operationId</span><span class="mono">{{ cur.operationId }}</span></div>
+          <div class="kv"><span class="k">sessionId</span><span class="mono">{{ cur.fe.sessionId }}</span></div>
+          <div class="kv"><span class="k">HTTP</span><span>{{ cur.fe.status }} · ok={{ cur.fe.ok }}</span></div>
+          <div class="kv"><span class="k">UA / IP</span><span>{{ cur.fe.browser }} · {{ cur.fe.clientIp }}</span></div>
+          <pre v-if="cur.fe.error">{{ cur.fe.error }}</pre>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-h be">BACKEND LOGS (same traceId)</div>
+        <div class="block">
+          <div class="kv"><span class="k">service</span><span>{{ cur.be.service }}</span></div>
+          <div class="kv"><span class="k">status</span><span>{{ cur.be.status }}</span></div>
+          <div class="kv"><span class="k">duration</span><span>{{ cur.be.durationMs }}ms</span></div>
+          <div class="kv"><span class="k">slowSql</span><span>{{ cur.be.slowSql || '—' }}</span></div>
+          <pre>{{ cur.be.log }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const TRACES = [
+      {
+        traceId: 'tr_9f2a1c',
+        operationId: 'op_7c21',
+        api: 'POST /api/order/create',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        fe: {
+          action: 'order.submit', sessionId: 'sess_aa11', durationMs: 760, status: 500, ok: false,
+          browser: 'Chrome/126', clientIp: '112.64.12.21',
+          error: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at OrderConfirm.vue:142",
+        },
+        be: {
+          service: 'order-service', status: 500, durationMs: 702,
+          slowSql: 'SELECT ... t_order (680ms)',
+          log: '[ERROR] traceId=tr_9f2a1c\\nNullPointerException at OrderService.create:88',
+        },
+      },
+      {
+        traceId: 'tr_3aa901',
+        operationId: 'op_7c30',
+        api: 'GET /api/order/page',
+        fromPage: '/dashboard',
+        page: '/orders',
+        fe: {
+          action: 'order.search', sessionId: 'sess_bb22', durationMs: 1205, status: 0, ok: false,
+          browser: 'Edge/126', clientIp: '36.110.8.2',
+          error: 'Network Error',
+        },
+        be: {
+          service: '—', status: '—', durationMs: 0, slowSql: '',
+          log: 'no access log for this traceId (client aborted / gateway timeout)',
+        },
+      },
+      {
+        traceId: 'tr_11bb02',
+        operationId: 'op_7c40',
+        api: 'PUT /api/user/profile',
+        fromPage: '/users',
+        page: '/users/detail',
+        fe: {
+          action: 'user.save', sessionId: 'sess_cc33', durationMs: 210, status: 200, ok: true,
+          browser: 'Chrome/126', clientIp: '101.80.3.9', error: '',
+        },
+        be: {
+          service: 'user-service', status: 200, durationMs: 168, slowSql: '',
+          log: '[INFO] traceId=tr_11bb02 PUT /api/user/profile 200 168ms',
+        },
+      },
+    ];
+    const { createApp, ref, computed } = Vue;
+    createApp({
+      setup() {
+        const traces = TRACES;
+        const cur = ref(TRACES[0]);
+        const traceId = ref(TRACES[0].traceId);
+        const maxMs = computed(() => Math.max(cur.value.fe.durationMs, cur.value.be.durationMs, 1));
+        const fePct = computed(() => cur.value.fe.durationMs / maxMs.value * 100);
+        const bePct = computed(() => cur.value.be.durationMs / maxMs.value * 100);
+        const delta = computed(() => cur.value.fe.durationMs - cur.value.be.durationMs);
+        const deltaColor = computed(() => (Math.abs(delta.value) > 200 ? '#f59e0b' : '#8b9bb4'));
+        function pick(id) {
+          const t = TRACES.find((x) => x.traceId === id);
+          if (t) cur.value = t;
+          else ElementPlus.ElMessage.error('未找到 traceId');
+        }
+        return { traces, cur, traceId, fePct, bePct, delta, deltaColor, pick };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

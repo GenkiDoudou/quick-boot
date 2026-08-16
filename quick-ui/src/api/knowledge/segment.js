@@ -1,5 +1,6 @@
 /**
- * 构建可选分段配置 JSON（未自定义时返回 null）。
+ * 知识库分段配置工具：构建 segmentConfig JSON（未自定义时返回 null）。
+ *
  * @param {boolean} customized 是否覆盖知识库默认
  * @param {Record<string, any>} form 分段表单
  * @returns {Record<string, any>|null}

@@ -14,6 +14,12 @@
 </template>
 
 <script setup>
+/**
+ * 侧栏折叠汉堡按钮：`isActive` 控制图标旋转态，点击触发 `toggleClick`。
+ *
+ * @prop {boolean} [isActive=false] 侧栏是否展开
+ * @emits toggleClick 点击切换侧栏
+ */
 defineProps({
   isActive: {
     type: Boolean,

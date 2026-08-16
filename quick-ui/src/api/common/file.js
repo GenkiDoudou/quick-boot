@@ -1,3 +1,6 @@
+/**
+ * 通用文件 API：上传分类配置、文件上传/下载/删除（/file）。
+ */
 import request from '@/utils/request'
 
 /**

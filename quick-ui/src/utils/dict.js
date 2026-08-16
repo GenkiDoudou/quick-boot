@@ -1,3 +1,9 @@
+/**
+ * 字典 composable 与展示辅助工具。
+ *
+ * useDict：按 dictType 拉取选项并写入 Pinia 缓存，返回响应式 ref 字典项。
+ * 样式辅助：LIST_CLASS_OPTIONS / isPlainDictStyle / resolveListClassTagType。
+ */
 import { ref, toRefs } from 'vue'
 import useDictStore from '@/store/modules/dict'
 import { getDicts } from '@/api/system/dict/data'
@@ -38,8 +44,11 @@ export function resolveListClassTagType(listClass) {
 }
 
 /**
- * 获取字典数据
- * @param args 字典类型列表
+ * 按字典类型批量加载选项（带 Pinia 缓存）。
+ *
+ * 首次请求 API 并 setDict；命中缓存则直接复用。返回 toRefs 对象，键为 dictType。
+ * @param {...string} args 字典类型编码列表，如 useDict('sys_normal_disable', 'sys_user_sex')
+ * @returns {Record<string, import('vue').Ref<Array<{ label: string, value: string, elTagType?: string, elTagClass?: string }>>>}
  */
 export function useDict(...args) {
   const res = ref({})

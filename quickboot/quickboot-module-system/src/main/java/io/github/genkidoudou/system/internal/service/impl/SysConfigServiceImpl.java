@@ -33,6 +33,9 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/**
+ * 系统参数实现：{@code getConfigValueByKey} 带缓存；内置参数（configType=1）键名与类型不可改、不可删。
+ */
 @Service
 @CacheConfig(cacheNames = "sys-config#3600")
 public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysConfig>
@@ -90,6 +93,9 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
     return entity.getConfigId();
   }
 
+  /**
+   * 系统内置参数（configType=1）仅允许改名称、键值与备注，键名与类型锁定。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public boolean update(SysConfigVo vo) {
@@ -142,6 +148,7 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
     }
   }
 
+  /** 按 configKey 缓存参数值，TTL 见 {@code sys-config#3600}。 */
   @Cacheable(key = "'key:'+#configKey")
   @Override
   public String getConfigValueByKey(String configKey) {
@@ -153,6 +160,9 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
     return row == null ? null : row.getConfigValue();
   }
 
+  /**
+   * 驱逐全部参数缓存；方法体为空，失效由 {@link CacheEvict} 完成。
+   */
   @CacheEvict(allEntries = true)
   @Override
   public void refreshCache() {

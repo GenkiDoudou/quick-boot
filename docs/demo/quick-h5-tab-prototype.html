@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quick H5 · Tab 原型（首页 / 工作台菜单 / 我的）</title>
+  <style>
+    :root {
+      --green: #059669;
+      --green-dark: #064e3b;
+      --green-soft: #ecfdf5;
+      --bg: #f3f5f7;
+      --card: #fff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --danger: #dc2626;
+      --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+      --radius: 14px;
+      --tab-h: 56px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 14px 40px;
+      background: #e8eef2;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+    }
+    .doc {
+      width: min(920px, 100%);
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      line-height: 1.55;
+      color: #374151;
+    }
+    .doc h1 { font-size: 17px; margin-bottom: 6px; color: var(--text); }
+    .doc code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    .doc ul { margin: 6px 0 0 18px; }
+    .doc li { margin: 3px 0; }
+
+    .stage {
+      display: flex; flex-wrap: wrap; gap: 18px;
+      justify-content: center; align-items: flex-start; width: 100%;
+    }
+    .phone {
+      width: 375px; height: 780px; background: #111;
+      border-radius: 36px; padding: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    }
+    .phone-inner {
+      height: 100%; background: var(--bg); border-radius: 28px;
+      overflow: hidden; display: flex; flex-direction: column; position: relative;
+    }
+    .notch {
+      height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .notch span { width: 96px; height: 8px; border-radius: 999px; background: #d1d5db; }
+    .nav {
+      height: 44px; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 16px; background: #fff;
+      border-bottom: 1px solid var(--line); flex-shrink: 0;
+    }
+    .scroll {
+      flex: 1; overflow-y: auto;
+      padding: 12px 14px calc(var(--tab-h) + 18px);
+      -webkit-overflow-scrolling: touch;
+    }
+    .tabbar {
+      position: absolute; left: 0; right: 0; bottom: 0; height: var(--tab-h);
+      background: rgba(255,255,255,.96); border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: repeat(3, 1fr); z-index: 10;
+    }
+    .tab {
+      border: 0; background: transparent; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      color: var(--muted); font-size: 11px; cursor: pointer;
+    }
+    .tab.active { color: var(--green); font-weight: 600; }
+    .tab .ico {
+      width: 22px; height: 22px; border-radius: 6px; background: #e5e7eb; position: relative;
+    }
+    .tab.active .ico { background: var(--green); }
+    .tab .ico::after {
+      content: ""; position: absolute; inset: 5px;
+      border: 1.5px solid #fff; border-radius: 3px; opacity: .85;
+    }
+    .badge {
+      position: absolute; top: -4px; right: -6px;
+      min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px;
+      background: #ef4444; color: #fff; font-size: 9px; line-height: 14px; text-align: center;
+    }
+    .tab-wrap { position: relative; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .hero {
+      background: linear-gradient(135deg, var(--green-dark), var(--green) 70%, #34d399);
+      color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+      box-shadow: 0 10px 24px rgba(5,150,105,.22);
+    }
+    .hero .hi { font-size: 12px; opacity: .85; }
+    .hero .name { font-size: 20px; font-weight: 700; margin-top: 4px; }
+
+    .card {
+      background: var(--card); border-radius: var(--radius); padding: 14px;
+      margin-bottom: 12px; box-shadow: var(--shadow);
+    }
+    .card h3 {
+      font-size: 14px; margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .card h3 .more { font-size: 12px; color: var(--green); font-weight: 500; }
+
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; }
+    .grid-item {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-size: 11px; color: #374151; position: relative;
+    }
+    .gico {
+      width: 44px; height: 44px; border-radius: 12px; background: var(--green-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--green); font-weight: 700;
+    }
+    .gico.blue { background: #dbeafe; color: #1d4ed8; }
+    .gico.amber { background: #fef3c7; color: #b45309; }
+    .gico.rose { background: #ffe4e6; color: #e11d48; }
+    .dot-num {
+      position: absolute; top: -2px; right: 8px;
+      min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+      background: #ef4444; color: #fff; font-size: 10px; line-height: 16px; text-align: center;
+    }
+
+    .msg {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px;
+    }
+    .msg:last-child { border-bottom: 0; padding-bottom: 0; }
+    .msg:first-of-type { padding-top: 0; }
+    .msg.unread .msg-body { font-weight: 600; }
+    .tag {
+      flex-shrink: 0; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+      background: #dbeafe; color: #1d4ed8;
+    }
+    .tag.sys { background: #ecfdf5; color: #047857; }
+    .tag.warn { background: #fef3c7; color: #b45309; }
+    .msg-meta { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    .todo {
+      display: flex; gap: 10px; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px;
+    }
+    .todo:last-child { border-bottom: 0; }
+    .check {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1.5px solid #d1d5db; flex-shrink: 0;
+    }
+    .todo.done .check { background: var(--green); border-color: var(--green); }
+    .todo.done .todo-t { color: var(--muted); text-decoration: line-through; }
+    .prio {
+      margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap;
+    }
+    .prio.high { color: #dc2626; }
+
+    .work-tip {
+      font-size: 12px; color: var(--muted); line-height: 1.45;
+      padding: 10px 12px; margin-bottom: 12px; border-radius: 10px;
+      background: #fff; border: 1px dashed #a7f3d0;
+    }
+    .sec {
+      font-size: 12px; color: var(--muted); margin: 4px 0 10px; font-weight: 500;
+    }
+
+    .profile {
+      display: flex; gap: 12px; align-items: center; margin-bottom: 12px;
+      padding: 16px; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--green-dark), var(--green));
+      color: #fff; box-shadow: 0 10px 24px rgba(5,150,105,.22);
+    }
+    .avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px;
+    }
+    .profile .nm { font-size: 18px; font-weight: 700; }
+    .profile .un { font-size: 12px; opacity: .85; margin-top: 2px; }
+
+    .cell {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 4px; border-bottom: 1px solid #f1f5f9; font-size: 14px;
+    }
+    .cell:last-child { border-bottom: 0; }
+    .cell .l { display: flex; align-items: center; gap: 10px; }
+    .cell .ico-s {
+      width: 28px; height: 28px; border-radius: 8px; background: var(--green-soft);
+      color: var(--green); font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cell .r { color: #9ca3af; font-size: 12px; }
+    .btn-out {
+      width: 100%; margin-top: 14px; height: 44px; border-radius: 12px;
+      border: 1px solid #fecaca; background: #fff; color: var(--danger);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+
+    .legend {
+      width: 400px; max-width: 100%; background: #fff; border-radius: 12px;
+      padding: 14px 16px; box-shadow: var(--shadow);
+      font-size: 12px; color: #4b5563; line-height: 1.55;
+    }
+    .legend h2 { font-size: 14px; margin-bottom: 8px; color: var(--text); }
+    .legend h3 { font-size: 12px; margin: 10px 0 4px; color: var(--green-dark); }
+    .legend ul { padding-left: 16px; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <h1>Quick H5 · 按确认 IA 重设计</h1>
+    <ul>
+      <li><b>首页</b>：快捷入口 · 消息 · 今天待办</li>
+      <li><b>工作台</b>：后台可配置菜单（mock 示意管理端可改排序/显隐）</li>
+      <li><b>我的</b>：个人信息 · 联系我们 · 关于/清缓存 · 退出登录</li>
+    </ul>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="notch"><span></span></div>
+        <div class="nav" id="navTitle">首页</div>
+        <div class="scroll">
+
+          <!-- 首页 -->
+          <section class="panel active" data-panel="home">
+            <div class="hero">
+              <div class="hi">Quick Boot</div>
+              <div class="name">你好，管理员</div>
+            </div>
+
+            <div class="card">
+              <h3>快捷入口</h3>
+              <div class="grid">
+                <div class="grid-item"><div class="gico">审</div>待审批</div>
+                <div class="grid-item"><div class="gico blue">在</div>在线用户</div>
+                <div class="grid-item"><div class="gico amber">登</div>登录日志<span class="dot-num">2</span></div>
+                <div class="grid-item"><div class="gico rose">报</div>报表</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>消息 <span class="more">全部</span></h3>
+              <div class="msg unread">
+                <span class="tag warn">告警</span>
+                <span class="msg-body">慢 SQL：users 查询耗时 320ms</span>
+                <span class="msg-meta">10:12</span>
+              </div>
+              <div class="msg unread">
+                <span class="tag">流程</span>
+                <span class="msg-body">你有 1 条待审批</span>
+                <span class="msg-meta">09:40</span>
+              </div>
+              <div class="msg">
+                <span class="tag sys">系统</span>
+                <span class="msg-body">本周六 02:00 系统维护 30 分钟</span>
+                <span class="msg-meta">昨天</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>今天待办 <span class="more">3</span></h3>
+              <div class="todo">
+                <span class="check"></span>
+                <span class="todo-t">处理合同审批</span>
+                <span class="prio high">高</span>
+              </div>
+              <div class="todo">
+                <span class="check"></span>
+                <span class="todo-t">查看登录失败记录</span>
+                <span class="prio">中</span>
+              </div>
+              <div class="todo done">
+                <span class="check"></span>
+                <span class="todo-t">阅读系统公告</span>
+                <span class="prio">低</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 工作台：后台可配置菜单 -->
+          <section class="panel" data-panel="work">
+            <div class="work-tip">
+              工作台菜单由<strong>后台配置</strong>（排序 / 显隐 / 图标 / 跳转）。以下为 mock 配置结果，对应 quick-ui 能力入口。
+            </div>
+
+            <div class="card">
+              <h3>系统管理 <span class="more">可配置</span></h3>
+              <p class="sec">来自后台菜单分组</p>
+              <div class="grid">
+                <div class="grid-item"><div class="gico">用</div>用户</div>
+                <div class="grid-item"><div class="gico">部</div>部门</div>
+                <div class="grid-item"><div class="gico blue">角</div>角色</div>
+                <div class="grid-item"><div class="gico amber">典</div>字典</div>
+                <div class="grid-item"><div class="gico">参</div>参数</div>
+                <div class="grid-item"><div class="gico blue">客</div>客户端</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>系统监控 <span class="more">可配置</span></h3>
+              <div class="grid">
+                <div class="grid-item"><div class="gico">在</div>在线用户</div>
+                <div class="grid-item"><div class="gico amber">操</div>操作日志</div>
+                <div class="grid-item"><div class="gico blue">登</div>登录日志</div>
+                <div class="grid-item"><div class="gico">任</div>定时任务</div>
+                <div class="grid-item"><div class="gico rose">慢</div>慢 SQL</div>
+                <div class="grid-item"><div class="gico">埋</div>前端监控</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>数据可视化 <span class="more">可配置</span></h3>
+              <div class="grid">
+                <div class="grid-item"><div class="gico">报</div>报表</div>
+                <div class="grid-item"><div class="gico blue">BI</div>积木 BI</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 我的 -->
+          <section class="panel" data-panel="mine">
+            <div class="profile">
+              <div class="avatar">管</div>
+              <div>
+                <div class="nm">管理员</div>
+                <div class="un">@admin · ID 1</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="cell">
+                <span class="l"><span class="ico-s">人</span>个人信息</span>
+                <span class="r">查看 / 编辑 ›</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="cell">
+                <span class="l"><span class="ico-s">联</span>联系我们</span>
+                <span class="r">›</span>
+              </div>
+              <div class="cell">
+                <span class="l"><span class="ico-s">关</span>关于</span>
+                <span class="r">v1.0.0 ›</span>
+              </div>
+              <div class="cell">
+                <span class="l"><span class="ico-s">清</span>清除缓存</span>
+                <span class="r">12.4 MB ›</span>
+              </div>
+            </div>
+
+            <button class="btn-out" type="button">退出登录</button>
+          </section>
+        </div>
+
+        <nav class="tabbar">
+          <button class="tab active" type="button" data-tab="home">
+            <span class="tab-wrap"><span class="ico"></span></span>
+            首页
+          </button>
+          <button class="tab" type="button" data-tab="work">
+            <span class="tab-wrap"><span class="ico"></span></span>
+            工作台
+          </button>
+          <button class="tab" type="button" data-tab="mine">
+            <span class="tab-wrap">
+              <span class="ico"></span>
+              <span class="badge">3</span>
+            </span>
+            我的
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <aside class="legend">
+      <h2>本版结构（按你的要求）</h2>
+      <h3>首页</h3>
+      <ul>
+        <li>快捷入口（固定或后续也可配置）</li>
+        <li>消息列表（未读加粗）</li>
+        <li>今天待办（勾选态 / 优先级）</li>
+      </ul>
+      <h3>工作台</h3>
+      <ul>
+        <li>仅展示<strong>后台下发的菜单</strong></li>
+        <li>分组、排序、显隐由管理端配置</li>
+        <li>mock 用 quick-ui 能力举例</li>
+      </ul>
+      <h3>我的</h3>
+      <ul>
+        <li>个人信息</li>
+        <li>联系我们</li>
+        <li>关于 / 清缓存</li>
+        <li>退出登录</li>
+      </ul>
+      <p style="margin-top:10px;color:#9ca3af">落地时：工作台建议复用/扩展 sys_menu（或独立 H5 菜单表）+ 管理端配置页。</p>
+    </aside>
+  </div>
+
+  <script>
+    const titles = { home: '首页', work: '工作台', mine: '我的' };
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.panel');
+    const navTitle = document.getElementById('navTitle');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const key = tab.dataset.tab;
+        tabs.forEach((t) => t.classList.toggle('active', t === tab));
+        panels.forEach((p) => p.classList.toggle('active', p.dataset.panel === key));
+        navTitle.textContent = titles[key];
+      });
+    });
+  </script>
+</body>
+</html>

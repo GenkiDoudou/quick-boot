@@ -13,6 +13,9 @@
 </template>
 
 <script setup>
+/**
+ * 应用面包屑：根据当前路由 matched 链生成层级导航，首项补「首页」；末级或 noRedirect 项不可点击。
+ */
 const route = useRoute()
 const router = useRouter()
 const levelList = ref([])

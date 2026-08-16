@@ -1,3 +1,6 @@
+/**
+ * 知识库文档库 API：文件夹树、文档移动与库内检索（/knowledge/library）。
+ */
 import request from '@/utils/request'
 
 /** @returns {Promise<{ data: Array }>} 文档库目录树 */

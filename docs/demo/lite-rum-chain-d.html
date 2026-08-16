@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D · Issue → Chain</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --panel2: #182130; --line: #243044;
+      --text: #e8eef7; --muted: #8b9bb4; --bad: #ef4444; --accent: #3b82f6;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px;
+    }
+    a.back { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 380px 1fr; }
+    .left { border-right: 1px solid var(--line); overflow: auto; background: var(--panel); }
+    .issue {
+      padding: 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px;
+    }
+    .issue:hover, .issue.active { background: var(--panel2); }
+    .fp { font-family: ui-monospace, Consolas, monospace; color: #fca5a5; }
+    .msg { margin-top: 4px; }
+    .meta { margin-top: 4px; color: var(--muted); }
+    .right { overflow: auto; padding: 16px; }
+    .section { margin-bottom: 16px; }
+    .section h3 {
+      margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .06em;
+    }
+    pre {
+      margin: 0; background: #0f1620; border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px; font-size: 12px; white-space: pre-wrap; color: #fecaca;
+    }
+    .chain {
+      border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 12px; font-size: 12px;
+    }
+    .node {
+      padding: 8px 0; border-bottom: 1px dashed var(--line);
+      display: grid; grid-template-columns: 70px 1fr auto; gap: 8px;
+    }
+    .node:last-child { border-bottom: 0; }
+    .kind { color: var(--muted); }
+    .mono { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+    .el-input__wrapper { background: #0f1620 !important; box-shadow: 0 0 0 1px var(--line) inset !important; }
+    .el-input__inner { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <span>方案 <b>D</b> · Issue → Chain（从报错进入完整链路）</span>
+      <el-input v-model="q" size="small" placeholder="fingerprint / message / page" style="width:260px" clearable></el-input>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div
+          v-for="i in filtered"
+          :key="i.fingerprint"
+          class="issue"
+          :class="{ active: cur && cur.fingerprint === i.fingerprint }"
+          @click="cur = i"
+        >
+          <div class="fp">{{ i.fingerprint }}</div>
+          <div class="msg">{{ i.message }}</div>
+          <div class="meta">{{ i.page }} · 最近 {{ i.lastSeenAt }} · ×{{ i.count }}</div>
+        </div>
+      </div>
+      <div class="right" v-if="cur">
+        <div class="section">
+          <h3>STACK</h3>
+          <pre>{{ cur.stack }}</pre>
+        </div>
+        <div class="section">
+          <h3>CONTEXT</h3>
+          <div style="font-size:12px;color:var(--muted);line-height:1.8">
+            page {{ cur.page }} · uin {{ cur.uin }} · {{ cur.browser }} · {{ cur.clientIp }}
+            <br />operationId <span class="mono">{{ cur.operationId }}</span>
+            · sampleTrace <span class="mono">{{ cur.traceId }}</span>
+          </div>
+        </div>
+        <div class="section">
+          <h3>FULL CHAIN（该次错误所在操作）</h3>
+          <div class="chain">
+            <div v-for="(n, idx) in cur.chain" :key="idx" class="node">
+              <div class="kind">{{ n.kind }}</div>
+              <div>
+                <div>{{ n.title }}</div>
+                <div v-if="n.traceId" class="mono" style="margin-top:4px">{{ n.traceId }}</div>
+              </div>
+              <div style="color:var(--muted)">{{ n.ms != null ? n.ms + 'ms' : '' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="section" v-if="cur.beLog">
+          <h3>BACKEND (traceId={{ cur.traceId }})</h3>
+          <pre style="color:#c4b5fd">{{ cur.beLog }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const ISSUES = [
+      {
+        fingerprint: 'a1b2c3d4',
+        message: "TypeError: Cannot read properties of undefined (reading 'id')",
+        page: '/orders/confirm',
+        lastSeenAt: '20:48:22',
+        count: 128,
+        uin: 'u_8821',
+        browser: 'Chrome/126',
+        clientIp: '112.64.12.21',
+        operationId: 'op_7c21',
+        traceId: 'tr_9f2a1c',
+        stack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at renderOrder (OrderConfirm.vue:142)\\n    at Proxy._render",
+        chain: [
+          { kind: 'PAGE', title: '/cart → /orders/confirm' },
+          { kind: 'ACTION', title: 'order.submit' },
+          { kind: 'API', title: 'POST /api/order/create', traceId: 'tr_9f2a1c', ms: 760 },
+          { kind: 'ERROR', title: "TypeError reading 'id'" },
+        ],
+        beLog: '[ERROR] NullPointerException at OrderService.create:88\\nslow sql 680ms',
+      },
+      {
+        fingerprint: 'e5f6g7h8',
+        message: 'Unhandled Promise Rejection: Network Error',
+        page: '/orders',
+        lastSeenAt: '19:55:10',
+        count: 64,
+        uin: 'u_2201',
+        browser: 'Edge/126',
+        clientIp: '36.110.8.2',
+        operationId: 'op_7c30',
+        traceId: 'tr_3aa901',
+        stack: 'Unhandled Promise Rejection: Network Error\\n    at fetchOrders (order.ts:88)',
+        chain: [
+          { kind: 'PAGE', title: '/dashboard → /orders' },
+          { kind: 'ACTION', title: 'order.search' },
+          { kind: 'API', title: 'GET /api/order/page', traceId: 'tr_3aa901', ms: 1205 },
+          { kind: 'ERROR', title: 'Network Error' },
+        ],
+        beLog: 'no backend access log for traceId=tr_3aa901',
+      },
+    ];
+    const { createApp, ref, computed } = Vue;
+    createApp({
+      setup() {
+        const q = ref('');
+        const cur = ref(ISSUES[0]);
+        const filtered = computed(() => {
+          const s = q.value.trim().toLowerCase();
+          if (!s) return ISSUES;
+          return ISSUES.filter((i) =>
+            i.fingerprint.includes(s) || i.message.toLowerCase().includes(s) || i.page.includes(s)
+          );
+        });
+        return { q, cur, filtered };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

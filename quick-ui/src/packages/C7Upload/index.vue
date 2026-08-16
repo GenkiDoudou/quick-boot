@@ -26,6 +26,9 @@
           分类 <strong>{{ rule.classify }}</strong>：最多 {{ rule.limitCount }} 个文件，
           单文件不超过 {{ sizeHint }}，
           类型 {{ extHint }}
+          <template v-if="isCompressOn">
+            ；超过 {{ compressMinKb }}KB 的图片将在上传前压缩
+          </template>
         </div>
         <div v-else class="c7-upload__tip c7-upload__tip--warn">未找到分类「{{ classifyKey }}」的配置</div>
       </template>
@@ -38,11 +41,23 @@ import { computed, ref, useAttrs, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { formatFileSize, getFileClassify, limitExtToAccept, uploadCommonFile } from '@/api/common/file'
+import { maybeCompressImageFile } from '@/utils/compressImage'
 
 defineOptions({ name: 'C7Upload', inheritAttrs: false })
 
+/**
+ * C7 文件上传：基于 `ElUpload` 拖拽上传，按 `classify` 拉取分类规则（数量/大小/扩展名/压缩），
+ * 可选图片压缩后调用 `/file/upload`；`v-model:results` 绑定已成功上传的结果列表。
+ *
+ * @prop {string} classify 上传分类（必填，对应 sys_file_classify.classify）
+ * @prop {boolean} [autoUpload=true] 选文件后是否立即上传
+ * @emits update:results 上传成功或删除后更新结果列表（v-model:results）
+ * @emits success 单文件上传成功
+ * @emits error 上传或加载分类规则失败
+ * @emits change 文件列表或结果变更
+ */
 const props = defineProps({
-  /** 上传分类（必填，对应 qc.file.classifies[].classify） */
+  /** 上传分类（必填，对应 sys_file_classify.classify） */
   classify: { type: String, required: true },
   /** 选中文件后是否立即上传 */
   autoUpload: { type: Boolean, default: true },
@@ -80,6 +95,14 @@ const sizeHint = computed(() => {
 const extHint = computed(() => {
   const ext = rule.value?.limitExt
   return ext && String(ext).trim() !== '' ? ext : '内置默认白名单'
+})
+const isCompressOn = computed(() => {
+  const v = rule.value?.compressEnabled
+  return v === '1' || v === true || v === 1
+})
+const compressMinKb = computed(() => {
+  const n = Number(rule.value?.compressMinSizeKb)
+  return Number.isFinite(n) && n > 0 ? n : 200
 })
 
 async function loadRule(classify) {
@@ -158,7 +181,8 @@ function handleError(err) {
 async function handleHttpRequest(options) {
   const fn = props.uploadFn || uploadCommonFile
   try {
-    const res = await fn(options.file, classifyKey.value)
+    const file = await maybeCompressImageFile(options.file, rule.value || {})
+    const res = await fn(file, classifyKey.value)
     options.onSuccess(res)
   } catch (e) {
     options.onError(e)

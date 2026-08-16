@@ -62,7 +62,7 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
-    <!-- Flyway 10+ MySQL 支持模块（BOM 已管理版本）；H2 仍由 flyway-core 内置 -->
+    <!-- Flyway 10+ MySQL/MariaDB 支持模块（BOM 已管理版本） -->
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-mysql</artifactId>
@@ -72,15 +72,18 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
+    <!--
+      进程内嵌入式 MariaDB（mariadb4j）。
+      由 DevMariaDb4jConfiguration 启停；数据目录见 qc.dev.embedded-mariadb。
+    -->
     <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <scope>runtime</scope>
+      <groupId>ch.vorburger.mariaDB4j</groupId>
+      <artifactId>mariaDB4j</artifactId>
     </dependency>
-    <!-- Spring Boot 4：H2 Console 自动配置已拆到独立模块，仅有 h2 驱动不会注册 /h2-console -->
     <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-h2console</artifactId>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <scope>runtime</scope>
     </dependency>
     <!--
       进程内嵌入式 Redis 协议服务（Luban-RDS）。

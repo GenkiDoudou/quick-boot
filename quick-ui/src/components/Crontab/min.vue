@@ -33,6 +33,7 @@
     </el-form>
 </template>
 <script setup>
+/** Cron「分钟」字段配置面板：通过 @update 向父组件回写 min 段表达式。 */
 const emit = defineEmits(['update'])
 const props = defineProps({
     cron: {

@@ -37,17 +37,25 @@ public class SysRoleVo implements Serializable {
   @ExcelProperty(value = "角色ID", index = 0)
   private Long roleId;
 
+  /**
+   * 角色名称
+   */
   @NotBlank(message = "角色名称不能为空", groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty(value = "角色名称", index = 1)
   private String roleName;
 
+  /**
+   * 权限字符，唯一
+   */
   @NotBlank(message = "权限字符不能为空", groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty(value = "权限字符", index = 2)
   private String roleKey;
 
+  /** 显示顺序。 */
   @ExcelProperty(value = "显示顺序", index = 3)
   private Integer roleSort;
 
+  /** 数据范围(sys_role_data_scope)。 */
   @ExcelDictFormat(dictType = "sys_role_data_scope")
   @ExcelProperty(value = "数据范围", index = 4)
   private String dataScope;
@@ -60,9 +68,11 @@ public class SysRoleVo implements Serializable {
   @ExcelProperty(value = "状态", index = 5)
   private String status;
 
+  /** 备注。 */
   @ExcelProperty(value = "备注", index = 6)
   private String remark;
 
+  /** 创建时间。 */
   @ExcelProperty(value = "创建时间", index = 7)
   @com.alibaba.excel.annotation.format.DateTimeFormat(value = DatePattern.NORM_DATETIME_MINUTE_PATTERN)
   @JsonFormat(pattern = DatePattern.NORM_DATETIME_MINUTE_PATTERN)

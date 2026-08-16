@@ -1,0 +1,300 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^Qb(.*)": "@/components/qb/Qb$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/home/shortcuts",
+      "style": {
+        "navigationBarTitleText": "编辑快捷入口"
+      }
+    },
+    {
+      "path": "pages/workbench/workbench",
+      "style": {
+        "navigationBarTitleText": "工作台"
+      }
+    },
+    {
+      "path": "pages/mine/mine",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/mine/profile",
+      "style": {
+        "navigationBarTitleText": "个人信息"
+      }
+    },
+    {
+      "path": "pages/mine/contact",
+      "style": {
+        "navigationBarTitleText": "联系我们"
+      }
+    },
+    {
+      "path": "pages/mine/about",
+      "style": {
+        "navigationBarTitleText": "关于"
+      }
+    },
+    {
+      "path": "pages/system/user/index",
+      "style": {
+        "navigationBarTitleText": "用户管理",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/user/form",
+      "style": {
+        "navigationBarTitleText": "用户"
+      }
+    },
+    {
+      "path": "pages/system/role/index",
+      "style": {
+        "navigationBarTitleText": "角色管理",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/role/form",
+      "style": {
+        "navigationBarTitleText": "角色"
+      }
+    },
+    {
+      "path": "pages/system/dept/index",
+      "style": {
+        "navigationBarTitleText": "部门管理",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/system/dept/form",
+      "style": {
+        "navigationBarTitleText": "部门"
+      }
+    },
+    {
+      "path": "pages/system/config/index",
+      "style": {
+        "navigationBarTitleText": "参数设置",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/config/form",
+      "style": {
+        "navigationBarTitleText": "参数"
+      }
+    },
+    {
+      "path": "pages/system/dict/type/index",
+      "style": {
+        "navigationBarTitleText": "字典管理",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/dict/type/form",
+      "style": {
+        "navigationBarTitleText": "字典类型"
+      }
+    },
+    {
+      "path": "pages/system/dict/data/index",
+      "style": {
+        "navigationBarTitleText": "字典数据",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/dict/data/form",
+      "style": {
+        "navigationBarTitleText": "字典数据"
+      }
+    },
+    {
+      "path": "pages/system/oauthClient/index",
+      "style": {
+        "navigationBarTitleText": "客户端管理",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/oauthClient/form",
+      "style": {
+        "navigationBarTitleText": "客户端"
+      }
+    },
+    {
+      "path": "pages/system/fileClassify/index",
+      "style": {
+        "navigationBarTitleText": "文件分类",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/fileClassify/form",
+      "style": {
+        "navigationBarTitleText": "文件分类"
+      }
+    },
+    {
+      "path": "pages/system/file/index",
+      "style": {
+        "navigationBarTitleText": "文件管理",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/system/file/detail",
+      "style": {
+        "navigationBarTitleText": "文件详情"
+      }
+    },
+    {
+      "path": "pages/monitor/job/index",
+      "style": {
+        "navigationBarTitleText": "定时任务",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/job/form",
+      "style": {
+        "navigationBarTitleText": "任务详情"
+      }
+    },
+    {
+      "path": "pages/monitor/jobLog/index",
+      "style": {
+        "navigationBarTitleText": "调度日志",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/jobLog/detail",
+      "style": {
+        "navigationBarTitleText": "调度日志详情"
+      }
+    },
+    {
+      "path": "pages/monitor/logininfor/index",
+      "style": {
+        "navigationBarTitleText": "登录日志",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/logininfor/detail",
+      "style": {
+        "navigationBarTitleText": "登录日志详情"
+      }
+    },
+    {
+      "path": "pages/monitor/operlog/index",
+      "style": {
+        "navigationBarTitleText": "操作日志",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/operlog/detail",
+      "style": {
+        "navigationBarTitleText": "操作日志详情"
+      }
+    },
+    {
+      "path": "pages/monitor/online/index",
+      "style": {
+        "navigationBarTitleText": "在线用户",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/online/detail",
+      "style": {
+        "navigationBarTitleText": "在线用户详情"
+      }
+    },
+    {
+      "path": "pages/monitor/slowSql/index",
+      "style": {
+        "navigationBarTitleText": "慢SQL日志",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/monitor/slowSql/detail",
+      "style": {
+        "navigationBarTitleText": "慢SQL详情"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Quick H5",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f3f5f7"
+  },
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#059669",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/workbench/workbench",
+        "text": "工作台",
+        "iconPath": "static/tab/work.png",
+        "selectedIconPath": "static/tab/work-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "static/tab/mine.png",
+        "selectedIconPath": "static/tab/mine-active.png"
+      }
+    ]
+  }
+}

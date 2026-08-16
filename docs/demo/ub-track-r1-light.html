@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R1 用户行为轨迹 · 浅色三栏</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2563eb; --bg:#f3f4f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; }
+    .topbar a { color: var(--primary); text-decoration: none; font-size: 13px; }
+    .filters { background: #fff; border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .trail-wrap { background: #fff; border-bottom: 1px solid var(--line); padding: 14px 16px; }
+    .trail-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .trail { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+    .node {
+      flex: 0 0 auto; min-width: 150px; max-width: 200px; border: 2px solid var(--line); border-radius: 10px;
+      padding: 10px 12px; background: #fff; cursor: pointer; position: relative;
+    }
+    .node:hover { border-color: #93c5fd; }
+    .node.on { border-color: var(--primary); background: #eff6ff; }
+    .node .ord { width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+    .node .t { font-weight: 700; font-size: 14px; }
+    .node .p { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+    .node .cnt { font-size: 11px; color: var(--primary); margin-top: 6px; }
+    .arrow {
+      flex: 0 0 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--primary); font-weight: 700; font-size: 20px;
+    }
+    .arrow span { font-size: 10px; color: var(--muted); font-weight: 500; max-width: 48px; text-align: center; line-height: 1.2; }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px 1fr; }
+    .left, .right { overflow: auto; background: #fff; }
+    .left { border-right: 1px solid var(--line); padding: 14px; }
+    .right { padding: 14px 16px; background: #fafafa; }
+    .h { font-size: 13px; font-weight: 700; margin: 0 0 10px; }
+    .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .act {
+      border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+      cursor: pointer; background: #fff;
+    }
+    .act:hover, .act.on { border-color: var(--primary); background: #eff6ff; }
+    .act .name { font-weight: 650; font-size: 13px; }
+    .act .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #fef3c7; color: #b45309; margin-right: 6px; }
+    .badge.view { background: #e0e7ff; color: #3730a3; }
+    .wf-row { display: grid; grid-template-columns: minmax(120px, 40%) 1fr 56px; gap: 8px; align-items: center; padding: 6px 4px; font-size: 12px; border-radius: 4px; margin-bottom: 4px; }
+    .wf-row:hover { background: #f3f4f6; }
+    .track { height: 16px; background: #e5e7eb; border-radius: 3px; position: relative; }
+    .bar { position: absolute; top: 2px; height: 12px; border-radius: 2px; min-width: 3px; }
+    .bar.api { background: #8b5cf6; }
+    .bar.sql { background: #f59e0b; }
+    .bar.page { background: #06b6d4; }
+    .mono { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+    .ms { text-align: right; color: var(--muted); font-size: 11px; }
+    .sql { margin-top: 8px; padding: 8px; background: #111827; color: #e5e7eb; border-radius: 6px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow: auto; }
+    .empty { color: var(--muted); font-size: 13px; padding: 24px 8px; }
+    .kind { font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="./user-behavior-journey-picker.html">← 选型</a>
+    <strong>R1 · 浅色三栏</strong>
+    <span style="font-size:12px;color:#6b7280">先点轨迹上的页面 → 再点左侧操作 → 右侧看接口瀑布</span>
+  </div>
+  <div id="app" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="filters">
+      <el-input model-value="admin" size="small" style="width:140px" placeholder="用户"></el-input>
+      <el-input model-value="sess_demo_8f2a" size="small" style="width:180px" placeholder="sessionId"></el-input>
+      <el-button type="primary" size="small">查询</el-button>
+    </div>
+
+    <div class="trail-wrap">
+      <div class="trail-label">行为轨迹（点击页面节点）</div>
+      <div class="trail">
+        <template v-for="(pg, i) in pages" :key="pg.id">
+          <div class="node" :class="{ on: pageId === pg.id }" @click="selectPage(pg.id)">
+            <div class="ord">{{ i + 1 }}</div>
+            <div class="t">{{ pg.title }}</div>
+            <div class="p">{{ pg.path }}</div>
+            <div class="cnt">{{ pg.actions.length }} 个操作</div>
+          </div>
+          <div v-if="i < pages.length - 1" class="arrow">
+            →
+            <span>进入</span>
+          </div>
+        </template>
+      </div>
+      <div class="sub" style="margin:10px 0 0">路径摘要：{{ pathText }}</div>
+    </div>
+
+    <div class="body">
+      <div class="left">
+        <div class="h">本页操作 · {{ currentPage?.title || '—' }}</div>
+        <div class="sub mono">{{ currentPage?.path }}</div>
+        <div v-if="!currentPage?.actions?.length" class="empty">该页暂无显式操作（仅浏览）</div>
+        <div
+          v-for="a in currentPage?.actions || []"
+          :key="a.id"
+          class="act"
+          :class="{ on: actionId === a.id }"
+          @click="selectAction(a.id)"
+        >
+          <div class="name">
+            <span class="badge" :class="{ view: a.type === 'view' }">{{ a.typeLabel }}</span>
+            {{ a.name }}
+          </div>
+          <div class="meta">{{ a.time }} · 触发 {{ a.spans.filter(s => s.kind==='api').length }} 个接口</div>
+        </div>
+      </div>
+      <div class="right">
+        <template v-if="currentAction">
+          <div class="h">操作触发的链路（对齐请求链路瀑布）</div>
+          <div class="sub">「{{ currentAction.name }}」· {{ currentAction.time }} · mock traceId {{ currentAction.traceId }}</div>
+          <div class="kind" style="margin-bottom:8px">fe_api / service / sql</div>
+          <div v-for="(s, i) in currentAction.spans" :key="i" class="wf-row">
+            <div>
+              <div class="mono">{{ s.name }}</div>
+              <div class="kind">{{ s.kindLabel }}</div>
+            </div>
+            <div class="track">
+              <div class="bar" :class="s.kind" :style="{ left: s.start + '%', width: Math.max(s.width, 1.2) + '%' }"></div>
+            </div>
+            <div class="ms">{{ s.ms }}ms</div>
+          </div>
+          <div v-if="currentAction.sqlPreview" class="sql">{{ currentAction.sqlPreview }}</div>
+          <div style="margin-top:12px">
+            <el-button type="primary" size="small" link @click="tip">打开完整请求链路</el-button>
+          </div>
+        </template>
+        <div v-else class="empty">请选择左侧某个操作（如「点击新增按钮」）</div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue
+    const pages = [
+      {
+        id: 'p1', title: '工作台', path: '/home',
+        actions: [{ id: 'a0', type: 'view', typeLabel: '浏览', name: '停留浏览', time: '16:40:01', traceId: '—', spans: [], sqlPreview: '' }]
+      },
+      {
+        id: 'p2', title: '用户管理', path: '/system/user',
+        actions: [
+          {
+            id: 'a1', type: 'view', typeLabel: '列表', name: '加载用户列表', time: '16:40:18',
+            traceId: 'tr_list_01',
+            spans: [
+              { name: 'GET /system/user/list', kind: 'api', kindLabel: '接口', start: 0, width: 55, ms: 120 },
+              { name: 'SysUserMapper.selectPage', kind: 'sql', kindLabel: 'SQL', start: 8, width: 12, ms: 8 },
+              { name: 'SysUserRoleMapper.selectList', kind: 'sql', kindLabel: 'SQL', start: 18, width: 6, ms: 3 }
+            ],
+            sqlPreview: 'SELECT * FROM sys_user WHERE del_flag = 0 LIMIT 10'
+          },
+          {
+            id: 'a2', type: 'click', typeLabel: '点击', name: '点击「新增」按钮', time: '16:40:25',
+            traceId: 'tr_add_02',
+            spans: [
+              { name: 'GET /system/user/deptTree', kind: 'api', kindLabel: '接口', start: 0, width: 40, ms: 42 },
+              { name: 'GET /system/dict/data/type/sys_user_sex', kind: 'api', kindLabel: '接口', start: 5, width: 22, ms: 18 },
+              { name: 'SysDeptMapper.selectList', kind: 'sql', kindLabel: 'SQL', start: 6, width: 8, ms: 3 }
+            ],
+            sqlPreview: 'SELECT dept_id, parent_id, dept_name FROM sys_dept WHERE del_flag = 0'
+          },
+          {
+            id: 'a3', type: 'click', typeLabel: '点击', name: '点击「修改」按钮（张三）', time: '16:40:40',
+            traceId: 'tr_edit_03',
+            spans: [
+              { name: 'GET /system/user/1152', kind: 'api', kindLabel: '接口', start: 0, width: 48, ms: 56 },
+              { name: 'SysUserMapper.selectById', kind: 'sql', kindLabel: 'SQL', start: 4, width: 10, ms: 2 }
+            ],
+            sqlPreview: 'SELECT * FROM sys_user WHERE user_id = 1152'
+          },
+          {
+            id: 'a4', type: 'click', typeLabel: '点击', name: '点击「删除」按钮（试用账号）', time: '16:40:55',
+            traceId: 'tr_del_04',
+            spans: [
+              { name: 'DELETE /system/user/1201', kind: 'api', kindLabel: '接口', start: 0, width: 60, ms: 78 },
+              { name: 'SysUserMapper.updateDelFlag', kind: 'sql', kindLabel: 'SQL', start: 10, width: 14, ms: 4 }
+            ],
+            sqlPreview: 'UPDATE sys_user SET del_flag = 1 WHERE user_id = 1201'
+          }
+        ]
+      },
+      {
+        id: 'p3', title: '新建用户', path: '/system/user/form',
+        actions: [
+          {
+            id: 'a5', type: 'click', typeLabel: '点击', name: '点击「保存」按钮', time: '16:41:05',
+            traceId: 'tr_save_05',
+            spans: [
+              { name: 'POST /system/user', kind: 'api', kindLabel: '接口', start: 0, width: 70, ms: 86 },
+              { name: 'SysUserMapper.insert', kind: 'sql', kindLabel: 'SQL', start: 12, width: 10, ms: 5 },
+              { name: 'SysUserRoleMapper.insertBatch', kind: 'sql', kindLabel: 'SQL', start: 22, width: 8, ms: 2 }
+            ],
+            sqlPreview: "INSERT INTO sys_user (user_name, nick_name, ...) VALUES ('demo', ...)"
+          }
+        ]
+      }
+    ]
+    createApp({
+      setup() {
+        const pageId = ref('p2')
+        const actionId = ref('a2')
+        const currentPage = computed(() => pages.find((p) => p.id === pageId.value))
+        const currentAction = computed(() => (currentPage.value?.actions || []).find((a) => a.id === actionId.value))
+        const pathText = computed(() => pages.map((p) => p.path).join('  →  '))
+        function selectPage(id) {
+          pageId.value = id
+          const first = pages.find((p) => p.id === id)?.actions?.[0]
+          actionId.value = first ? first.id : ''
+        }
+        function selectAction(id) { actionId.value = id }
+        function tip() { ElementPlus.ElMessage.success('原型：跳转请求链路页') }
+        return { pages, pageId, actionId, currentPage, currentAction, pathText, selectPage, selectAction, tip }
+      }
+    }).use(ElementPlus).mount('#app')
+  </script>
+</body>
+</html>

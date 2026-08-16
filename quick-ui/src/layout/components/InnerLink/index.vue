@@ -10,6 +10,7 @@
 </template>
 
 <script setup>
+/** 内嵌 iframe 容器，高度随窗口 resize 自适应（扣除顶栏与 TagsView） */
 defineProps({
   iframeId: {
     type: String,

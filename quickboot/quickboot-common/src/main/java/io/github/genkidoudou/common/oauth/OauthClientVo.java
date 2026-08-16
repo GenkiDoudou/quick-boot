@@ -16,9 +16,10 @@ public class OauthClientVo {
 
   public static final String ATTR_KEY = "oauthClient";
 
-
+  /** OAuth 客户端 id。 */
   private String clientId;
 
+  /** OAuth 客户端密钥（明文，仅服务端校验使用）。 */
   private String clientSecret;
 
   /**
@@ -28,9 +29,7 @@ public class OauthClientVo {
 
 
   /**
-   * token有效时间
-   *
-   * @since 2026/8/1
+   * Access Token 有效时长（秒）。
    */
   private Long tokenTimeout;
 

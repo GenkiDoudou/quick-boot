@@ -105,6 +105,10 @@
 </template>
 
 <script setup>
+/**
+ * 系统用户管理：C7JsonTable 分页、增删改、状态开关、重置密码、Excel 导入导出。
+ * 表单内联分配角色；超管 userId=1 禁止改状态。
+ */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
@@ -154,6 +158,7 @@ const tableColumns = computed(() => [
   { prop: 'action', label: '操作', width: 180, fixed: 'right', columnType: 'slot', slotName: 'action' }
 ])
 
+/** 打开新增弹窗并重置表单 */
 function openAdd() {
   isAdd.value = true
   Object.assign(form, {
@@ -163,6 +168,7 @@ function openAdd() {
   formVisible.value = true
 }
 
+/** 拉取详情并打开编辑弹窗 */
 async function openEdit(row) {
   isAdd.value = false
   const res = await getUser(row.userId)
@@ -201,6 +207,7 @@ async function submitForm() {
   tableRef.value?.refreshData?.()
 }
 
+/** 列表内联切换状态；失败时刷新行以回滚 switch 展示 */
 function onStatusChange(row, status) {
   changeUserStatus({ userId: row.userId, status }).then(() => {
     ElMessage.success('状态已更新')

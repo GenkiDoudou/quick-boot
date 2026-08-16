@@ -29,8 +29,10 @@ public class SysOauthClient extends BaseEntity implements Serializable {
   /** 客户端业务标识（唯一，创建后不可改） */
   private String clientId;
 
+  /** 客户端密钥（加密或明文存储，依部署策略）。 */
   private String clientSecret;
 
+  /** 客户端展示名称。 */
   private String clientName;
 
   /**

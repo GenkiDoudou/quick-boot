@@ -1,1 +1,2 @@
 io.github.genkidoudou.web.config.DevLubanEmbeddedRedisConfiguration
+io.github.genkidoudou.web.config.DevMariaDb4jConfiguration

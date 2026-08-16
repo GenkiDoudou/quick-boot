@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiteRum CDN 接入示例</title>
+  <!-- 本地：/sdk/lite-rum.min.js；生产可换真实 CDN -->
+  <script src="/sdk/lite-rum.min.js"></script>
+</head>
+<body>
+  <h1>LiteRum CDN</h1>
+  <p>打开控制台查看实例；需后端 ingest 可达。</p>
+  <script>
+    const rum = new LiteRum({
+      id: 'web-admin',
+      uin: 'demo-user',
+      reportApiSpeed: true,
+      reportAssetSpeed: false,
+      spa: true,
+      hostUrl: '/dev-api/monitor/liteTrace/rum/ingest',
+      actionCapture: false
+    })
+    console.log('LiteRum ready', rum.config, LiteRum.SDK_VERSION)
+  </script>
+</body>
+</html>

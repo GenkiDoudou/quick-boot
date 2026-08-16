@@ -40,7 +40,7 @@ export function nextRequestTraceHeaders() {
  */
 export function shouldAttachRequestTrace(config) {
   const url = String(config.url || '')
-  if (url.includes('/monitor/clientTrack/report')) {
+  if (url.includes('/monitor/liteTrace/rum/ingest')) {
     return false
   }
   if (config.headers && config.headers['X-Skip-Request-Trace'] === '1') {

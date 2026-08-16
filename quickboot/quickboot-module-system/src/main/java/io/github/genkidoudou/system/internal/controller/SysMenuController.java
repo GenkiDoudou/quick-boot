@@ -2,12 +2,21 @@ package io.github.genkidoudou.system.internal.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.StrUtil;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
+import io.github.genkidoudou.common.security.utils.LoginUserUtils;
+import io.github.genkidoudou.common.security.vo.LoginUser;
 import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
+import io.github.genkidoudou.system.internal.service.ISysH5HomeShortcutService;
 import io.github.genkidoudou.system.internal.service.ISysMenuService;
+import io.github.genkidoudou.system.internal.service.ISysPermissionService;
+import io.github.genkidoudou.system.internal.vo.H5HomeShortcutSaveVo;
+import io.github.genkidoudou.system.internal.vo.H5WorkbenchGroupVo;
+import io.github.genkidoudou.system.internal.vo.H5WorkbenchItemVo;
 import io.github.genkidoudou.system.internal.vo.MenuSortVo;
 import io.github.genkidoudou.system.internal.vo.MenuTreeSelectVo;
 import io.github.genkidoudou.system.internal.vo.SysMenuImportRow;
@@ -41,6 +50,89 @@ import java.util.Map;
 public class SysMenuController {
 
   private final ISysMenuService menuService;
+
+  private final ISysPermissionService permissionService;
+
+  private final ISysH5HomeShortcutService h5HomeShortcutService;
+
+  /**
+   * quick-h5 工作台菜单：按当前用户角色返回分组与 /pages/ 入口。
+   * <p>仅需登录；不要求 system:menu:list。约定：C 节点 path 以 /pages/ 开头。</p>
+   *
+   * @return 工作台分组列表
+   */
+  @Operation(summary = "H5 工作台菜单")
+  @GetMapping("/h5Workbench")
+  public R<List<H5WorkbenchGroupVo>> h5Workbench() {
+    StpUtil.checkLogin();
+    String userId = currentUserId();
+    if (StrUtil.isBlank(userId)) {
+      return R.ok(List.of());
+    }
+    return R.ok(permissionService.buildH5Workbench(userId));
+  }
+
+  /**
+   * H5 首页最终快捷宫格（偏好或默认 ∩ 授权，最多 8）。
+   *
+   * @return 扁平入口列表
+   */
+  @Operation(summary = "H5 首页快捷")
+  @GetMapping("/h5HomeShortcuts")
+  public R<List<H5WorkbenchItemVo>> h5HomeShortcuts() {
+    StpUtil.checkLogin();
+    String userId = currentUserId();
+    if (StrUtil.isBlank(userId)) {
+      return R.ok(List.of());
+    }
+    return R.ok(h5HomeShortcutService.listFinalShortcuts(userId));
+  }
+
+  /**
+   * H5 首页快捷候选池（与工作台叶子同源）。
+   *
+   * @return 扁平入口列表
+   */
+  @Operation(summary = "H5 首页快捷候选")
+  @GetMapping("/h5HomeShortcutCandidates")
+  public R<List<H5WorkbenchItemVo>> h5HomeShortcutCandidates() {
+    StpUtil.checkLogin();
+    String userId = currentUserId();
+    if (StrUtil.isBlank(userId)) {
+      return R.ok(List.of());
+    }
+    return R.ok(h5HomeShortcutService.listCandidates(userId));
+  }
+
+  /**
+   * 保存 H5 首页快捷偏好（全量覆盖）。
+   * <p>{@code menuIds} 为空则清除偏好并恢复默认；禁止 PUT/DELETE。</p>
+   *
+   * @param body menuIds
+   * @return ok
+   */
+  @Operation(summary = "保存 H5 首页快捷")
+  @PostMapping("/h5HomeShortcuts/save")
+  public R<Void> saveH5HomeShortcuts(@RequestBody(required = false) H5HomeShortcutSaveVo body) {
+    StpUtil.checkLogin();
+    String userId = currentUserId();
+    if (StrUtil.isBlank(userId)) {
+      return R.ok();
+    }
+    List<String> menuIds = body == null || body.getMenuIds() == null
+      ? List.of()
+      : body.getMenuIds();
+    h5HomeShortcutService.saveShortcuts(userId, menuIds);
+    return R.ok();
+  }
+
+  /** 当前登录用户 id 字符串；未登录或无主体时返回 null。 */
+  private static String currentUserId() {
+    LoginUser loginUser = LoginUserUtils.getLoginUser();
+    return loginUser == null || loginUser.getUserId() == null
+      ? null
+      : String.valueOf(loginUser.getUserId());
+  }
 
   /**
    * 菜单树列表。

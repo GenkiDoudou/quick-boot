@@ -8,6 +8,9 @@
 </template>
 
 <script setup>
+/**
+ * 菜单表单项标签：文字 + 可选问号 tooltip 说明（对齐 RuoYi 菜单表单体验）。
+ */
 import { QuestionFilled } from '@element-plus/icons-vue'
 
 defineProps({

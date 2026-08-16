@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lite RUM · 开发排障（无统计大盘）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --bg: #f0f2f5; --side: #111827; --muted: #909399; --danger: #f56c6c; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: #303133;
+    }
+    #app { height: 100vh; }
+    .layout { display: flex; height: 100%; }
+    .side {
+      width: 220px; background: var(--side); color: #fff;
+      flex-shrink: 0; display: flex; flex-direction: column;
+    }
+    .brand { padding: 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .brand h1 { margin: 0; font-size: 15px; }
+    .brand p { margin: 8px 0 0; font-size: 12px; color: rgba(255,255,255,.55); line-height: 1.45; }
+    .menu-item {
+      padding: 12px 18px; cursor: pointer; font-size: 13px;
+      color: rgba(255,255,255,.75); border-left: 3px solid transparent;
+    }
+    .menu-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .menu-item.active {
+      background: rgba(64,158,255,.22); color: #fff; border-left-color: #409eff;
+    }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      background: #fff; border-bottom: 1px solid #ebeef5;
+      padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .banner {
+      background: #fdf6ec; color: #b88230; border: 1px solid #faecd8;
+      font-size: 12px; padding: 4px 10px; border-radius: 4px;
+    }
+    .content { padding: 16px; overflow: auto; flex: 1; }
+    .why {
+      background: #fff; border: 1px solid #ebeef5; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 12px; font-size: 13px; color: #606266; line-height: 1.65;
+    }
+    .why strong { color: #303133; }
+    .why code { background: #f4f4f5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+    .panel {
+      background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 14px; margin-top: 12px;
+    }
+    .panel:first-of-type { margin-top: 0; }
+    .panel-title {
+      font-size: 14px; font-weight: 600; margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .linkish { color: #409eff; cursor: pointer; }
+    .linkish:hover { text-decoration: underline; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .stack-pre {
+      background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px;
+      font-size: 12px; white-space: pre-wrap; word-break: break-all;
+      max-height: 200px; overflow: auto;
+    }
+    .timeline { border-left: 2px solid #dcdfe6; margin-left: 10px; padding-left: 16px; }
+    .tl-item { position: relative; margin-bottom: 14px; }
+    .tl-item::before {
+      content: ""; position: absolute; left: -21px; top: 6px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #409eff; border: 2px solid #fff; box-shadow: 0 0 0 1px #409eff;
+    }
+    .tl-item.fail::before { background: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+    .tl-item .meta { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .tl-item .body { background: #f5f7fa; border-radius: 6px; padding: 10px 12px; font-size: 13px; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .kv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; font-size: 13px; }
+    .kv .k { color: var(--muted); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px) {
+      .cols, .kv { grid-template-columns: 1fr; }
+    }
+    .search-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="layout">
+      <aside class="side">
+        <div class="brand">
+          <h1>开发排障</h1>
+          <p>无 PV / 健康分 / TOP 统计<br />只回答：错在哪、怎么复现、后端哪段</p>
+        </div>
+        <div class="menu-item" :class="{ active: menu === 'home' }" @click="go('home')">这套数据对开发有啥用</div>
+        <div class="menu-item" :class="{ active: menu === 'error' }" @click="go('error')">1. 查前端错误</div>
+        <div class="menu-item" :class="{ active: menu === 'operation' }" @click="go('operation')">2. 追一次操作</div>
+        <div class="menu-item" :class="{ active: menu === 'trace' }" @click="go('trace')">3. 对上后端日志</div>
+        <div class="menu-item" :class="{ active: menu === 'env' }" @click="go('env')">4. 看现场环境</div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <span class="banner">静态 Mock · 面向开发排障 · 不含统计大盘</span>
+          <el-tag v-if="q.operationId" size="small" type="warning" closable @close="q.operationId = ''">
+            op={{ q.operationId }}
+          </el-tag>
+          <el-tag v-if="q.traceId" size="small" type="success" closable @close="q.traceId = ''">
+            trace={{ q.traceId }}
+          </el-tag>
+        </div>
+
+        <div class="content">
+          <!-- 说明 -->
+          <div v-show="menu === 'home'">
+            <div class="why">
+              <strong>开发日常不是看大盘，而是接 bug / 线上反馈时要快速回答这几句：</strong>
+              <ol style="margin:8px 0 0;padding-left:18px">
+                <li>报错堆栈是什么？是不是同一个问题？（指纹）</li>
+                <li>用户当时在哪个页、从哪来、点了什么、调了哪些接口？</li>
+                <li>后端同一次请求日志 / 慢 SQL 在哪？（traceId）</li>
+                <li>是不是只有某浏览器 / 某 IP 网段才出？（UA、IP）</li>
+              </ol>
+            </div>
+            <div class="panel">
+              <div class="panel-title">字段 → 开发动作（无统计）</div>
+              <el-table :data="devUses" size="small">
+                <el-table-column prop="need" label="开发要干嘛" min-width="180"></el-table-column>
+                <el-table-column prop="fields" label="靠哪些字段" min-width="220"></el-table-column>
+                <el-table-column prop="ui" label="对应本页" width="120"></el-table-column>
+              </el-table>
+            </div>
+            <div class="panel">
+              <div class="panel-title">刻意不做（对开发性价比低）</div>
+              <p style="margin:0;font-size:13px;color:#606266;line-height:1.7">
+                PV/UV、健康分、成功率大盘、地区/运营商饼图、告警运营台——那些是运维/产品看趋势的；
+                开发排障优先要<strong>可检索的个案</strong>：错误、操作、trace、环境。
+              </p>
+            </div>
+          </div>
+
+          <!-- 查错误 -->
+          <div v-show="menu === 'error'">
+            <div class="why">
+              <strong>对开发的作用：</strong>拿到和本地类似的 <code>stack</code>，用 <code>fingerprint</code> 判断是否同一类问题；
+              再顺着 <code>operationId</code> / <code>traceId</code> 去追现场，而不是只看「错误率涨了」。
+            </div>
+            <div class="panel">
+              <div class="search-bar">
+                <el-input v-model="errorQ" clearable size="small" placeholder="搜 message / 页面 / 指纹" style="width:280px"></el-input>
+              </div>
+              <el-table :data="filteredIssues" size="small">
+                <el-table-column prop="fingerprint" label="指纹" width="110"></el-table-column>
+                <el-table-column prop="message" label="错误" min-width="220" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="page" label="页面" width="140"></el-table-column>
+                <el-table-column prop="lastSeenAt" label="最近一次" width="160"></el-table-column>
+                <el-table-column label="操作" width="80">
+                  <template #default="{ row }">
+                    <span class="linkish" @click="openIssue(row)">打开</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- 追操作 -->
+          <div v-show="menu === 'operation'">
+            <div class="why">
+              <strong>对开发的作用：</strong>复现「用户路径」——
+              <code>fromPage → page → action → api → error</code>。
+              比「某个接口失败了」多一层：知道是哪个按钮串起来的。
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <span>选择一次操作</span>
+                <el-select v-model="selectedOpId" size="small" style="width:300px">
+                  <el-option
+                    v-for="op in operations"
+                    :key="op.operationId"
+                    :label="op.action + ' @ ' + op.page + ' · ' + op.operationId"
+                    :value="op.operationId"
+                  ></el-option>
+                </el-select>
+              </div>
+              <template v-if="currentOp">
+                <div class="kv" style="margin-bottom:12px">
+                  <div><span class="k">操作 </span><strong>{{ currentOp.action }}</strong> {{ currentOp.actionLabel }}</div>
+                  <div><span class="k">结果 </span>
+                    <el-tag :type="currentOp.ok ? 'success' : 'danger'" size="small">{{ currentOp.ok ? '成功' : '失败' }}</el-tag>
+                  </div>
+                  <div><span class="k">路径 </span>{{ currentOp.fromPage || '—' }} → {{ currentOp.page }}</div>
+                  <div><span class="k">uin </span>{{ currentOp.uin }}</div>
+                </div>
+                <div class="timeline">
+                  <div v-for="(s, i) in currentOp.steps" :key="i" class="tl-item" :class="{ fail: s.ok === false }">
+                    <div class="meta">{{ s.ts }} · {{ s.kind }}</div>
+                    <div class="body">
+                      <div>{{ s.title }}</div>
+                      <div class="tag-row">
+                        <el-tag v-if="s.traceId" size="small" class="mono" style="cursor:pointer" @click="goTrace(s.traceId)">
+                          {{ s.traceId }}
+                        </el-tag>
+                        <el-tag v-if="s.durationMs != null" size="small">{{ s.durationMs }}ms</el-tag>
+                        <el-tag v-if="s.status != null" size="small" :type="s.ok === false ? 'danger' : 'info'">{{ s.status }}</el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 全链路 -->
+          <div v-show="menu === 'trace'">
+            <div class="why">
+              <strong>对开发的作用：</strong>前端测到的失败/变慢，用同一个 <code>traceId</code> 打开后端日志、异常、慢 SQL。
+              不用靠「大概那个时间点、大概那个 URL」人肉对。
+            </div>
+            <div class="panel">
+              <div class="search-bar">
+                <el-input v-model="q.traceId" size="small" placeholder="粘贴 traceId" style="width:260px" class="mono"></el-input>
+                <el-button size="small" type="primary" @click="goTrace(q.traceId)">打开</el-button>
+                <el-select v-model="q.traceId" size="small" style="width:280px" placeholder="或选示例">
+                  <el-option v-for="t in traces" :key="t.traceId" :label="t.traceId + ' · ' + t.api" :value="t.traceId"></el-option>
+                </el-select>
+              </div>
+              <template v-if="currentTrace">
+                <div class="kv" style="margin-bottom:12px">
+                  <div><span class="k">traceId </span><span class="mono">{{ currentTrace.traceId }}</span></div>
+                  <div><span class="k">operationId </span>
+                    <span class="linkish mono" @click="goOp(currentTrace.operationId)">{{ currentTrace.operationId }}</span>
+                  </div>
+                  <div><span class="k">接口 </span>{{ currentTrace.api }}</div>
+                  <div><span class="k">页面 </span>{{ currentTrace.fromPage || '—' }} → {{ currentTrace.page }}</div>
+                </div>
+                <div class="cols">
+                  <div class="panel" style="margin-top:0">
+                    <div class="panel-title">前端看到的</div>
+                    <div class="kv">
+                      <div><span class="k">耗时 </span>{{ currentTrace.fe.durationMs }} ms</div>
+                      <div><span class="k">HTTP </span>{{ currentTrace.fe.status }}</div>
+                      <div><span class="k">action </span>{{ currentTrace.fe.action }}</div>
+                      <div><span class="k">session </span><span class="mono">{{ currentTrace.fe.sessionId }}</span></div>
+                    </div>
+                  </div>
+                  <div class="panel" style="margin-top:0">
+                    <div class="panel-title">后端同 ID 日志</div>
+                    <div class="kv">
+                      <div><span class="k">耗时 </span>{{ currentTrace.be.durationMs }} ms</div>
+                      <div><span class="k">状态 </span>{{ currentTrace.be.status }}</div>
+                      <div><span class="k">服务 </span>{{ currentTrace.be.service }}</div>
+                      <div><span class="k">慢 SQL </span>{{ currentTrace.be.slowSql || '无' }}</div>
+                    </div>
+                    <pre class="stack-pre" style="margin-top:10px">{{ currentTrace.be.logSample }}</pre>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 环境 -->
+          <div v-show="menu === 'env'">
+            <div class="why">
+              <strong>对开发的作用：</strong>判断「是否环境相关」——只 Chrome？只某网段？分辨率/语言异常？
+              用于复现条件，不是做访客统计。
+            </div>
+            <div class="panel">
+              <el-table :data="sessions" size="small" @row-click="openSession">
+                <el-table-column prop="sessionId" label="session" width="120"></el-table-column>
+                <el-table-column prop="uin" label="uin" width="90"></el-table-column>
+                <el-table-column prop="browser" label="浏览器" width="110"></el-table-column>
+                <el-table-column prop="os" label="系统" width="100"></el-table-column>
+                <el-table-column prop="clientIp" label="IP" width="120"></el-table-column>
+                <el-table-column prop="lastPage" label="当时页面"></el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-drawer v-model="issueDrawer" title="错误详情（给开发看的）" size="480px">
+      <template v-if="currentIssue">
+        <p><strong>指纹</strong> <span class="mono">{{ currentIssue.fingerprint }}</span></p>
+        <p><strong>页面</strong> {{ currentIssue.page }}</p>
+        <pre class="stack-pre">{{ currentIssue.stack }}</pre>
+        <div class="panel-title" style="margin-top:12px">继续下钻</div>
+        <el-button size="small" @click="goOp(currentIssue.operationId)">追这次操作</el-button>
+        <el-button size="small" type="primary" @click="goTrace(currentIssue.traceId)">对后端日志</el-button>
+        <div class="panel-title" style="margin-top:16px">现场环境</div>
+        <div class="kv">
+          <div><span class="k">IP </span>{{ currentIssue.clientIp }}</div>
+          <div><span class="k">浏览器 </span>{{ currentIssue.browser }}</div>
+          <div style="grid-column:1/-1"><span class="k">UA </span><span class="mono">{{ currentIssue.ua }}</span></div>
+        </div>
+      </template>
+    </el-drawer>
+
+    <el-drawer v-model="sessionDrawer" title="现场环境" size="420px">
+      <template v-if="currentSession">
+        <div class="kv">
+          <div><span class="k">uin </span>{{ currentSession.uin }}</div>
+          <div><span class="k">IP </span>{{ currentSession.clientIp }}</div>
+          <div><span class="k">浏览器 </span>{{ currentSession.browser }}</div>
+          <div><span class="k">系统 </span>{{ currentSession.os }}</div>
+          <div><span class="k">视口 </span>{{ currentSession.viewport }}</div>
+          <div><span class="k">时区 </span>{{ currentSession.timezone }}</div>
+          <div style="grid-column:1/-1"><span class="k">UA </span><span class="mono">{{ currentSession.ua }}</span></div>
+        </div>
+        <div style="margin-top:14px">
+          <el-button size="small" @click="goOp(currentSession.operationId)">追操作</el-button>
+          <el-button size="small" type="primary" @click="goTrace(currentSession.traceId)">对后端</el-button>
+        </div>
+      </template>
+    </el-drawer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed } = Vue;
+
+    const ISSUES = [
+      {
+        fingerprint: 'a1b2c3d4',
+        message: "TypeError: Cannot read properties of undefined (reading 'id')",
+        page: '/orders/confirm',
+        lastSeenAt: '2026-08-14 20:48:22',
+        stack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at renderUser (OrderConfirm.vue:142)\\n    at Proxy._render",
+        operationId: 'op_1001',
+        traceId: 'tr_9001',
+        clientIp: '112.64.xx.21',
+        browser: 'Chrome 126',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0 Safari/537.36',
+      },
+      {
+        fingerprint: 'e5f6g7h8',
+        message: 'Unhandled Promise Rejection: Network Error',
+        page: '/orders',
+        lastSeenAt: '2026-08-14 19:55:10',
+        stack: 'Unhandled Promise Rejection: Network Error\\n    at fetchOrders (order.ts:88)',
+        operationId: 'op_1002',
+        traceId: 'tr_9002',
+        clientIp: '36.110.xx.8',
+        browser: 'Edge 126',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/126.0.0.0',
+      },
+    ];
+
+    const OPERATIONS = [
+      {
+        operationId: 'op_1001',
+        action: 'order.submit',
+        actionLabel: '提交订单',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        uin: 'u_8821',
+        ok: false,
+        steps: [
+          { ts: '20:47:01.010', kind: 'action', title: '点击提交 order.submit', ok: true },
+          { ts: '20:47:01.080', kind: 'api', title: 'POST /api/order/create', traceId: 'tr_9001', durationMs: 760, status: 500, ok: false },
+          { ts: '20:47:01.850', kind: 'error', title: "TypeError: reading 'id'", ok: false },
+        ],
+      },
+      {
+        operationId: 'op_1002',
+        action: 'order.search',
+        actionLabel: '查询订单',
+        fromPage: '/dashboard',
+        page: '/orders',
+        uin: 'u_2201',
+        ok: false,
+        steps: [
+          { ts: '19:54:40.100', kind: 'action', title: '点击查询 order.search', ok: true },
+          { ts: '19:54:40.160', kind: 'api', title: 'GET /api/order/page', traceId: 'tr_9002', durationMs: 1205, status: 0, ok: false },
+          { ts: '19:54:41.400', kind: 'error', title: 'Network Error', ok: false },
+        ],
+      },
+      {
+        operationId: 'op_1003',
+        action: 'user.save',
+        actionLabel: '保存用户',
+        fromPage: '/users',
+        page: '/users/detail',
+        uin: 'u_1001',
+        ok: true,
+        steps: [
+          { ts: '18:12:08.010', kind: 'action', title: '点击保存 user.save', ok: true },
+          { ts: '18:12:08.050', kind: 'api', title: 'PUT /api/user/profile', traceId: 'tr_9003', durationMs: 210, status: 200, ok: true },
+        ],
+      },
+    ];
+
+    const TRACES = [
+      {
+        traceId: 'tr_9001',
+        operationId: 'op_1001',
+        api: 'POST /api/order/create',
+        fromPage: '/cart',
+        page: '/orders/confirm',
+        fe: { durationMs: 760, status: 500, action: 'order.submit', sessionId: 'sess_aa11' },
+        be: {
+          durationMs: 702,
+          status: 500,
+          service: 'order-service',
+          slowSql: 'SELECT ... FROM t_order ... (680ms)',
+          logSample: '[ERROR] traceId=tr_9001\\nNullPointerException at OrderService.create:88',
+        },
+      },
+      {
+        traceId: 'tr_9002',
+        operationId: 'op_1002',
+        api: 'GET /api/order/page',
+        fromPage: '/dashboard',
+        page: '/orders',
+        fe: { durationMs: 1205, status: 0, action: 'order.search', sessionId: 'sess_bb22' },
+        be: {
+          durationMs: 0,
+          status: '-',
+          service: '未到达应用（超时/断网）',
+          slowSql: '',
+          logSample: 'no access log for traceId=tr_9002',
+        },
+      },
+      {
+        traceId: 'tr_9003',
+        operationId: 'op_1003',
+        api: 'PUT /api/user/profile',
+        fromPage: '/users',
+        page: '/users/detail',
+        fe: { durationMs: 210, status: 200, action: 'user.save', sessionId: 'sess_cc33' },
+        be: {
+          durationMs: 168,
+          status: 200,
+          service: 'user-service',
+          slowSql: '',
+          logSample: '[INFO] traceId=tr_9003 PUT /api/user/profile 200 168ms',
+        },
+      },
+    ];
+
+    const SESSIONS = [
+      {
+        sessionId: 'sess_aa11', uin: 'u_8821', browser: 'Chrome 126', os: 'Windows 10',
+        clientIp: '112.64.xx.21', lastPage: '/orders/confirm',
+        viewport: '1440×900', timezone: 'Asia/Shanghai',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0 Safari/537.36',
+        operationId: 'op_1001', traceId: 'tr_9001',
+      },
+      {
+        sessionId: 'sess_bb22', uin: 'u_2201', browser: 'Edge 126', os: 'Windows 10',
+        clientIp: '36.110.xx.8', lastPage: '/orders',
+        viewport: '1920×1080', timezone: 'Asia/Shanghai',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/126.0.0.0',
+        operationId: 'op_1002', traceId: 'tr_9002',
+      },
+    ];
+
+    createApp({
+      setup() {
+        const menu = ref('home');
+        const q = reactive({ operationId: '', traceId: 'tr_9001' });
+        const errorQ = ref('');
+        const selectedOpId = ref('op_1001');
+        const issueDrawer = ref(false);
+        const currentIssue = ref(null);
+        const sessionDrawer = ref(false);
+        const currentSession = ref(null);
+
+        const devUses = [
+          { need: '看线上真实堆栈，判断是否同一 bug', fields: 'error.message/stack/fingerprint + page', ui: '查前端错误' },
+          { need: '还原用户点了什么、调了哪些接口', fields: 'fromPage/page/action/operationId + api', ui: '追一次操作' },
+          { need: '前端失败对齐后端日志/慢 SQL', fields: 'traceId（请求头 + 双方日志）', ui: '对上后端日志' },
+          { need: '确认复现环境（浏览器/IP）', fields: 'ua + clientIp (+ uin/sessionId)', ui: '看现场环境' },
+        ];
+
+        const filteredIssues = computed(() => {
+          const s = errorQ.value.trim().toLowerCase();
+          if (!s) return ISSUES;
+          return ISSUES.filter((i) =>
+            i.message.toLowerCase().includes(s) ||
+            i.page.includes(s) ||
+            i.fingerprint.includes(s)
+          );
+        });
+
+        const currentOp = computed(() => OPERATIONS.find((o) => o.operationId === selectedOpId.value) || OPERATIONS[0]);
+        const currentTrace = computed(() => TRACES.find((t) => t.traceId === q.traceId) || null);
+
+        function go(m) { menu.value = m; }
+        function openIssue(row) { currentIssue.value = row; issueDrawer.value = true; }
+        function openSession(row) { currentSession.value = row; sessionDrawer.value = true; }
+        function goOp(id) {
+          if (id) { q.operationId = id; selectedOpId.value = id; }
+          menu.value = 'operation';
+          issueDrawer.value = false;
+          sessionDrawer.value = false;
+        }
+        function goTrace(id) {
+          if (id) q.traceId = id;
+          menu.value = 'trace';
+          issueDrawer.value = false;
+          sessionDrawer.value = false;
+        }
+
+        return {
+          menu, q, errorQ, selectedOpId, devUses,
+          filteredIssues, operations: OPERATIONS, currentOp,
+          traces: TRACES, currentTrace, sessions: SESSIONS,
+          issueDrawer, currentIssue, sessionDrawer, currentSession,
+          go, openIssue, openSession, goOp, goTrace,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

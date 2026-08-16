@@ -60,6 +60,9 @@ import {
   pageLogininfor, cleanLogininfor, unlockLogininfor, exportLogininfor
 } from '@/api/monitor/logininfor'
 
+/**
+ * 登录日志：分页查询、详情、清空、批量解锁、导出。
+ */
 defineOptions({ name: 'SysLogininfor' })
 
 const tableRef = ref(null)
@@ -105,6 +108,7 @@ function handleClean() {
     .catch(() => {})
 }
 
+/** 批量解锁选中行对应用户名的登录锁定 */
 function handleUnlock(selectedRows) {
   const names = [...new Set((selectedRows || []).map((r) => r.userName).filter(Boolean))]
   if (!names.length) {

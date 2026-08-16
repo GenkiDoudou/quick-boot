@@ -24,6 +24,10 @@ public class DynamicTtlRedisCacheManager extends RedisCacheManager {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * @param connectionFactory Redis 连接工厂
+     * @param objectMapper      缓存值 JSON 序列化所用 mapper（内部 clone，避免与 Web 共享实例互相影响）
+     */
     public DynamicTtlRedisCacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         super(
                 RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory),

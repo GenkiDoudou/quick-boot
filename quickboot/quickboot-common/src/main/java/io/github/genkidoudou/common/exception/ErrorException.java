@@ -6,10 +6,21 @@ package io.github.genkidoudou.common.exception;
 public class ErrorException extends BaseException {
 
 
+  /**
+   * 仅指定业务码。
+   *
+   * @param code 业务错误码
+   */
   public ErrorException(Integer code) {
     super(code);
   }
 
+  /**
+   * 指定业务码与 i18n 占位参数。
+   *
+   * @param code 业务错误码
+   * @param args 国际化占位参数
+   */
   public ErrorException(Integer code, Object... args) {
     super(code, args);
   }

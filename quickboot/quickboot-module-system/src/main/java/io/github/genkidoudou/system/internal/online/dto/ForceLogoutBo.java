@@ -9,6 +9,7 @@ import lombok.Data;
 @Data
 public class ForceLogoutBo {
 
+    /** 待强退的会话 token。 */
     @NotBlank(message = "tokenId 不能为空")
     private String tokenId;
 }

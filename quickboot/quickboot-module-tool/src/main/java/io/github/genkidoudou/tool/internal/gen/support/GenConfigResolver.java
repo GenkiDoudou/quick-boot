@@ -40,22 +40,27 @@ public class GenConfigResolver {
     return vo;
   }
 
+  /** 生成代码注释作者，优先 sys_config。 */
   public String getAuthor() {
     return firstNonBlank(config(KEY_AUTHOR), genProperties.getAuthor());
   }
 
+  /** Java 根包名，优先 sys_config。 */
   public String getPackageName() {
     return firstNonBlank(config(KEY_PACKAGE_NAME), genProperties.getPackageName());
   }
 
+  /** 模块名（前端路径 / 权限前缀），优先 sys_config。 */
   public String getModuleName() {
     return firstNonBlank(config(KEY_MODULE_NAME), genProperties.getModuleName());
   }
 
+  /** 模板类型，默认 crud。 */
   public String getTplCategory() {
     return firstNonBlank(config(KEY_TPL_CATEGORY), "crud");
   }
 
+  /** 生成菜单的上级菜单 ID，未配置时返回 {@code null}。 */
   public Long getParentMenuId() {
     String raw = config(KEY_PARENT_MENU_ID);
     if (StrUtil.isNotBlank(raw) && NumberUtil.isLong(raw.trim())) {

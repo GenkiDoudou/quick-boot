@@ -21,6 +21,11 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnClass(CacheManager.class)
 public class CacheAutoConfiguration {
 
+  /**
+   * 默认 Caffeine 缓存管理器：支持 {@code cacheName#ttlSeconds} 动态 TTL。
+   *
+   * @return 事务感知的 Caffeine {@link CacheManager}
+   */
   @Bean
   @Primary
   @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "caffeine", matchIfMissing = true)
@@ -28,6 +33,13 @@ public class CacheAutoConfiguration {
     return new TransactionAwareCacheManagerProxy(new DynamicTtlCaffeineCacheManager());
   }
 
+  /**
+   * Redis 缓存管理器：值序列化使用 Jackson JSON，TTL 来自注解名后缀。
+   *
+   * @param redisConnectionFactory Redis 连接
+   * @param objectMapper           用于值序列化的 ObjectMapper（会 clone 一份避免污染）
+   * @return 事务感知的 Redis {@link CacheManager}
+   */
   @Bean
   @Primary
   @ConditionalOnProperty(prefix = "spring.cache", name = "type", havingValue = "redis")

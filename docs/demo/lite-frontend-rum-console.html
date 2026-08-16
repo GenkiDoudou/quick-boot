@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lite RUM 控制台 · 静态原型</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --side: #001529;
+      --card: #fff;
+      --ok: #67c23a;
+      --warn: #e6a23c;
+      --danger: #f56c6c;
+      --muted: #909399;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: #303133;
+    }
+    #app { height: 100vh; }
+    .layout { display: flex; height: 100%; }
+    .side {
+      width: 220px;
+      background: var(--side);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 18px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .brand p {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+    }
+    .menu-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      border-left: 3px solid transparent;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .menu-item.active {
+      background: rgba(64,158,255,0.2);
+      color: #fff;
+      border-left-color: #409eff;
+    }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #ebeef5;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mock-banner {
+      background: #fdf6ec;
+      color: #b88230;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #faecd8;
+    }
+    .content { padding: 16px 20px 24px; overflow: auto; flex: 1; }
+    .score-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 960px) {
+      .score-row { grid-template-columns: 1fr; }
+      .side { width: 180px; }
+    }
+    .score-card {
+      background: linear-gradient(160deg, #1d39c4 0%, #409eff 100%);
+      color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 140px;
+    }
+    .score-card .label { font-size: 13px; opacity: 0.85; }
+    .score-card .value { font-size: 48px; font-weight: 700; line-height: 1.1; margin: 8px 0; }
+    .score-card .subs { display: flex; gap: 16px; font-size: 12px; opacity: 0.95; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 1100px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 14px 16px;
+      border: 1px solid #ebeef5;
+    }
+    .kpi .name { font-size: 12px; color: var(--muted); }
+    .kpi .val { font-size: 24px; font-weight: 600; margin-top: 6px; }
+    .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 12px;
+    }
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chart { width: 100%; height: 280px; }
+    .chart-sm { width: 100%; height: 200px; }
+    .top-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    @media (max-width: 1100px) {
+      .top-grid { grid-template-columns: 1fr; }
+    }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.danger { background: var(--danger); }
+    .stack-pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .linkish { color: #409eff; cursor: pointer; }
+    .linkish:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="layout">
+      <aside class="side">
+        <div class="brand">
+          <h1>前端监控</h1>
+          <p>Lite RUM · Phase 1</p>
+        </div>
+        <div
+          v-for="item in menus"
+          :key="item.key"
+          class="menu-item"
+          :class="{ active: activeMenu === item.key }"
+          @click="switchMenu(item.key)"
+        >{{ item.label }}</div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <div class="topbar-left">
+            <span class="mock-banner">静态 Mock · 非现网 · 浏览器直接打开</span>
+            <el-tag type="info" effect="plain">appId: {{ appId }}</el-tag>
+          </div>
+          <div>
+            <el-radio-group v-model="range" size="small" @change="onRangeChange">
+              <el-radio-button label="1h">近 1h</el-radio-button>
+              <el-radio-button label="24h">近 24h</el-radio-button>
+              <el-radio-button label="7d">近 7d</el-radio-button>
+            </el-radio-group>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- 数据总览 -->
+          <div v-show="activeMenu === 'overview'">
+            <div class="score-row">
+              <div class="score-card">
+                <div class="label">应用健康分</div>
+                <div class="value">{{ health.total }}</div>
+                <div class="subs">
+                  <span>报错率 {{ health.errorScore }}</span>
+                  <span>接口成功 {{ health.apiScore }}</span>
+                </div>
+              </div>
+              <div class="kpi-grid">
+                <div class="kpi">
+                  <div class="name">PV</div>
+                  <div class="val">{{ formatNum(kpis.pv) }}</div>
+                  <div class="sub">页面打开次数</div>
+                </div>
+                <div class="kpi">
+                  <div class="name">JS 错误</div>
+                  <div class="val">
+                    <span :style="{ color: rateColor(kpis.errorRate) }">{{ kpis.errorCount }}</span>
+                  </div>
+                  <div class="sub">
+                    <span class="dot" :class="rateLevel(kpis.errorRate)"></span>
+                    错误率 {{ pct(kpis.errorRate) }}
+                  </div>
+                </div>
+                <div class="kpi">
+                  <div class="name">API 成功率</div>
+                  <div class="val" :style="{ color: successColor(kpis.apiSuccessRate) }">{{ pct(kpis.apiSuccessRate) }}</div>
+                  <div class="sub">
+                    <span class="dot" :class="successLevel(kpis.apiSuccessRate)"></span>
+                    请求 {{ formatNum(kpis.apiCount) }}
+                  </div>
+                </div>
+                <div class="kpi">
+                  <div class="name">API 平均耗时</div>
+                  <div class="val">{{ kpis.apiAvgMs }}<span style="font-size:14px"> ms</span></div>
+                  <div class="sub">窗口内均值</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-title">
+                <span>关键趋势</span>
+                <span style="font-size:12px;color:#909399;font-weight:400">错误率 / API 成功率 / 平均耗时 / PV</span>
+              </div>
+              <div ref="overviewChartEl" class="chart"></div>
+            </div>
+
+            <div class="top-grid">
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">错误 TOP 页面</div>
+                <el-table :data="errorPageTop" size="small" @row-click="jumpErrorPage">
+                  <el-table-column prop="page" label="页面" min-width="120"></el-table-column>
+                  <el-table-column prop="errorCount" label="错误数" width="80"></el-table-column>
+                </el-table>
+              </div>
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">慢 API TOP</div>
+                <el-table :data="slowApiTop" size="small" @row-click="jumpApi">
+                  <el-table-column prop="api" label="接口" min-width="140"></el-table-column>
+                  <el-table-column prop="avgMs" label="均耗时" width="80"></el-table-column>
+                </el-table>
+              </div>
+              <div class="panel" style="margin-top:0">
+                <div class="panel-title">失败 API TOP</div>
+                <el-table :data="failApiTop" size="small" @row-click="jumpApi">
+                  <el-table-column prop="api" label="接口" min-width="140"></el-table-column>
+                  <el-table-column prop="failCount" label="失败" width="70"></el-table-column>
+                </el-table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 异常分析 -->
+          <div v-show="activeMenu === 'error'">
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">
+                <span>Issue 列表</span>
+                <el-input
+                  v-model="errorFilter"
+                  clearable
+                  placeholder="按页面筛选（可从总览跳转带入）"
+                  style="width: 280px"
+                  size="small"
+                ></el-input>
+              </div>
+              <el-table :data="filteredIssues" size="small">
+                <el-table-column prop="fingerprint" label="指纹" width="140"></el-table-column>
+                <el-table-column prop="message" label="摘要" min-width="220" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="count" label="次数" width="80"></el-table-column>
+                <el-table-column prop="pageCount" label="影响页面" width="90"></el-table-column>
+                <el-table-column prop="firstSeenAt" label="首次" width="160"></el-table-column>
+                <el-table-column prop="lastSeenAt" label="最近" width="160"></el-table-column>
+                <el-table-column prop="status" label="状态" width="80"></el-table-column>
+                <el-table-column label="操作" width="90" fixed="right">
+                  <template #default="{ row }">
+                    <span class="linkish" @click.stop="openIssue(row)">详情</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- API 监控 -->
+          <div v-show="activeMenu === 'api'">
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">API 汇总趋势</div>
+              <div ref="apiSummaryChartEl" class="chart"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <span>API TOP</span>
+                <el-radio-group v-model="apiTopMode" size="small">
+                  <el-radio-button label="slow">按平均耗时</el-radio-button>
+                  <el-radio-button label="fail">按失败次数</el-radio-button>
+                </el-radio-group>
+              </div>
+              <el-table
+                :data="apiTopRows"
+                size="small"
+                highlight-current-row
+                @current-change="onSelectApi"
+              >
+                <el-table-column prop="api" label="method + path" min-width="200"></el-table-column>
+                <el-table-column prop="count" label="次数" width="90"></el-table-column>
+                <el-table-column label="成功率" width="100">
+                  <template #default="{ row }">{{ pct(row.successRate) }}</template>
+                </el-table-column>
+                <el-table-column prop="avgMs" label="平均耗时(ms)" width="120"></el-table-column>
+              </el-table>
+              <div style="margin-top:16px">
+                <div class="panel-title" style="margin-bottom:8px">
+                  <span>选中接口趋势{{ selectedApi ? ' · ' + selectedApi.api : '' }}</span>
+                </div>
+                <div ref="apiDetailChartEl" class="chart-sm"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 告警规则 -->
+          <div v-show="activeMenu === 'alert'">
+            <div class="panel" style="margin-top:0">
+              <div class="panel-title">规则配置（本地 Mock，不发送真实 Webhook）</div>
+              <el-form :model="alertForm" label-width="110px" style="max-width:640px">
+                <el-form-item label="启用">
+                  <el-switch v-model="alertForm.enabled"></el-switch>
+                </el-form-item>
+                <el-form-item label="指标">
+                  <el-select v-model="alertForm.metric" style="width: 240px">
+                    <el-option label="页面报错率" value="errorRate"></el-option>
+                    <el-option label="API 成功率" value="apiSuccessRate"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="阈值">
+                  <el-input-number v-model="alertForm.threshold" :min="0" :max="100" :step="0.1"></el-input-number>
+                  <span style="margin-left:8px;color:#909399">%</span>
+                </el-form-item>
+                <el-form-item label="窗口(分钟)">
+                  <el-input-number v-model="alertForm.windowMinutes" :min="1" :max="60"></el-input-number>
+                </el-form-item>
+                <el-form-item label="冷却(分钟)">
+                  <el-input-number v-model="alertForm.cooldownMinutes" :min="1" :max="1440"></el-input-number>
+                </el-form-item>
+                <el-form-item label="Webhook URL">
+                  <el-input v-model="alertForm.webhookUrl" placeholder="https://example.com/hook"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="saveAlert">保存</el-button>
+                  <el-button @click="testAlert">模拟触发</el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+            <div class="panel">
+              <div class="panel-title">最近触发记录</div>
+              <el-table :data="alertEvents" size="small">
+                <el-table-column prop="triggeredAt" label="时间" width="180"></el-table-column>
+                <el-table-column prop="metricLabel" label="指标" width="120"></el-table-column>
+                <el-table-column prop="valueText" label="当前值" width="100"></el-table-column>
+                <el-table-column prop="notified" label="已通知" width="90">
+                  <template #default="{ row }">
+                    <el-tag :type="row.notified ? 'success' : 'info'" size="small">{{ row.notified ? '是' : '否' }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="note" label="备注" min-width="160"></el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-drawer v-model="issueDrawer" title="Issue 详情" size="480px">
+      <template v-if="currentIssue">
+        <p><strong>指纹：</strong>{{ currentIssue.fingerprint }}</p>
+        <p><strong>摘要：</strong>{{ currentIssue.message }}</p>
+        <p><strong>次数：</strong>{{ currentIssue.count }} · 影响页面 {{ currentIssue.pageCount }}</p>
+        <div class="panel-title" style="margin-top:12px">Stack 示例</div>
+        <pre class="stack-pre">{{ currentIssue.stack }}</pre>
+        <div class="panel-title" style="margin-top:16px">关联页面</div>
+        <el-tag v-for="p in currentIssue.pages" :key="p" style="margin:0 8px 8px 0" size="small">{{ p }}</el-tag>
+        <div class="panel-title" style="margin-top:16px">发生趋势</div>
+        <div ref="issueTrendEl" class="chart-sm"></div>
+        <div class="panel-title" style="margin-top:16px">最近原始事件</div>
+        <el-table :data="currentIssue.recentEvents" size="small">
+          <el-table-column prop="ts" label="时间" width="160"></el-table-column>
+          <el-table-column prop="page" label="页面"></el-table-column>
+          <el-table-column prop="release" label="版本" width="90"></el-table-column>
+        </el-table>
+      </template>
+    </el-drawer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
+
+    function scoreFromErrorRate(rate) {
+      const pctVal = rate * 100;
+      if (pctVal <= 0.5) return 100;
+      if (pctVal >= 10) return 0;
+      return Math.max(0, Math.round(100 - 10 * pctVal));
+    }
+    function scoreFromSuccessRate(rate) {
+      return scoreFromErrorRate(1 - rate);
+    }
+    function rateLevel(rate) {
+      if (rate <= 0.005) return 'ok';
+      if (rate < 0.1) return 'warn';
+      return 'danger';
+    }
+    function successLevel(rate) {
+      if (rate > 0.995) return 'ok';
+      if (rate >= 0.9) return 'warn';
+      return 'danger';
+    }
+    function rateColor(rate) {
+      const m = { ok: '#67c23a', warn: '#e6a23c', danger: '#f56c6c' };
+      return m[rateLevel(rate)];
+    }
+    function successColor(rate) {
+      const m = { ok: '#67c23a', warn: '#e6a23c', danger: '#f56c6c' };
+      return m[successLevel(rate)];
+    }
+    function pct(v) {
+      return (v * 100).toFixed(2) + '%';
+    }
+    function formatNum(n) {
+      return n.toLocaleString('zh-CN');
+    }
+    function genSeries(n, base, swing) {
+      return Array.from({ length: n }, (_, i) =>
+        Math.max(0, Math.round(base + Math.sin(i / 2) * swing + (i % 3) * (swing / 5)))
+      );
+    }
+
+    const ISSUES = [
+      {
+        fingerprint: 'a1b2c3d4',
+        message: "TypeError: Cannot read properties of undefined (reading 'id')",
+        count: 128,
+        pageCount: 3,
+        pages: ['/users', '/users/detail', '/roles'],
+        firstSeenAt: '2026-08-14 09:12:01',
+        lastSeenAt: '2026-08-14 20:48:22',
+        status: 'open',
+        stack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at renderUser (UserList.vue:142)\\n    at Proxy._render (vue.js)\\n    at run (reactivity)",
+        recentEvents: [
+          { ts: '2026-08-14 20:48:22', page: '/users', release: '1.4.2' },
+          { ts: '2026-08-14 20:41:03', page: '/users/detail', release: '1.4.2' },
+          { ts: '2026-08-14 20:33:18', page: '/roles', release: '1.4.1' },
+          { ts: '2026-08-14 20:20:55', page: '/users', release: '1.4.2' },
+        ],
+        trend: [2, 5, 8, 12, 9, 15, 18, 11, 7, 10, 14, 16],
+      },
+      {
+        fingerprint: 'e5f6g7h8',
+        message: 'Unhandled Promise Rejection: Network Error',
+        count: 64,
+        pageCount: 2,
+        pages: ['/dashboard', '/orders'],
+        firstSeenAt: '2026-08-14 11:02:44',
+        lastSeenAt: '2026-08-14 19:55:10',
+        status: 'open',
+        stack: "Unhandled Promise Rejection: Network Error\\n    at axios request\\n    at fetchOrders (order.ts:88)",
+        recentEvents: [
+          { ts: '2026-08-14 19:55:10', page: '/orders', release: '1.4.2' },
+          { ts: '2026-08-14 19:12:01', page: '/dashboard', release: '1.4.2' },
+        ],
+        trend: [1, 1, 3, 4, 2, 6, 5, 8, 4, 3, 7, 9],
+      },
+      {
+        fingerprint: 'i9j0k1l2',
+        message: 'ReferenceError: chartRef is not defined',
+        count: 21,
+        pageCount: 1,
+        pages: ['/monitor/overview'],
+        firstSeenAt: '2026-08-13 16:40:00',
+        lastSeenAt: '2026-08-14 18:01:33',
+        status: 'open',
+        stack: "ReferenceError: chartRef is not defined\\n    at setup (overview.vue:56)",
+        recentEvents: [
+          { ts: '2026-08-14 18:01:33', page: '/monitor/overview', release: '1.4.2' },
+        ],
+        trend: [0, 1, 0, 2, 1, 3, 2, 1, 4, 2, 3, 2],
+      },
+      {
+        fingerprint: 'm3n4o5p6',
+        message: 'SyntaxError: Unexpected token < in JSON',
+        count: 17,
+        pageCount: 2,
+        pages: ['/login', '/profile'],
+        firstSeenAt: '2026-08-14 08:20:11',
+        lastSeenAt: '2026-08-14 17:22:09',
+        status: 'open',
+        stack: "SyntaxError: Unexpected token < in JSON\\n    at JSON.parse (<anonymous>)\\n    at parseBody (http.ts:40)",
+        recentEvents: [
+          { ts: '2026-08-14 17:22:09', page: '/login', release: '1.4.2' },
+          { ts: '2026-08-14 15:10:44', page: '/profile', release: '1.4.2' },
+        ],
+        trend: [0, 0, 1, 1, 2, 1, 3, 2, 1, 2, 2, 1],
+      },
+    ];
+
+    const API_ROWS = [
+      { api: 'GET /api/user/list', count: 4200, successRate: 0.992, avgMs: 186, failCount: 34 },
+      { api: 'POST /api/auth/login', count: 980, successRate: 0.978, avgMs: 320, failCount: 22 },
+      { api: 'GET /api/order/page', count: 3100, successRate: 0.885, avgMs: 980, failCount: 356 },
+      { api: 'GET /api/dict/data', count: 5600, successRate: 0.999, avgMs: 45, failCount: 5 },
+      { api: 'PUT /api/user/profile', count: 640, successRate: 0.941, avgMs: 410, failCount: 38 },
+      { api: 'GET /api/monitor/rum/overview', count: 1200, successRate: 0.97, avgMs: 520, failCount: 36 },
+      { api: 'DELETE /api/role/batch', count: 210, successRate: 0.91, avgMs: 760, failCount: 19 },
+      { api: 'GET /api/file/list', count: 1500, successRate: 0.996, avgMs: 210, failCount: 6 },
+    ];
+
+    createApp({
+      setup() {
+        const menus = [
+          { key: 'overview', label: '数据总览' },
+          { key: 'error', label: '异常分析' },
+          { key: 'api', label: 'API 监控' },
+          { key: 'alert', label: '告警规则' },
+        ];
+        const activeMenu = ref('overview');
+        const appId = 'web-admin';
+        const range = ref('24h');
+
+        const kpis = reactive({
+          pv: 12840,
+          errorCount: 230,
+          errorRate: 0.0179,
+          apiCount: 17430,
+          apiSuccessRate: 0.968,
+          apiAvgMs: 268,
+        });
+
+        const health = computed(() => {
+          const errorScore = scoreFromErrorRate(kpis.errorRate);
+          const apiScore = scoreFromSuccessRate(kpis.apiSuccessRate);
+          return {
+            errorScore,
+            apiScore,
+            total: Math.round(errorScore * 0.5 + apiScore * 0.5),
+          };
+        });
+
+        const errorPageTop = [
+          { page: '/users', errorCount: 86 },
+          { page: '/orders', errorCount: 54 },
+          { page: '/roles', errorCount: 32 },
+          { page: '/dashboard', errorCount: 28 },
+          { page: '/monitor/overview', errorCount: 21 },
+        ];
+        const slowApiTop = [...API_ROWS].sort((a, b) => b.avgMs - a.avgMs).slice(0, 5).map((r) => ({
+          api: r.api,
+          avgMs: r.avgMs,
+        }));
+        const failApiTop = [...API_ROWS].sort((a, b) => b.failCount - a.failCount).slice(0, 5).map((r) => ({
+          api: r.api,
+          failCount: r.failCount,
+        }));
+
+        const errorFilter = ref('');
+        const filteredIssues = computed(() => {
+          const q = errorFilter.value.trim();
+          if (!q) return ISSUES;
+          return ISSUES.filter((i) => i.pages.some((p) => p.includes(q)) || i.message.includes(q));
+        });
+
+        const issueDrawer = ref(false);
+        const currentIssue = ref(null);
+        const issueTrendEl = ref(null);
+        let issueChart;
+
+        const apiTopMode = ref('slow');
+        const selectedApi = ref(API_ROWS[2]);
+        const apiTopRows = computed(() => {
+          const rows = [...API_ROWS];
+          if (apiTopMode.value === 'fail') {
+            return rows.sort((a, b) => b.failCount - a.failCount);
+          }
+          return rows.sort((a, b) => b.avgMs - a.avgMs);
+        });
+
+        const alertForm = reactive({
+          enabled: true,
+          metric: 'errorRate',
+          threshold: 1,
+          windowMinutes: 5,
+          cooldownMinutes: 30,
+          webhookUrl: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock',
+        });
+        const alertEvents = ref([
+          {
+            triggeredAt: '2026-08-14 19:05:00',
+            metricLabel: '页面报错率',
+            valueText: '1.79%',
+            notified: true,
+            note: '超过阈值 1%，已通知',
+          },
+          {
+            triggeredAt: '2026-08-14 18:40:00',
+            metricLabel: '页面报错率',
+            valueText: '1.62%',
+            notified: false,
+            note: '冷却期内未重复通知',
+          },
+        ]);
+
+        const overviewChartEl = ref(null);
+        const apiSummaryChartEl = ref(null);
+        const apiDetailChartEl = ref(null);
+        let overviewChart, apiSummaryChart, apiDetailChart;
+
+        function pointsForRange() {
+          if (range.value === '1h') return 12;
+          if (range.value === '7d') return 14;
+          return 24;
+        }
+
+        function renderOverviewChart() {
+          if (!overviewChartEl.value) return;
+          if (!overviewChart) overviewChart = echarts.init(overviewChartEl.value);
+          const n = pointsForRange();
+          const x = Array.from({ length: n }, (_, i) => (range.value === '7d' ? `D${i + 1}` : `${i}`));
+          overviewChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['错误率%', 'API成功率%', 'API均耗时', 'PV'] },
+            grid: { left: 40, right: 40, top: 40, bottom: 30 },
+            xAxis: { type: 'category', data: x },
+            yAxis: [
+              { type: 'value', name: '% / 耗时' },
+              { type: 'value', name: 'PV' },
+            ],
+            series: [
+              { name: '错误率%', type: 'line', smooth: true, data: genSeries(n, 1.5, 0.8).map((v) => +(v / 1).toFixed(2)) },
+              { name: 'API成功率%', type: 'line', smooth: true, data: genSeries(n, 96, 2).map((v) => Math.min(100, v)) },
+              { name: 'API均耗时', type: 'line', smooth: true, data: genSeries(n, 260, 40) },
+              { name: 'PV', type: 'line', smooth: true, yAxisIndex: 1, data: genSeries(n, 500, 120) },
+            ],
+          });
+        }
+
+        function renderApiSummaryChart() {
+          if (!apiSummaryChartEl.value) return;
+          if (!apiSummaryChart) apiSummaryChart = echarts.init(apiSummaryChartEl.value);
+          const n = pointsForRange();
+          const x = Array.from({ length: n }, (_, i) => `${i}`);
+          apiSummaryChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['请求量', '成功率%', '平均耗时'] },
+            grid: { left: 40, right: 40, top: 40, bottom: 30 },
+            xAxis: { type: 'category', data: x },
+            yAxis: [{ type: 'value' }, { type: 'value' }],
+            series: [
+              { name: '请求量', type: 'bar', data: genSeries(n, 700, 120), yAxisIndex: 1 },
+              { name: '成功率%', type: 'line', smooth: true, data: genSeries(n, 96, 3) },
+              { name: '平均耗时', type: 'line', smooth: true, data: genSeries(n, 280, 50) },
+            ],
+          });
+        }
+
+        function renderApiDetailChart() {
+          if (!apiDetailChartEl.value || !selectedApi.value) return;
+          if (!apiDetailChart) apiDetailChart = echarts.init(apiDetailChartEl.value);
+          const n = 12;
+          apiDetailChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['耗时', '成功率%'] },
+            grid: { left: 40, right: 30, top: 30, bottom: 24 },
+            xAxis: { type: 'category', data: Array.from({ length: n }, (_, i) => `${i}`) },
+            yAxis: [{ type: 'value' }, { type: 'value', max: 100 }],
+            series: [
+              {
+                name: '耗时',
+                type: 'line',
+                smooth: true,
+                data: genSeries(n, selectedApi.value.avgMs, selectedApi.value.avgMs * 0.2),
+              },
+              {
+                name: '成功率%',
+                type: 'line',
+                smooth: true,
+                yAxisIndex: 1,
+                data: genSeries(n, selectedApi.value.successRate * 100, 3).map((v) => Math.min(100, v)),
+              },
+            ],
+          });
+        }
+
+        function renderIssueTrend() {
+          nextTick(() => {
+            if (!issueTrendEl.value || !currentIssue.value) return;
+            if (issueChart) issueChart.dispose();
+            issueChart = echarts.init(issueTrendEl.value);
+            issueChart.setOption({
+              tooltip: { trigger: 'axis' },
+              grid: { left: 36, right: 16, top: 16, bottom: 24 },
+              xAxis: { type: 'category', data: currentIssue.value.trend.map((_, i) => `${i}`) },
+              yAxis: { type: 'value' },
+              series: [{ type: 'line', smooth: true, areaStyle: {}, data: currentIssue.value.trend }],
+            });
+          });
+        }
+
+        function switchMenu(key) {
+          activeMenu.value = key;
+          nextTick(() => {
+            if (key === 'overview') renderOverviewChart();
+            if (key === 'api') {
+              renderApiSummaryChart();
+              renderApiDetailChart();
+            }
+          });
+        }
+
+        function onRangeChange() {
+          renderOverviewChart();
+          renderApiSummaryChart();
+          renderApiDetailChart();
+        }
+
+        function jumpErrorPage(row) {
+          errorFilter.value = row.page;
+          switchMenu('error');
+          ElementPlus.ElMessage.success(`已跳转异常分析，筛选页面 ${row.page}`);
+        }
+
+        function jumpApi(row) {
+          const found = API_ROWS.find((r) => r.api === row.api) || API_ROWS[0];
+          selectedApi.value = found;
+          apiTopMode.value = row.failCount != null ? 'fail' : 'slow';
+          switchMenu('api');
+          ElementPlus.ElMessage.success(`已跳转 API 监控：${found.api}`);
+        }
+
+        function openIssue(row) {
+          currentIssue.value = row;
+          issueDrawer.value = true;
+          renderIssueTrend();
+        }
+
+        function onSelectApi(row) {
+          if (!row) return;
+          selectedApi.value = row;
+          nextTick(renderApiDetailChart);
+        }
+
+        function saveAlert() {
+          ElementPlus.ElMessage.success('已保存到本页 Mock（未调用真实 Webhook）');
+        }
+
+        function testAlert() {
+          const label = alertForm.metric === 'errorRate' ? '页面报错率' : 'API 成功率';
+          alertEvents.value.unshift({
+            triggeredAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
+            metricLabel: label,
+            valueText: alertForm.metric === 'errorRate' ? pct(kpis.errorRate) : pct(kpis.apiSuccessRate),
+            notified: true,
+            note: '模拟触发 · 冷却演示仅前端',
+          });
+          ElementPlus.ElMessage.warning('已模拟写入触发记录（无真实网络请求）');
+        }
+
+        watch(apiTopMode, () => {
+          selectedApi.value = apiTopRows.value[0];
+          nextTick(renderApiDetailChart);
+        });
+
+        onMounted(() => {
+          renderOverviewChart();
+          window.addEventListener('resize', () => {
+            overviewChart && overviewChart.resize();
+            apiSummaryChart && apiSummaryChart.resize();
+            apiDetailChart && apiDetailChart.resize();
+            issueChart && issueChart.resize();
+          });
+        });
+
+        return {
+          menus,
+          activeMenu,
+          appId,
+          range,
+          kpis,
+          health,
+          errorPageTop,
+          slowApiTop,
+          failApiTop,
+          errorFilter,
+          filteredIssues,
+          issueDrawer,
+          currentIssue,
+          issueTrendEl,
+          apiTopMode,
+          apiTopRows,
+          selectedApi,
+          alertForm,
+          alertEvents,
+          overviewChartEl,
+          apiSummaryChartEl,
+          apiDetailChartEl,
+          switchMenu,
+          onRangeChange,
+          jumpErrorPage,
+          jumpApi,
+          openIssue,
+          onSelectApi,
+          saveAlert,
+          testAlert,
+          pct,
+          formatNum,
+          rateLevel,
+          successLevel,
+          rateColor,
+          successColor,
+        };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

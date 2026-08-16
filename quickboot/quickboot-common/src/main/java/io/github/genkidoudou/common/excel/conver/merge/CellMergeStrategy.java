@@ -20,6 +20,10 @@ public class CellMergeStrategy extends AbstractMergeStrategy {
   private final List<?> rows;
   private final boolean hasTitle;
 
+  /**
+   * @param rows     待合并的数据行
+   * @param hasTitle 首行是否为表头（表头不参与合并，数据从第 2 行起）
+   */
   public CellMergeStrategy(List<?> rows, boolean hasTitle) {
     this.rows = rows;
     this.hasTitle = hasTitle;

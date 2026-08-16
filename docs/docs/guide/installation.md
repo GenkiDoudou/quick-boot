@@ -21,9 +21,10 @@
 
 ### 开发（默认 `dev` Profile）
 
-- 数据源：H2 文件模式，路径 `./data/qcc`
-- H2 Console：开发配置下可开启（注意勿暴露到公网）
-- Token 存储：`qc.oauth2.token-store=local`（单实例）
+- 数据源：进程内 MariaDB Embedded（mariadb4j），默认端口 `3307`，库名 `quickboot`
+- 数据目录：`./data/mariadb`（解压缓存 `./data/mariadb-base`）；重启可保留
+- 关闭嵌入式库：`qc.dev.embedded-mariadb.enabled=false` 后改连外部 MariaDB/MySQL
+- Token 存储：开发默认可用本地/嵌入式 Redis（见 `application-dev.yml`）
 - 启动参数示例：
 
 ```text
@@ -32,7 +33,7 @@
 
 ### 生产（`prod` Profile）
 
-- 数据源：MySQL，敏感项建议 Jasypt `ENC(...)` 包裹
+- 数据源：MySQL/MariaDB，敏感项建议 Jasypt `ENC(...)` 包裹
 - Token / 缓存：建议 Redis（`qc.oauth2.token-store=redis`）
 - 关闭 Druid 监控页、收紧 `qc.security.web.anonymous-paths`
 

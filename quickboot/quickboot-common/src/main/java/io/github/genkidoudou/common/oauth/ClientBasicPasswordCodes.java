@@ -6,16 +6,13 @@ import lombok.RequiredArgsConstructor;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+/**
+ * OAuth Client Basic 凭证编解码：Base64 URL + XOR 混淆，用于 Authorization 头传输 {@code clientId:clientSecret}。
+ */
 @RequiredArgsConstructor
 public class ClientBasicPasswordCodes extends AbstractValidatingPasswordCodec {
 
-  /**
-   * XOR 盐
-   *
-   * @return
-   * @since 2026/7/29
-   */
-
+  /** XOR 混淆密钥（来自 {@code qc.oauth.key}）。 */
   private final String key;
 
 

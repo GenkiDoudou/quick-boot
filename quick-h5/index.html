@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="static/logo.png">
+    <script>
+      const coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)')
+  || CSS.supports('top: constant(a)'))
+      document.write(
+        `<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0${
+  coverSupport ? ', viewport-fit=cover' : ''}" />`)
+    </script>
+    <title></title>
+    <!--preload-links-->
+    <!--app-context-->
+  </head>
+  <body>
+    <div id="app"><!--app-html--></div>
+    <!--
+      运行时配置文件（不进入 JS bundle）：
+      - 位于 public/config.js，Vite/uni 打包时按静态文件原样拷贝，不参与压缩与 hash；
+      - 部署后可直接修改该文件里的 baseUrl，无需重新构建前端产物。
+    -->
+    <script src="./config.js"></script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

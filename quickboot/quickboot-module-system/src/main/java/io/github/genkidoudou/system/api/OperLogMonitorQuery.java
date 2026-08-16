@@ -42,4 +42,36 @@ public interface OperLogMonitorQuery {
    * @return 视图；不存在时 {@code null}
    */
   OperLogMonitorView findFirstByTraceId(String traceId);
+
+  /**
+   * 时间窗半开区间 {@code [start, end)} 内的请求/错误汇总。
+   *
+   * @param start 起始（含）
+   * @param end   截止（不含）
+   * @return 汇总
+   */
+  OperLogSummaryView summarize(LocalDateTime start, LocalDateTime end);
+
+  /**
+   * 请求/错误分桶趋势。
+   *
+   * @param start  起始（含）
+   * @param end    截止（不含）
+   * @param hourly {@code true} 按小时，否则按日
+   * @return 分桶列表
+   */
+  List<OperLogBucketView> trend(LocalDateTime start, LocalDateTime end, boolean hourly);
+
+  /**
+   * 日志中心：按时间窗与可选条件取最近若干条（倒序），最多 {@code limit} 条。
+   */
+  List<OperLogHubView> listForHub(
+    LocalDateTime beginTime,
+    LocalDateTime endTime,
+    String operName,
+    String keyword,
+    Integer status,
+    String traceId,
+    String clientId,
+    int limit);
 }

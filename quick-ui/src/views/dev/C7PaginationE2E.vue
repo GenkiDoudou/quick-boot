@@ -37,6 +37,7 @@
 </template>
 
 <script setup>
+/** C7Pagination 组件 E2E 联调页：覆盖双绑、autoReset 与 change 汇总语义。 */
 import {computed, ref} from 'vue'
 
 const total = 233

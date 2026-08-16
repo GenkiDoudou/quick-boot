@@ -7,10 +7,16 @@ import org.springframework.context.ApplicationEvent;
  */
 public class SlowSqlCapturedEvent extends ApplicationEvent {
 
+    /**
+     * @param payload 慢 SQL 采集载荷
+     */
     public SlowSqlCapturedEvent(SlowSqlCapturePayload payload) {
         super(payload);
     }
 
+    /**
+     * @return 慢 SQL 采集载荷
+     */
     public SlowSqlCapturePayload getPayload() {
         return (SlowSqlCapturePayload) getSource();
     }

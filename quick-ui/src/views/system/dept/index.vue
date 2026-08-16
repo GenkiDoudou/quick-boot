@@ -80,6 +80,10 @@
 </template>
 
 <script setup>
+/**
+ * 部门管理：树形表格 CRUD、子部门新增、Excel 导入导出。
+ * 上级部门通过 treeselect 选择，parentId=0 表示根部门。
+ */
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'

@@ -53,6 +53,9 @@
 </template>
 
 <script setup>
+/**
+ * 字典类型管理：分页 CRUD、跳转字典数据页、刷新后端与前端字典缓存。
+ */
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -124,6 +127,7 @@ function removeRow(row) {
     .catch(() => {})
 }
 
+/** 刷新后端字典缓存并清空前端 Pinia 字典，避免旧选项残留 */
 function handleRefresh() {
   refreshAllType().then(() => {
     useDictStore().cleanDict?.()

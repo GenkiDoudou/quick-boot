@@ -19,29 +19,36 @@ import java.util.List;
 @ExcelIgnoreUnannotated
 public class SysDictDataVo {
 
+  /** 字典数据主键。 */
   @NotNull(groups = UpdateGroup.class)
   @Null(groups = AddGroup.class)
   @ExcelProperty("字典编码")
   private Long dictCode;
 
+  /** 显示排序。 */
   @ExcelProperty("排序")
   private Integer dictSort;
 
+  /** 字典标签（展示文本）。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("标签")
   private String dictLabel;
 
+  /** 字典键值（存库值）。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("键值")
   private String dictValue;
 
+  /** 所属字典类型编码。 */
   @NotBlank(groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty("字典类型")
   private String dictType;
 
+  /** CSS 样式类。 */
   @ExcelProperty("样式")
   private String cssClass;
 
+  /** 回显样式（如 tag 颜色）。 */
   @ExcelProperty("回显样式")
   private String listClass;
 
@@ -55,6 +62,7 @@ public class SysDictDataVo {
   @ExcelProperty("状态")
   private String status;
 
+  /** 备注。 */
   @ExcelProperty("备注")
   private String remark;
 

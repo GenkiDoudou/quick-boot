@@ -30,42 +30,53 @@ public class SysMenuVo implements Serializable {
   @Serial
   private static final long serialVersionUID = 1L;
 
+  /** 菜单主键。 */
   @NotNull(message = "菜单ID不能为空", groups = UpdateGroup.class)
   @Null(message = "新增时菜单ID必须为空", groups = AddGroup.class)
   @ExcelProperty(value = "菜单ID", index = 0)
   private Long menuId;
 
+  /** 上级菜单 ID。 */
   @NotNull(message = "上级菜单不能为空", groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty(value = "上级菜单ID", index = 1)
   private Long parentId;
 
+  /** 菜单名称。 */
   @NotBlank(message = "菜单名称不能为空", groups = {AddGroup.class, UpdateGroup.class})
   @ExcelProperty(value = "菜单名称", index = 2)
   private String menuName;
 
+  /** 菜单类型(sys_menu_menu_type)。 */
   @NotBlank(message = "菜单类型不能为空", groups = {AddGroup.class, UpdateGroup.class})
   @ExcelDictFormat(dictType = "sys_menu_menu_type")
   @ExcelProperty(value = "菜单类型", index = 3)
   private String menuType;
 
+  /** 路由地址。 */
   @ExcelProperty(value = "路由地址", index = 4)
   private String path;
 
+  /** 组件路径。 */
   @ExcelProperty(value = "组件路径", index = 5)
   private String component;
 
+  /** 路由名称。 */
   @ExcelProperty(value = "路由名称", index = 6)
   private String routeName;
 
+  /** 权限标识。 */
   @ExcelProperty(value = "权限标识", index = 7)
   private String perms;
 
+  /** 菜单图标。 */
   @ExcelProperty(value = "图标", index = 8)
   private String icon;
 
+  /** 显示顺序。 */
   @ExcelProperty(value = "显示顺序", index = 9)
   private Integer orderNum;
 
+  /** 路由 query 参数。 */
   @ExcelProperty(value = "路由参数", index = 10)
   private String query;
 
@@ -90,15 +101,18 @@ public class SysMenuVo implements Serializable {
   @ExcelProperty(value = "状态", index = 14)
   private String status;
 
+  /** 备注。 */
   @ExcelProperty(value = "备注", index = 15)
   private String remark;
 
+  /** 创建时间。 */
   @ExcelProperty(value = "创建时间", index = 16)
   @com.alibaba.excel.annotation.format.DateTimeFormat(value = DatePattern.NORM_DATETIME_MINUTE_PATTERN)
   @JsonFormat(pattern = DatePattern.NORM_DATETIME_MINUTE_PATTERN)
   @DateTimeFormat(pattern = DatePattern.NORM_DATETIME_MINUTE_PATTERN)
   private LocalDateTime createTime;
 
+  /** 子菜单节点。 */
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
   private List<SysMenuVo> children = new ArrayList<>();
 

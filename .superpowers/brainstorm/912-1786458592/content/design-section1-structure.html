@@ -1,0 +1,50 @@
+<h2>设计稿 §1：页面结构（布局 B）</h2>
+<p class="subtitle">请确认分区职责是否合适；确认后我们再细化指标口径</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: 系统监控态势大屏 · 1920×1080</div>
+  <div class="mockup-body" style="background:#070d1a;color:#c5d4e8;padding:12px;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #1e3a5f;padding-bottom:8px;">
+      <div style="width:180px;font-size:11px;opacity:.7;">时间：今日 ▾</div>
+      <div style="font-size:18px;color:#e8f1ff;letter-spacing:4px;">QUICKBOOT 系统监控态势</div>
+      <div style="width:180px;text-align:right;font-size:11px;opacity:.7;">时钟 / 刷新提示</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;min-height:420px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:6px;padding:10px;">
+          <div style="color:#7dd3fc;margin-bottom:6px;">左上 · 用户与登录</div>
+          <div style="opacity:.85;line-height:1.6;">总用户 / 今日登录人数<br/>登录成功·失败<br/>登录趋势小图</div>
+        </div>
+        <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:6px;padding:10px;">
+          <div style="color:#7dd3fc;margin-bottom:6px;">左下 · 访问与行为</div>
+          <div style="opacity:.85;line-height:1.6;">访问页数 / 会话数<br/>活跃用户<br/>热门页面 Top</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#132338;border:1px solid #2a5080;border-radius:6px;padding:12px;">
+          <div style="color:#67e8f9;margin-bottom:8px;">中上 · 核心态势 KPI 条</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;">
+            <div style="background:#0b1524;padding:8px;border-radius:4px;">请求次数</div>
+            <div style="background:#0b1524;padding:8px;border-radius:4px;">错误次数</div>
+            <div style="background:#0b1524;padding:8px;border-radius:4px;">慢 SQL</div>
+            <div style="background:#0b1524;padding:8px;border-radius:4px;">任务失败</div>
+          </div>
+        </div>
+        <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:6px;padding:10px;">
+          <div style="color:#7dd3fc;margin-bottom:6px;">中下 · 请求 / 错误趋势</div>
+          <div style="height:160px;background:linear-gradient(180deg,#152238,#0b1524);border-radius:4px;display:flex;align-items:center;justify-content:center;opacity:.9;">双轴折线：请求量 vs 错误量</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:6px;padding:10px;">
+          <div style="color:#7dd3fc;margin-bottom:6px;">右上 · 慢 SQL</div>
+          <div style="opacity:.85;line-height:1.6;">次数 / 平均耗时 / 最大耗时<br/>来源分布饼图<br/>最慢 SQL Top 列表</div>
+        </div>
+        <div style="flex:1;background:#101b2d;border:1px solid #1e3a5f;border-radius:6px;padding:10px;">
+          <div style="color:#7dd3fc;margin-bottom:6px;">右下 · 定时任务</div>
+          <div style="opacity:.85;line-height:1.6;">成功 / 失败计数<br/>失败率<br/>最近失败任务列表</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

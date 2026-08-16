@@ -1,3 +1,6 @@
+/**
+ * 登录与认证 API：账号/手机/扫码登录、社交绑定、用户信息。
+ */
 import request from '@/utils/request'
 import { getCaptchaConfig } from '@/api/captcha'
 
@@ -36,6 +39,7 @@ export function login(username, password, uuid) {
     })
 }
 
+/** 查询社交登录待绑定状态（ticket 换用户信息） */
 export function getSocialPending(ticket) {
     return request({
         url: '/auth/social/pending',
@@ -45,6 +49,7 @@ export function getSocialPending(ticket) {
     })
 }
 
+/** 社交登录：自动创建本地账号并完成登录 */
 export function socialAutoCreate(ticket) {
     return request({
         url: '/auth/social/auto-create',
@@ -54,6 +59,7 @@ export function socialAutoCreate(ticket) {
     })
 }
 
+/** 社交登录：绑定已有本地账号 */
 export function socialBind(ticket, username, password) {
     return request({
         url: '/auth/social/bind',
@@ -63,6 +69,7 @@ export function socialBind(ticket, username, password) {
     })
 }
 
+/** 社交登录：完成授权并换取 accessToken */
 export function socialComplete(ticket) {
     return request({
         url: '/auth/social/complete',

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>链路 · Issue 统一（前端错误 + 后端异常）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --panel2: #182130; --line: #243044;
+      --text: #e8eef7; --muted: #8b9bb4; --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .bar {
+      height: 48px; border-bottom: 1px solid var(--line); background: var(--panel);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px;
+    }
+    a.back { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .note {
+      margin: 10px 14px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--panel); font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+    .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 400px 1fr; margin-top: 10px; }
+    .left { border-right: 1px solid var(--line); overflow: auto; background: var(--panel); }
+    .filters { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; }
+    .chip {
+      font-size: 11px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line);
+      color: var(--muted); cursor: pointer;
+    }
+    .chip.on { border-color: #ef4444; color: #fca5a5; background: rgba(239,68,68,.12); }
+    .issue { padding: 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px; }
+    .issue:hover, .issue.active { background: var(--panel2); }
+    .fp { font-family: ui-monospace, Consolas, monospace; color: #fca5a5; }
+    .badge { font-size: 10px; padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
+    .badge.fe { background: rgba(59,130,246,.2); color: #93c5fd; }
+    .badge.be { background: rgba(139,92,246,.2); color: #c4b5fd; }
+    .meta { color: var(--muted); margin-top: 4px; }
+    .right { overflow: auto; padding: 16px; }
+    h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+    pre {
+      margin: 0 0 16px; background: #0f1620; border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px; font-size: 12px; white-space: pre-wrap; color: #fecaca;
+    }
+    .chain { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 4px 12px; }
+    .node {
+      display: grid; grid-template-columns: 80px 1fr auto; gap: 8px;
+      padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 12px;
+    }
+    .node:last-child { border-bottom: 0; }
+    .kind { color: var(--muted); }
+    .mono { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+    .el-input__wrapper { background: #0f1620 !important; box-shadow: 0 0 0 1px var(--line) inset !important; }
+    .el-input__inner { color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="bar">
+      <a class="back" href="./lite-rum-chain-picker.html">← 五版</a>
+      <span><b>D′</b> Issue → Chain · 前端错误与后端异常同一收件箱</span>
+      <el-input v-model="q" size="small" clearable placeholder="fingerprint / message / entry" style="width:260px"></el-input>
+    </div>
+    <div class="note">
+      无前端时仍适用：后端异常用 <b style="color:var(--text)">exception fingerprint</b>（类名+消息+首帧）聚合，
+      再下钻到同一 <span class="mono">traceId</span>。有前端时 JS Issue 与后端 Issue 并列，不拆两套产品。
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="filters">
+          <span class="chip" :class="{ on: kind === 'all' }" @click="kind = 'all'">全部</span>
+          <span class="chip" :class="{ on: kind === 'fe' }" @click="kind = 'fe'">前端</span>
+          <span class="chip" :class="{ on: kind === 'be' }" @click="kind = 'be'">后端</span>
+        </div>
+        <div
+          v-for="i in filtered"
+          :key="i.fingerprint"
+          class="issue"
+          :class="{ active: cur && cur.fingerprint === i.fingerprint }"
+          @click="cur = i"
+        >
+          <div>
+            <span class="fp">{{ i.fingerprint }}</span>
+            <span class="badge" :class="i.kind">{{ i.kind === 'fe' ? 'FE' : 'BE' }}</span>
+          </div>
+          <div style="margin-top:4px">{{ i.message }}</div>
+          <div class="meta">{{ i.entry }} · ×{{ i.count }} · {{ i.lastSeenAt }}</div>
+        </div>
+      </div>
+      <div class="right" v-if="cur">
+        <h3>STACK / EXCEPTION</h3>
+        <pre>{{ cur.stack }}</pre>
+        <h3>CONTEXT</h3>
+        <div class="meta" style="margin-bottom:16px;line-height:1.8">
+          kind={{ cur.kindLabel }} · entry <span class="mono">{{ cur.entry }}</span><br />
+          caller={{ cur.caller }} ·
+          <template v-if="cur.page">page {{ cur.page }} · </template>
+          <template v-if="cur.action">action {{ cur.action }} · </template>
+          traceId <span class="mono">{{ cur.traceId }}</span>
+          <template v-if="cur.operationId"> · op <span class="mono">{{ cur.operationId }}</span></template>
+        </div>
+        <h3>CHAIN</h3>
+        <div class="chain">
+          <div v-for="(n, idx) in cur.chain" :key="idx" class="node">
+            <div class="kind">{{ n.kind }}</div>
+            <div>
+              <div>{{ n.title }}</div>
+              <div v-if="n.traceId" class="mono" style="margin-top:4px">{{ n.traceId }}</div>
+            </div>
+            <div class="meta">{{ n.ms != null ? n.ms + 'ms' : '' }}</div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <a class="back" :href="'./lite-rum-chain-a-unified.html'">在 Trace 瀑布中打开 →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+  <script>
+    const ISSUES = [
+      {
+        fingerprint: 'fe_a1b2c3',
+        kind: 'fe',
+        kindLabel: '前端 JS',
+        message: "TypeError: Cannot read properties of undefined (reading 'id')",
+        entry: 'POST /api/order/create',
+        caller: 'quick-ui',
+        page: '/orders/confirm',
+        action: 'order.submit',
+        operationId: 'op_7c21',
+        traceId: 'tr_9f2a1c',
+        count: 128,
+        lastSeenAt: '20:48:22',
+        stack: "TypeError: Cannot read properties of undefined (reading 'id')\\n    at OrderConfirm.vue:142",
+        chain: [
+          { kind: 'PAGE', title: '/cart → /orders/confirm' },
+          { kind: 'ACTION', title: 'order.submit' },
+          { kind: 'API', title: 'POST /api/order/create', traceId: 'tr_9f2a1c', ms: 760 },
+          { kind: 'FE_ERR', title: "TypeError reading 'id'" },
+          { kind: 'BE_ERR', title: 'NullPointerException OrderService.create:88' },
+        ],
+      },
+      {
+        fingerprint: 'be_stock_001',
+        kind: 'be',
+        kindLabel: '后端异常',
+        message: 'BizException: STOCK_NOT_ENOUGH',
+        entry: 'POST /openapi/v1/order',
+        caller: 'partner-erp (acme)',
+        page: '',
+        action: '',
+        operationId: '',
+        traceId: 'tr_api_88e1',
+        count: 43,
+        lastSeenAt: '21:02:11',
+        stack: 'com.acme.order.BizException: STOCK_NOT_ENOUGH\\n    at InventoryService.check:66\\n    at OrderFacade.create:41',
+        chain: [
+          { kind: 'ENTRY', title: 'POST /openapi/v1/order (no UI)' },
+          { kind: 'GW', title: 'api-gateway auth', ms: 18 },
+          { kind: 'SVC', title: 'order-service', ms: 510 },
+          { kind: 'RPC', title: 'inventory.check', ms: 120 },
+          { kind: 'BE_ERR', title: 'STOCK_NOT_ENOUGH', traceId: 'tr_api_88e1' },
+        ],
+      },
+      {
+        fingerprint: 'be_npe_order',
+        kind: 'be',
+        kindLabel: '后端异常',
+        message: 'NullPointerException at OrderService.create:88',
+        entry: 'POST /api/order/create',
+        caller: 'quick-ui',
+        page: '/orders/confirm',
+        action: 'order.submit',
+        operationId: 'op_7c21',
+        traceId: 'tr_9f2a1c',
+        count: 56,
+        lastSeenAt: '20:47:01',
+        stack: 'java.lang.NullPointerException\\n    at OrderService.create:88\\n    at OrderController.create:35',
+        chain: [
+          { kind: 'ENTRY', title: 'POST /api/order/create' },
+          { kind: 'SQL', title: 'SELECT t_order', ms: 680 },
+          { kind: 'BE_ERR', title: 'NPE OrderService.create:88', traceId: 'tr_9f2a1c' },
+        ],
+      },
+    ];
+    const { createApp, ref, computed } = Vue;
+    createApp({
+      setup() {
+        const q = ref('');
+        const kind = ref('all');
+        const cur = ref(ISSUES[0]);
+        const filtered = computed(() => {
+          const s = q.value.trim().toLowerCase();
+          return ISSUES.filter((i) => {
+            if (kind.value !== 'all' && i.kind !== kind.value) return false;
+            if (!s) return true;
+            return (
+              i.fingerprint.includes(s) ||
+              i.message.toLowerCase().includes(s) ||
+              i.entry.toLowerCase().includes(s)
+            );
+          });
+        });
+        return { q, kind, cur, filtered };
+      },
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

@@ -44,6 +44,9 @@
 </template>
 
 <script setup>
+/**
+ * 顶栏：汉堡菜单、面包屑/混合/顶部导航切换、全屏、用户下拉（个人中心/布局/退出）。
+ */
 import { ElMessageBox } from 'element-plus'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Hamburger from '@/components/Hamburger/index.vue'
@@ -61,10 +64,12 @@ const userStore = useUserStore()
 const settingsStore = useSettingsStore()
 const navType = computed(() => normalizeNavType(settingsStore.navType))
 
+/** 切换侧栏展开/收起 */
 function toggleSideBar() {
   appStore.toggleSideBar()
 }
 
+/** 用户下拉菜单命令分发 */
 function handleCommand(command) {
   switch (command) {
     case 'setLayout':
@@ -78,6 +83,7 @@ function handleCommand(command) {
   }
 }
 
+/** 确认后注销并跳转登录页 */
 function logout() {
   ElMessageBox.confirm('确定注销并退出系统吗？', '提示', {
     confirmButtonText: '确定',

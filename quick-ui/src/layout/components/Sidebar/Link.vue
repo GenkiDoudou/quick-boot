@@ -5,6 +5,9 @@
 </template>
 
 <script setup>
+/**
+ * 菜单链接包装：外链用 <a> 新标签打开；meta.link 内嵌页强制 router-link。
+ */
 import { isExternal } from '@/utils/validate'
 
 const props = defineProps({

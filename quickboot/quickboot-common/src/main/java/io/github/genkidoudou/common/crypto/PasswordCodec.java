@@ -26,8 +26,7 @@ public interface PasswordCodec {
    * 按算法标识加密明文。
    *
    * @param rawPassword 明文
-   * @return 带 {@code {id}} 前缀的编码串
-   * @return 7* @since 2026/7/26
+   * @return 带 {@code {id}} 前缀的编码串（具体格式由实现决定）
    */
   String encrypt(String rawPassword);
 

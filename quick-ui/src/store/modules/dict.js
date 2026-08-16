@@ -14,7 +14,11 @@ const useDictStore = defineStore(
       dict: new Array()
     }),
     actions: {
-      // 获取字典
+      /**
+       * 从内存缓存读取某 dictType 的 options 数组。
+       * @param {string} _key dictType
+       * @returns {Array|null}
+       */
       getDict(_key) {
         if (_key == null && _key == "") {
           return null;
@@ -29,7 +33,11 @@ const useDictStore = defineStore(
           return null;
         }
       },
-      // 设置字典
+      /**
+       * 写入某 dictType 的 options（不覆盖已存在项，仅追加）。
+       * @param {string} _key dictType
+       * @param {Array} value { label, value, ... } 选项列表
+       */
       setDict(_key, value) {
         if (_key !== null && _key !== "") {
           this.dict.push({
@@ -38,7 +46,11 @@ const useDictStore = defineStore(
           });
         }
       },
-      // 删除字典
+      /**
+       * 移除某 dictType 的缓存项。
+       * @param {string} _key dictType
+       * @returns {boolean} 是否删除成功
+       */
       removeDict(_key) {
         var bln = false;
         try {
@@ -53,11 +65,11 @@ const useDictStore = defineStore(
         }
         return bln;
       },
-      // 清空字典
+      /** 清空全部字典缓存（刷新后端字典后应调用） */
       cleanDict() {
         this.dict = new Array();
       },
-      // 初始字典
+      /** 预留：应用启动时可预加载字典（当前未实现） */
       initDict() {}
     }
   })

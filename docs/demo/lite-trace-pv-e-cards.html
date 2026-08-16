@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E · 卡片墙 · 先选页再下钻</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    :root { --bg: #0c1222; --card: #141c2e; --line: #243044; --text: #e8eef7; --muted: #94a3b8; --accent: #38bdf8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(1200px 600px at 10% -10%, #1e3a5f 0%, var(--bg) 55%); color: var(--text); font-family: "Segoe UI", "PingFang SC", sans-serif; min-height: 100vh; }
+    .top { padding: 16px 24px; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+    a.back { color: var(--accent); text-decoration: none; font-size: 13px; }
+    .wrap { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .lead { color: var(--muted); font-size: 14px; margin-bottom: 20px; line-height: 1.55; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card {
+      background: linear-gradient(160deg, #18233a, var(--card));
+      border: 1px solid var(--line); border-radius: 16px; padding: 18px; cursor: pointer;
+      transition: transform .15s, border-color .15s;
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+    .card.fail { border-color: rgba(239,68,68,.45); }
+    .path { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #7dd3fc; word-break: break-all; }
+    .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .stat { display: flex; gap: 10px; margin-top: 14px; }
+    .pill { background: rgba(56,189,248,.12); color: #7dd3fc; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
+    .pill.bad { background: rgba(239,68,68,.15); color: #fca5a5; }
+    .back2 { margin-bottom: 16px; }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .trace {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer;
+    }
+    .trace.on { border-color: var(--accent); background: rgba(56,189,248,.06); }
+    .wf { margin-top: 12px; }
+    .row { display: grid; grid-template-columns: 1fr 80px; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+    .kv pre { background: #0b1220; border: 1px solid var(--line); padding: 8px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; font-size: 11px; max-height: 120px; overflow: auto; }
+    label { display: block; color: var(--muted); font-size: 11px; margin: 8px 0 4px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <a class="back" href="./lite-trace-page-visit-picker.html">← 选型</a>
+    <strong>E · 卡片墙</strong>
+    <span style="color:var(--muted);font-size:13px">先选页面访问，再下钻 Trace</span>
+  </div>
+  <div class="wrap">
+    <p class="lead">风格：产品化卡片。一级只展示 pageVisit（路径、session、链路数），点进二级再看多 Trace 与合并接口详情。适合讲解「页 → 多链」心智。</p>
+
+    <template v-if="!cur">
+      <div class="grid">
+        <div v-for="pv in visits" :key="pv.pageVisitId" class="card" :class="{fail:pv.okFlag!=='1'}" @click="cur=pv; pickTrace(pv.traces[0])">
+          <div class="path">{{ pv.pagePath }}</div>
+          <div class="meta">来自 {{ pv.fromPage }}</div>
+          <div class="meta mono">session {{ pv.sessionId }}</div>
+          <div class="meta mono">visit {{ pv.pageVisitId }}</div>
+          <div class="stat">
+            <span class="pill">{{ pv.traces.length }} traces</span>
+            <span class="pill">{{ pv.durationMs }}ms</span>
+            <span class="pill" :class="{bad:pv.okFlag!=='1'}">{{ pv.okFlag==='1'?'OK':'ERR' }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
+      <el-button class="back2" @click="cur=null;trace=null;sel=null">← 返回卡片墙</el-button>
+      <div class="panel">
+        <div class="path" style="font-size:18px">{{ cur.pagePath }}</div>
+        <div class="meta">来自 {{ cur.fromPage }} · uin {{ cur.uin }}</div>
+        <div class="meta mono">sessionId {{ cur.sessionId }}</div>
+        <div class="meta mono">pageVisitId {{ cur.pageVisitId }}</div>
+        <el-divider></el-divider>
+        <div v-for="t in cur.traces" :key="t.traceId" class="trace" :class="{on:trace&&trace.traceId===t.traceId}" @click="pickTrace(t)">
+          <div style="font-weight:600">{{ t.entryName }}
+            <span class="pill" style="float:right">{{ t.durationMs }}ms</span>
+          </div>
+          <div class="meta mono">{{ t.traceId }}</div>
+          <div v-if="trace&&trace.traceId===t.traceId" class="wf" @click.stop>
+            <div class="meta" style="margin-bottom:6px">接口已合并为 1 条</div>
+            <div v-for="s in spans" :key="s.id" class="row" @click="sel=s">
+              <span>{{ s.kindLabel }} · {{ s.name }}</span>
+              <span style="text-align:right;color:var(--muted)">{{ s.durationMs }}ms</span>
+            </div>
+            <div v-if="sel&&sel.kind==='api'" class="kv">
+              <label>Params</label><pre>{{ sel.requestParams||'—' }}</pre>
+              <label>Body</label><pre>{{ sel.requestBody||'—' }}</pre>
+              <label>响应</label><pre>{{ sel.responsePreview||'—' }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+<script src="./lite-trace-pv-mock.js"></script>
+<script>
+const { createApp, ref, computed } = Vue
+createApp({
+  setup() {
+    const visits = window.LT_PV_MOCK.visits
+    const cur = ref(null)
+    const trace = ref(null)
+    const sel = ref(null)
+    const spans = computed(() => window.LT_PV_MOCK.mergeSpans(trace.value?.spansRaw, trace.value?.durationMs))
+    function pickTrace(t) {
+      trace.value = t
+      const s = window.LT_PV_MOCK.mergeSpans(t.spansRaw, t.durationMs)
+      sel.value = s.find(x => x.kind === 'api') || s[0]
+    }
+    return { visits, cur, trace, sel, spans, pickTrace }
+  }
+}).use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

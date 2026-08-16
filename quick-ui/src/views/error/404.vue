@@ -9,6 +9,7 @@
 </template>
 
 <script setup>
+/** HTTP 404 错误页：页面不存在时展示，提供返回首页入口 */
 import { useRouter } from 'vue-router'
 
 const router = useRouter()

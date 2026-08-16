@@ -16,6 +16,7 @@ public class QuartzJobStoreMaintenance {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** 周期性清理 QRTZ 半删触发器，避免 MisfireHandler 持续报错。 */
     @Scheduled(fixedDelayString = "${qc.monitor.job.store-maintenance-interval-ms:60000}")
     public void cleanBrokenMetadata() {
         int cleaned = QuartzJdbcJobStoreCleanup.cleanBrokenCronMetadata(

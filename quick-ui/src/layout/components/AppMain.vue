@@ -15,6 +15,9 @@
 </template>
 
 <script setup>
+/**
+ * 主内容区：router-view + keep-alive 缓存 + 外链 iframe 切换。
+ */
 import IframeToggle from './IframeToggle/index.vue'
 import useTagsViewStore from '@/store/modules/tagsView'
 

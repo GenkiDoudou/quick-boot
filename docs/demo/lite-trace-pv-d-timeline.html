@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D · 时间轴故事板</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.css" />
+  <style>
+    body { margin: 0; background: #faf8f5; color: #1c1917; font-family: "Iowan Old Style", "Songti SC", Georgia, serif; }
+    .top { background: #1c1917; color: #fafaf9; padding: 14px 24px; display: flex; gap: 16px; align-items: center; }
+    a.back { color: #fdba74; text-decoration: none; font-family: system-ui; font-size: 13px; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 48px; }
+    .lead { font-size: 15px; color: #57534e; margin-bottom: 24px; line-height: 1.6; font-family: system-ui; }
+    .session { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #78716c; margin-bottom: 20px; }
+    .visit {
+      position: relative; padding-left: 28px; margin-bottom: 36px;
+      border-left: 3px solid #d6d3d1;
+    }
+    .visit::before {
+      content: ''; position: absolute; left: -8px; top: 8px; width: 13px; height: 13px;
+      border-radius: 50%; background: #ea580c; border: 2px solid #fff; box-shadow: 0 0 0 2px #ea580c;
+    }
+    .visit.fail::before { background: #dc2626; box-shadow: 0 0 0 2px #dc2626; }
+    .v-head { margin-bottom: 12px; }
+    .v-title { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+    .v-meta { font-family: system-ui; font-size: 13px; color: #78716c; }
+    .trace-card {
+      background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 14px 16px; margin: 10px 0 10px 8px;
+      font-family: system-ui; cursor: pointer; transition: box-shadow .15s;
+    }
+    .trace-card:hover, .trace-card.on { box-shadow: 0 4px 16px rgba(28,25,23,.08); border-color: #ea580c; }
+    .t-name { font-weight: 600; font-size: 14px; }
+    .t-id { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a8a29e; margin-top: 4px; }
+    .spans { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e7e5e4; }
+    .srow { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #44403c; }
+    .detail {
+      margin-top: 12px; background: #fff7ed; border-radius: 8px; padding: 12px; font-size: 12px;
+      font-family: ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <a class="back" href="./lite-trace-page-visit-picker.html">← 选型</a>
+    <strong style="font-family:system-ui">D · 时间轴故事板</strong>
+  </div>
+  <div class="wrap">
+    <p class="lead">风格：叙事向。竖轴是「用户走过的页面」，每个页面节点下挂该次停留产生的全部接口链。强调「一页多 Trace」，弱化瀑布条。</p>
+    <div class="session">sessionId · {{ visits[0].sessionId }} · uin {{ visits[0].uin }}</div>
+    <div v-for="pv in visits" :key="pv.pageVisitId" class="visit" :class="{fail:pv.okFlag!=='1'}">
+      <div class="v-head">
+        <h2 class="v-title">{{ pv.pagePath }}</h2>
+        <div class="v-meta">来自 {{ pv.fromPage }} · {{ pv.startedAt }} · pageVisitId {{ pv.pageVisitId }} · {{ pv.traces.length }} 条链路</div>
+      </div>
+      <div
+        v-for="t in pv.traces"
+        :key="t.traceId"
+        class="trace-card"
+        :class="{on: openId===t.traceId}"
+        @click="toggle(t)"
+      >
+        <div class="t-name">{{ t.entryName }}
+          <el-tag size="small" :type="t.okFlag==='1'?'success':'danger'" style="margin-left:8px">{{ t.statusCode }}</el-tag>
+          <span style="float:right;color:#78716c">{{ t.durationMs }}ms</span>
+        </div>
+        <div class="t-id">traceId {{ t.traceId }}</div>
+        <div v-if="openId===t.traceId" class="spans">
+          <div class="v-meta" style="margin-bottom:6px">瀑布已去重：接口仅 1 条（含参数/响应）</div>
+          <div v-for="s in merge(t)" :key="s.id" class="srow" @click.stop="sel=s">
+            <span>{{ s.kindLabel }} · {{ s.name }}</span>
+            <span>{{ s.durationMs }}ms</span>
+          </div>
+          <div v-if="sel&&sel.kind==='api'" class="detail">Params: {{ sel.requestParams||'—' }}
+Body: {{ sel.requestBody||'—' }}
+Resp: {{ sel.responsePreview||'—' }}
+FE/BE: {{ sel.feMs }} / {{ sel.beMs }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2/dist/index.full.min.js"></script>
+<script src="./lite-trace-pv-mock.js"></script>
+<script>
+const { createApp, ref } = Vue
+createApp({
+  setup() {
+    const visits = window.LT_PV_MOCK.visits
+    const openId = ref(visits[0].traces[0].traceId)
+    const sel = ref(null)
+    function merge(t){ return window.LT_PV_MOCK.mergeSpans(t.spansRaw, t.durationMs) }
+    function toggle(t){
+      openId.value = openId.value===t.traceId ? '' : t.traceId
+      const spans = merge(t)
+      sel.value = spans.find(s=>s.kind==='api')||null
+    }
+    sel.value = merge(visits[0].traces[0]).find(s=>s.kind==='api')
+    return { visits, openId, sel, merge, toggle }
+  }
+}).use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

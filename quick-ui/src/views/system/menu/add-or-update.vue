@@ -550,7 +550,10 @@
 
 
 <script setup>
-
+/**
+ * 菜单新增/修改弹窗：目录/菜单/按钮、外链/积木/BI 打开方式映射为后端 is_frame/path/query。
+ * 通过 defineExpose({ open }) 供 index.vue 调用。
+ */
 import { computed, nextTick, ref } from 'vue'
 
 import { ElMessage } from 'element-plus'

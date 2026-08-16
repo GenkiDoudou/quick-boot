@@ -224,6 +224,10 @@
 </template>
 
 <script setup>
+/**
+ * 登录页：账号密码 / 手机验证码 / 扫码（占位）三 Tab；
+ * 支持天爱行为验证码、记住密码、OAuth 回调 token、第三方 IdP 跳转。
+ */
 import { ref, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Cookies from 'js-cookie'
@@ -285,6 +289,7 @@ onMounted(() => {
         })
 })
 
+/** OAuth 授权：跳转到后端 IdP 授权入口 */
 function goOauthProvider(p) {
   const base = import.meta.env.VITE_APP_BASE_API || ''
   const prefix = base.endsWith('/') ? base.slice(0, -1) : base
@@ -292,6 +297,7 @@ function goOauthProvider(p) {
   window.location.href = `${prefix.startsWith('http') ? prefix : window.location.origin + (prefix.startsWith('/') ? prefix : '/' + prefix)}${path}`
 }
 
+/** 关闭天爱验证码弹层并销毁实例 */
 function closeCaptcha() {
   captchaVisible.value = false
   if (tacInstance) {
@@ -300,6 +306,7 @@ function closeCaptcha() {
   }
 }
 
+/** 打开天爱行为验证码，校验成功后写入 uuid 并执行登录 */
 function openCaptcha() {
   closeCaptcha()
   captchaVisible.value = true

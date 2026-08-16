@@ -1,3 +1,8 @@
+/**
+ * v-hasRole 角色指令：当前用户不含指定角色时从 DOM 移除元素。
+ *
+ * 用法：`v-hasRole="['admin']"`；超级管理员角色 `admin` 始终通过。
+ */
 import useUserStore from '@/store/modules/user'
 
 export default {

@@ -55,6 +55,9 @@
 </template>
 
 <script setup>
+/**
+ * 系统参数配置：分页 CRUD、内置参数删除保护、刷新参数缓存、Excel 导入导出。
+ */
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
@@ -74,6 +77,7 @@ const isAdd = ref(true)
 const form = reactive({
   configId: null, configName: '', configKey: '', configValue: '', configType: '0', remark: ''
 })
+/** 系统内置参数（configType=1）编辑时禁止改键名与内置标记 */
 const isBuiltinEdit = computed(() => !isAdd.value && form.configType === '1')
 const rules = {
   configName: [{ required: true, message: '必填', trigger: 'blur' }],
@@ -127,6 +131,7 @@ async function submitForm() {
   tableRef.value?.refreshData?.()
 }
 
+/** 内置参数不允许删除 */
 function removeRow(row) {
   if (row.configType === '1') {
     ElMessage.warning('系统内置参数不允许删除')

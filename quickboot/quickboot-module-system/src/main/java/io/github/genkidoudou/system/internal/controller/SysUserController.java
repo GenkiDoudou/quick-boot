@@ -33,6 +33,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * 系统用户管理。CRUD、状态/密码、角色授权及 Excel 导入导出。
+ */
 @Tag(name = "用户管理")
 @RequiredArgsConstructor
 @RestController
@@ -41,6 +44,12 @@ public class SysUserController {
 
   private final ISysUserService userService;
 
+  /**
+   * 用户分页。
+   *
+   * @param pageRequest 分页参数与查询条件
+   * @return 分页结果（敏感字段已脱敏）
+   */
   @Operation(summary = "分页查询")
   @SaCheckPermission("system:user:list")
   @SensitiveResponse
@@ -49,6 +58,12 @@ public class SysUserController {
     return R.ok(userService.page(pageRequest));
   }
 
+  /**
+   * 用户详情。
+   *
+   * @param userId 用户主键
+   * @return 用户 Vo
+   */
   @Operation(summary = "用户详情")
   @SaCheckPermission(value = {"system:user:query", "system:user:list", "system:user:edit"}, mode = SaMode.OR)
   @GetMapping("/{userId}")
@@ -56,6 +71,12 @@ public class SysUserController {
     return R.ok(userService.getDetail(userId));
   }
 
+  /**
+   * 新增用户；响应 data 为新建 userId。
+   *
+   * @param vo 可写字段（含初始密码）
+   * @return 新建主键
+   */
   @Operation(summary = "新增用户")
   @SaCheckPermission("system:user:add")
   @PostMapping("add")
@@ -64,6 +85,12 @@ public class SysUserController {
     return R.ok(id == null ? null : String.valueOf(id));
   }
 
+  /**
+   * 修改用户。
+   *
+   * @param vo 含 userId 的可写字段
+   * @return 是否成功
+   */
   @Operation(summary = "修改用户")
   @SaCheckPermission("system:user:edit")
   @PostMapping("update")
@@ -71,6 +98,12 @@ public class SysUserController {
     return R.ok(userService.update(vo));
   }
 
+  /**
+   * 单条删除用户。
+   *
+   * @param userId 用户主键
+   * @return ok
+   */
   @Operation(summary = "删除用户")
   @SaCheckPermission("system:user:remove")
   @GetMapping("remove/{userId}")
@@ -79,6 +112,12 @@ public class SysUserController {
     return R.ok();
   }
 
+  /**
+   * 批量删除用户。
+   *
+   * @param userIds 用户主键集合
+   * @return ok
+   */
   @Operation(summary = "批量删除用户")
   @SaCheckPermission("system:user:remove")
   @PostMapping("remove")
@@ -87,6 +126,12 @@ public class SysUserController {
     return R.ok();
   }
 
+  /**
+   * 修改用户启用/停用状态。
+   *
+   * @param body userId + status
+   * @return ok
+   */
   @Operation(summary = "修改用户状态")
   @SaCheckPermission("system:user:edit")
   @PostMapping("changeStatus")
@@ -95,6 +140,12 @@ public class SysUserController {
     return R.ok();
   }
 
+  /**
+   * 重置用户登录密码。
+   *
+   * @param body userId + 新密码明文
+   * @return ok；副作用为更新密码哈希
+   */
   @Operation(summary = "重置密码")
   @SaCheckPermission("system:user:resetPwd")
   @PostMapping("resetPwd")
@@ -103,6 +154,12 @@ public class SysUserController {
     return R.ok();
   }
 
+  /**
+   * 查询用户已授权角色（编辑页回显）。
+   *
+   * @param userId 用户主键
+   * @return 用户信息与角色勾选列表
+   */
   @Operation(summary = "查询授权角色")
   @SaCheckPermission("system:user:edit")
   @GetMapping("authRole/{userId}")
@@ -110,6 +167,12 @@ public class SysUserController {
     return R.ok(userService.authRole(userId));
   }
 
+  /**
+   * 全量保存用户角色授权。
+   *
+   * @param body userId + roleIds
+   * @return ok
+   */
   @Operation(summary = "保存授权角色")
   @SaCheckPermission("system:user:edit")
   @PostMapping("authRole")
@@ -118,6 +181,12 @@ public class SysUserController {
     return R.ok();
   }
 
+  /**
+   * 同步导出用户 xlsx。
+   *
+   * @param query    导出筛选条件
+   * @param response 文件流
+   */
   @Operation(summary = "导出用户")
   @SaCheckPermission("system:user:export")
   @PostMapping("export")
@@ -125,6 +194,11 @@ public class SysUserController {
     ExcelUtils.exportExcel(userService.export(query), "用户", SysUserVo.class, response);
   }
 
+  /**
+   * 下载用户导入 Excel 模板。
+   *
+   * @param response 文件流
+   */
   @Operation(summary = "导入模板")
   @SaCheckPermission("system:user:import")
   @GetMapping("import/template")
@@ -132,6 +206,13 @@ public class SysUserController {
     ExcelUtils.exportExcel(Collections.emptyList(), "user-import-template", SysUserImportRow.class, false, true, response);
   }
 
+  /**
+   * 同步导入用户；可选更新已存在用户名。
+   *
+   * @param file          Excel 文件
+   * @param updateSupport 是否更新已存在数据（true/1）
+   * @return 导入统计与失败行
+   */
   @Operation(summary = "导入用户")
   @SaCheckPermission("system:user:import")
   @PostMapping("import")

@@ -1,3 +1,6 @@
+/**
+ * 权限校验插件（$auth）：基于 userStore 的 permissions/roles 提供 hasPermi、hasRole 等链式 API。
+ */
 import useUserStore from '@/store/modules/user'
 
 function authPermission(permission) {

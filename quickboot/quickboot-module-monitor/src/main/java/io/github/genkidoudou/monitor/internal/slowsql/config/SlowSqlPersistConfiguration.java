@@ -16,6 +16,11 @@ import java.util.concurrent.Executor;
 @ConditionalOnProperty(prefix = "qc.monitor.slow-sql", name = "async-enabled", havingValue = "true", matchIfMissing = true)
 public class SlowSqlPersistConfiguration {
 
+    /**
+     * 慢 SQL 异步落库专用线程池。
+     *
+     * @return 线程池执行器
+     */
     @Bean(name = "slowSqlTaskExecutor")
     public Executor slowSqlTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

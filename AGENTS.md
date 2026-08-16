@@ -1,9 +1,10 @@
 # AGENTS.md
 
 - 项目：quickboot
-- 技术栈摘要：Vue 3 (quick-ui); Maven Java 17 / Spring Boot 4.0.0 (quickboot); VitePress (docs)
+- 技术栈摘要：Vue 3 (quick-ui); uni-app (quick-h5); Maven Java 17 / Spring Boot 4.0.0 (quickboot); VitePress (docs)
 - 是否 Monorepo：是
 - 前端 (`quick-ui`)：Vue 3，UI=Element Plus，样式=Sass/SCSS，包管理=pnpm；语言以 JS 为主，可逐步 TypeScript
+- 移动端 (`quick-h5`)：uni-app Vue3 + uView Pro（H5 / 微信小程序）
 - 后端 (`quickboot`)：Maven，Java 17，Spring Boot 4.0.0；模块 `common` / `core` / `module-system` / `app`
 - 文档 (`docs`)：VitePress
 
@@ -11,18 +12,41 @@
 
 | 文件 | 管什么 |
 |------|--------|
-| **本文件 `AGENTS.md`** | Agent 协作流程、排障、Karpathy、Never/多 Agent 安全、构建命令、快捷指令 |
-| **`code_formater.md`** | 编码 / 库表 / Maven·Modulith 分层 / 前后端约定 / 命名（**写代码时以它为准**） |
+| **本文件 `AGENTS.md`** | Agent 协作流程、排障、Karpathy、生成代码注释强制要求、Never/多 Agent 安全、构建命令、快捷指令 |
+| **`code_formater.md`** | 编码 / 库表 / Maven·Modulith 分层 / 前后端约定 / 命名 / 注释细则（**写代码时以它为准**） |
 | **`DESIGN.md`** | 前端视觉 token |
 | **`.cursor/rules`** | 可自动注入的硬规则（如布尔字段、Karpathy 细则） |
 
 写或改业务代码、DDL、前端页面之前，**须通读** `code_formater.md` 相关章节。冲突时：协作流程以本文件为准；编码事实以 `code_formater.md` + `.cursor/rules` + 现网为准。
 
+## 生成代码注释（强制）
+
+Agent **生成或实质性改写**前端 / 后端业务代码时，**必须**同步补充**详细、可维护的中文注释**（细则与示例以 `code_formater.md`「注释」相关章节为准）。禁止只交「能跑的裸代码」。
+
+适用范围：`quick-ui`、`quick-h5`、`quickboot`（及同仓库其它业务源码）；**新建文件**与**本次新增/改写的公开 API、复杂逻辑**均须覆盖。
+
+### 最低要求
+
+| 侧 | 必须注释 |
+|----|----------|
+| **后端** | 类用途；public/protected 方法的职责、关键参数、返回值、副作用/事务；Entity/VO/DTO 字段业务含义（字典列标明类型编码）；非显而易见的分支、并发、缓存、SQL 意图 |
+| **前端** | 页面/组件职责；composable / 关键工具函数的入参与返回；复杂 `watch`/`computed`/请求编排的触发条件与边界；非字面可读的业务规则、状态机、权限前提 |
+| **通用** | 注释写「做什么 / 为什么 / 边界与约束」，禁止复述标识符的无信息废话；语言默认**简体中文** |
+
+### 豁免（可少写，但不得整文件零注释）
+
+- 纯格式/重命名/错别字等琐碎改动，且未改行为。
+- 仅改配置、文案、样式数值且逻辑未变。
+- 用户明确说「不用写注释 / 少写注释」。
+
+未满足本节即视为实现不完整，须在交付前补齐后再宣称完成。
+
 ## 项目结构
 
 ```
 quickboot/
-|-- quick-ui/   # 前端
+|-- quick-ui/   # 前端（管理端）
+|-- quick-h5/   # 前端（uni-app H5 / 微信小程序）
 |-- quickboot/   # Maven 模块: quickboot-common, quickboot-core, quickboot-module-system, quickboot-app
 |-- docs/   # VitePress
 `-- ...
@@ -198,6 +222,16 @@ pnpm run build  # vite build
 
 路径别名: @/* -> src/*
 
+### 移动端 (quick-h5)
+```bash
+cd quick-h5
+pnpm install   # 或 npm install --legacy-peer-deps
+pnpm dev:h5
+pnpm build:mp-weixin
+```
+
+详见 `quick-h5/README.md`。
+
 ### 后端 (quickboot)
 ```bash
 mvn clean install -DskipTests
@@ -219,6 +253,7 @@ pnpm dev
 - 非琐碎多文件改动前，禁止跳过假设 / 成功标准 / 最小计划
 - 写业务代码前未通读 `code_formater.md` 相关章节即开写 —— 禁止
 - 生成前后端功能时未检索/复用现有组件与工具类、平行再造 —— 禁止（细则见 `code_formater.md` §0）
+- 生成或实质性改写前后端业务代码时不写详细中文注释 —— 禁止（见上文「生成代码注释」与 `code_formater.md`）
 - 编码红线（布尔字段、`R<T>`、OpenAPI、禁止页面裸调 axios 等）以 `code_formater.md` 与 `.cursor/rules` 为准，不得以「AGENTS 里没写细」为由违反
 
 ## 多 Agent 安全
@@ -247,6 +282,6 @@ pnpm dev
 
 ## 协作摘要
 
-- 写代码：先读 `code_formater.md`（含 §0 优先复用）
+- 写代码：先读 `code_formater.md`（含 §0 优先复用）；生成代码须带详细中文注释（见「生成代码注释」）
 - 问题修复：先诊断并给出方案，用户确认后再改代码（用户明确要求直接改除外）
 - 非琐碎编码：改文件前先写清假设、成功标准、最小计划

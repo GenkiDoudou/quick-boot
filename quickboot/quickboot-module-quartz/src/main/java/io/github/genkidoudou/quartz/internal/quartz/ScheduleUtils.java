@@ -39,10 +39,12 @@ public final class ScheduleUtils {
         return allowConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }
 
+    /** 构建 Quartz TriggerKey（与 Job 一一对应）。 */
     public static TriggerKey getTriggerKey(Long jobId, String jobGroup) {
         return TriggerKey.triggerKey(TASK_CLASS_NAME + jobId, jobGroup);
     }
 
+    /** 构建 Quartz JobKey。 */
     public static JobKey getJobKey(Long jobId, String jobGroup) {
         return JobKey.jobKey(TASK_CLASS_NAME + jobId, jobGroup);
     }
@@ -89,6 +91,7 @@ public final class ScheduleUtils {
         }
     }
 
+    /** 先删后建，刷新 Cron 与 JobDataMap。 */
     public static void updateScheduleJob(Scheduler scheduler, JobTaskSnapshot snapshot) throws SchedulerException {
         JobKey jobKey = getJobKey(snapshot.getJobId(), snapshot.getJobGroup());
         deleteJobSafely(scheduler, jobKey);

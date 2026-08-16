@@ -11,6 +11,11 @@
 </template>
 
 <script setup>
+/**
+ * Cron 表达式运行预览：根据完整表达式计算最近 5 次触发时间并展示。
+ *
+ * @prop {string} ex 完整 Cron 表达式
+ */
 const props = defineProps({
     ex: {
         type: String,

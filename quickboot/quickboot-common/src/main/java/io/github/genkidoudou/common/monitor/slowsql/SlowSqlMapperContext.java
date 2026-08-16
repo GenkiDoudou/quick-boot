@@ -10,6 +10,11 @@ public final class SlowSqlMapperContext {
     private SlowSqlMapperContext() {
     }
 
+    /**
+     * 设置当前线程 MyBatis mapper ID。
+     *
+     * @param mapperId {@code MappedStatement#getId()}；blank 时清除
+     */
     public static void set(String mapperId) {
         if (mapperId == null || mapperId.isBlank()) {
             MAPPER_ID.remove();
@@ -18,12 +23,18 @@ public final class SlowSqlMapperContext {
         }
     }
 
+    /**
+     * 读取并清除当前线程 mapper ID。
+     *
+     * @return mapper ID；未设置时返回空串
+     */
     public static String getAndClear() {
         String v = MAPPER_ID.get();
         MAPPER_ID.remove();
         return v == null ? "" : v;
     }
 
+    /** 清除当前线程 mapper ID。 */
     public static void clear() {
         MAPPER_ID.remove();
     }

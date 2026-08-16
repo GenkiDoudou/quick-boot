@@ -1,3 +1,7 @@
+/**
+ * 系统角色管理 API。
+ * 封装 `/sys/role` 分页、CRUD、菜单授权、用户授权及 Excel 导入导出。
+ */
 import request from '@/utils/request'
 
 /**

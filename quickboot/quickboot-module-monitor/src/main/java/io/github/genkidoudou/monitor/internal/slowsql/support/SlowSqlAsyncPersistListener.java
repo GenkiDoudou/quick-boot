@@ -17,6 +17,11 @@ public class SlowSqlAsyncPersistListener {
 
     private final SlowSqlPersistSupport persistSupport;
 
+    /**
+     * 异步监听慢 SQL 采集事件并落库。
+     *
+     * @param event 慢 SQL 采集事件
+     */
     @Async("slowSqlTaskExecutor")
     @EventListener
     public void onSlowSqlCaptured(SlowSqlCapturedEvent event) {

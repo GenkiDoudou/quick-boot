@@ -1,3 +1,6 @@
+/**
+ * 知识库文档 API：文档 CRUD、上传入库、分段预览与异步入库触发（/knowledge/doc）。
+ */
 import request from '@/utils/request'
 
 /**

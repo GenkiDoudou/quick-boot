@@ -45,6 +45,9 @@ public class JimuPrimaryDataSourceSynchronizer {
     private final DataSourceProperties dataSourceProperties;
     private final JimuProperties jimuProperties;
 
+    /**
+     * 应用就绪后同步/修正积木主库数据源记录。
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void syncOnReady() {
         JimuProperties.PrimaryDataSource cfg = jimuProperties.getPrimaryDataSource();

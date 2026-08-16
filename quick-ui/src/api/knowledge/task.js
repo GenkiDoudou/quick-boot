@@ -1,3 +1,6 @@
+/**
+ * 知识库入库任务 API：异步入库进度查询（/knowledge/task）。
+ */
 import request from '@/utils/request'
 
 /**

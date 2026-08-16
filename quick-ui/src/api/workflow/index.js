@@ -1,3 +1,6 @@
+/**
+ * 工作流 API：流程 CRUD、图 DSL 保存、运行实例与 SSE 流式输出（/workflow）。
+ */
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 import { buildObfuscatedBasicAuthorization } from '@/utils/oauthClientBasic'

@@ -11,7 +11,9 @@ import java.util.List;
 @Data
 public class RoleMenuTreeVo {
 
+  /** 全量菜单树。 */
   private List<SysMenuTreeVo> menus = new ArrayList<>();
 
+  /** 已勾选菜单 ID。 */
   private List<Long> checkedKeys = new ArrayList<>();
 }

@@ -9,6 +9,7 @@
 </template>
 
 <script setup>
+/** HTTP 401 错误页：无权限访问时展示，提供返回首页入口 */
 import { useRouter } from 'vue-router'
 
 const router = useRouter()

@@ -38,6 +38,9 @@ final class FixedDragRedisUtil extends org.jeecg.modules.drag.util.g {
         }
     }
 
+    /**
+     * 修复本地缓存 increment：无 Redis 时正确解析数值而非 ValueWrapper.toString()。
+     */
     @Override
     public long a(String key, long delta) {
         if (delta < 0) {

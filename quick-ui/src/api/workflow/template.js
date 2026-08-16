@@ -1,3 +1,6 @@
+/**
+ * 工作流模板 API：模板分页、详情、发布与从模板创建工作流（/workflow/template）。
+ */
 import request from '@/utils/request'
 
 /**

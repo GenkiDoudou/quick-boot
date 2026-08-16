@@ -12,12 +12,15 @@ import io.github.genkidoudou.system.internal.mapper.SysRoleMapper;
 import io.github.genkidoudou.system.internal.mapper.SysRoleMenuMapper;
 import io.github.genkidoudou.system.internal.mapper.SysUserRoleMapper;
 import io.github.genkidoudou.system.internal.service.ISysPermissionService;
+import io.github.genkidoudou.system.internal.vo.H5WorkbenchGroupVo;
+import io.github.genkidoudou.system.internal.vo.H5WorkbenchItemVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -86,7 +89,10 @@ public class SysPermissionServiceImpl implements ISysPermissionService {
 
   @Override
   public List<Map<String, Object>> buildRouters(String userId) {
-    List<SysMenu> menus = listRouterMenus(userId);
+    // PC 侧栏排除 H5 uni 页面节点（path 以 /pages/ 开头）
+    List<SysMenu> menus = listRouterMenus(userId).stream()
+      .filter(m -> !"C".equals(m.getMenuType()) || !isH5PagePath(m.getPath()))
+      .collect(Collectors.toList());
     List<SysMenu> roots = menus.stream()
       .filter(this::isRouterRoot)
       .sorted(this::compareMenu)
@@ -96,6 +102,83 @@ public class SysPermissionServiceImpl implements ISysPermissionService {
       routers.add(toRouter(root, menus, true));
     }
     return pruneEmptyDirectories(routers);
+  }
+
+  @Override
+  public List<H5WorkbenchItemVo> listH5PageItems(String userId) {
+    List<SysMenu> menus = listRouterMenus(userId);
+    List<H5WorkbenchItemVo> items = new ArrayList<>();
+    for (SysMenu m : menus) {
+      if (!isH5PageMenu(m)) {
+        continue;
+      }
+      H5WorkbenchItemVo item = new H5WorkbenchItemVo();
+      item.setId(String.valueOf(m.getMenuId()));
+      item.setLabel(m.getMenuName());
+      item.setPath(m.getPath().trim());
+      item.setIcon(StrUtil.blankToDefault(m.getIcon(), ""));
+      item.setOrderNum(m.getOrderNum());
+      items.add(item);
+    }
+    items.sort(Comparator.comparingInt(i -> i.getOrderNum() == null ? 0 : i.getOrderNum()));
+    return items;
+  }
+
+  @Override
+  public List<H5WorkbenchGroupVo> buildH5Workbench(String userId) {
+    List<SysMenu> menus = listRouterMenus(userId);
+    Map<Long, SysMenu> byId = menus.stream()
+      .collect(Collectors.toMap(SysMenu::getMenuId, m -> m, (a, b) -> a, LinkedHashMap::new));
+    Map<Long, H5WorkbenchGroupVo> groups = new LinkedHashMap<>();
+    for (SysMenu m : menus) {
+      if (!isH5PageMenu(m)) {
+        continue;
+      }
+      SysMenu parent = byId.get(m.getParentId());
+      Long groupId = parent != null ? parent.getMenuId() : 0L;
+      String title = parent != null ? parent.getMenuName() : "工作台";
+      Integer groupOrder = parent != null ? parent.getOrderNum() : 0;
+      H5WorkbenchGroupVo group = groups.computeIfAbsent(groupId, id -> {
+        H5WorkbenchGroupVo g = new H5WorkbenchGroupVo();
+        g.setId(String.valueOf(id));
+        g.setTitle(title);
+        g.setOrderNum(groupOrder);
+        return g;
+      });
+      H5WorkbenchItemVo item = new H5WorkbenchItemVo();
+      item.setId(String.valueOf(m.getMenuId()));
+      item.setLabel(m.getMenuName());
+      item.setPath(m.getPath().trim());
+      item.setIcon(StrUtil.blankToDefault(m.getIcon(), ""));
+      item.setOrderNum(m.getOrderNum());
+      group.getItems().add(item);
+    }
+    List<H5WorkbenchGroupVo> result = new ArrayList<>(groups.values());
+    result.sort(Comparator.comparingInt(g -> g.getOrderNum() == null ? 0 : g.getOrderNum()));
+    for (H5WorkbenchGroupVo g : result) {
+      g.getItems().sort(Comparator.comparingInt(i -> i.getOrderNum() == null ? 0 : i.getOrderNum()));
+    }
+    // 去掉无入口的空分组
+    return result.stream().filter(g -> !g.getItems().isEmpty()).toList();
+  }
+
+  /**
+   * H5 页面菜单：C + path 以 /pages/ 开头 + visible≠隐藏。
+   */
+  private static boolean isH5PageMenu(SysMenu m) {
+    if (m == null || !"C".equals(m.getMenuType())) {
+      return false;
+    }
+    if (!isH5PagePath(m.getPath())) {
+      return false;
+    }
+    // visible：0=显示 1=隐藏
+    return !"1".equals(m.getVisible());
+  }
+
+  /** H5 uni 页面 path 约定：必须以 /pages/ 开头 */
+  private static boolean isH5PagePath(String path) {
+    return StrUtil.isNotBlank(path) && path.trim().startsWith("/pages/");
   }
 
   @Override

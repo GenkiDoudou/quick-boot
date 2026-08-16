@@ -59,30 +59,37 @@ public class JobExecutionBridge {
         transactionTemplate = transactionTemplateBean;
     }
 
+    /** 获取 Spring 容器（Quartz Job 静态入口使用）。 */
     public static ApplicationContext getApplicationContext() {
         return applicationContext;
     }
 
+    /** 获取调度日志服务。 */
     public static SysJobLogService getJobLogService() {
         return jobLogService;
     }
 
+    /** 获取任务 Mapper。 */
     public static SysJobMapper getJobMapper() {
         return jobMapper;
     }
 
+    /** 获取 {@link ITask} 调用器。 */
     public static JobTaskInvoker getJobTaskInvoker() {
         return jobTaskInvoker;
     }
 
+    /** 获取执行日志写入器。 */
     public static JobExecutionLogger getJobExecutionLogger() {
         return jobExecutionLogger;
     }
 
+    /** 获取 JDBC 模板（JobStore 脏数据清理等）。 */
     public static JdbcTemplate getJdbcTemplate() {
         return jdbcTemplate;
     }
 
+    /** 获取编程式事务模板。 */
     public static TransactionTemplate getTransactionTemplate() {
         return transactionTemplate;
     }

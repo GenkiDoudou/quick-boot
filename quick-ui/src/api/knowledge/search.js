@@ -1,3 +1,6 @@
+/**
+ * 知识库检索 API：语义检索与检索历史（/knowledge/search）。
+ */
 import request from '@/utils/request'
 
 /**

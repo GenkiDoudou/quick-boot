@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
+/**
+ * OAuth 客户端解析：校验启用状态并组装 {@link OauthClientVo} 供登录过滤器使用。
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Component
@@ -20,6 +23,12 @@ public class OauthServiceSupportImpl implements OauthServiceSupport {
 
   private final ISysOauthClientService iSysOauthClientService;
 
+  /**
+   * 按 clientId 查询并校验客户端状态，解析 API 路径白名单。
+   *
+   * @param clientId 客户端业务标识
+   * @return 登录鉴权用 Vo
+   */
   @Override
   public OauthClientVo findByClientId(String clientId) {
     SysOauthClient sysOauthClient = iSysOauthClientService.findByClientId(clientId);

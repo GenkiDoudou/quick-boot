@@ -15,6 +15,11 @@ public class BaseException extends RuntimeException {
   private final Object[] args;
 
 
+  /**
+   * 仅指定业务码；文案由 {@link I18nUtil#getMessage(Integer)} 解析。
+   *
+   * @param code 业务错误码，可为空
+   */
   public BaseException(Integer code) {
     this(code, null);
   }
@@ -29,6 +34,13 @@ public class BaseException extends RuntimeException {
     this(code, I18nUtil.getMessage(code, args), args);
   }
 
+  /**
+   * 指定业务码、明确文案与占位参数（跳过仅依赖 code 的 i18n 解析路径）。
+   *
+   * @param code 业务错误码，可为空
+   * @param msg  提示文案
+   * @param args 国际化占位参数
+   */
   public BaseException(Integer code, String msg, Object[] args) {
     super(msg);
     this.code = code != null ? code : HttpCodes.INTERNAL_ERROR;
