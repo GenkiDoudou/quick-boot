@@ -1,0 +1,111 @@
+/**
+ * quick-ui 管理端静态发布 Pipeline。
+ * Job 建议名：deploy-quick-ui；Script Path：deploy/jenkins/Jenkinsfile.quick-ui
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  parameters {
+    choice(name: 'ENV', choices: ['test', 'prod'], description: '目标环境')
+    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
+    string(name: 'SMOKE_BASE_URL', defaultValue: '', description: '公网根 URL；空则 SSH 打本机 Nginx /')
+  }
+
+  environment {
+    UI_DIR = '/opt/quickboot/www/ui'
+  }
+
+  stages {
+    stage('Resolve ENV') {
+      steps {
+        script {
+          def meta = resolveDeployMeta(params.ENV)
+          env.DEPLOY_CRED_ID = meta.credId
+          env.DEPLOY_HOST = meta.host
+          env.DEPLOY_USER = meta.user
+          echo "ENV=${params.ENV} host=${env.DEPLOY_HOST} cred=${env.DEPLOY_CRED_ID}"
+        }
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+        sh 'git fetch --all --prune'
+        sh "git checkout ${params.BRANCH}"
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('quick-ui') {
+          sh '''
+            set -e
+            corepack enable || true
+            pnpm install --frozen-lockfile
+            pnpm build:prod
+          '''
+        }
+      }
+    }
+
+    stage('Archive') {
+      steps {
+        archiveArtifacts artifacts: 'quick-ui/dist/**', fingerprint: true
+      }
+    }
+
+    stage('Deploy') {
+      steps {
+        sshagent(credentials: [env.DEPLOY_CRED_ID]) {
+          sh """
+            set -e
+            rsync -az --delete -e 'ssh -o StrictHostKeyChecking=accept-new' \
+              quick-ui/dist/ ${env.DEPLOY_USER}@${env.DEPLOY_HOST}:${env.UI_DIR}/
+            ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
+              'sudo nginx -t && sudo nginx -s reload'
+          """
+        }
+      }
+    }
+
+    stage('Smoke') {
+      steps {
+        script {
+          if (params.SMOKE_BASE_URL?.trim()) {
+            def base = params.SMOKE_BASE_URL.trim().replaceAll(/\/$/, '')
+            sh "curl -sfI --retry 5 --retry-delay 2 '${base}/'"
+          } else {
+            sshagent(credentials: [env.DEPLOY_CRED_ID]) {
+              sh """
+                ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
+                  'curl -sfI --retry 5 --retry-delay 2 http://127.0.0.1/'
+              """
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+def resolveDeployMeta(String envName) {
+  def user = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
+  switch (envName) {
+    case 'test':
+      def host = env.QUICKBOOT_HOST_TEST?.trim()
+      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_TEST') }
+      return [credId: 'deploy-test', host: host, user: user]
+    case 'prod':
+      def host = env.QUICKBOOT_HOST_PROD?.trim()
+      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_PROD') }
+      return [credId: 'deploy-prod', host: host, user: user]
+    default:
+      error("未知 ENV: ${envName}，仅支持 test|prod")
+  }
+}

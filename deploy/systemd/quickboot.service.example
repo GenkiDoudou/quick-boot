@@ -1,0 +1,32 @@
+# 示例：quickboot 后端 systemd 单元
+# 安装：
+#   sudo cp quickboot.service.example /etc/systemd/system/quickboot.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now quickboot
+#
+# 外部配置目录见 deploy/env/application-prod.yml.example
+#   → /opt/quickboot/config/application-prod.yml
+
+[Unit]
+Description=QuickBoot Spring Boot application
+After=network.target
+
+[Service]
+Type=simple
+User=quickboot
+Group=quickboot
+WorkingDirectory=/opt/quickboot/app
+# 仅加载机上 config/，勿把密钥打进 jar
+Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/quickboot/config/
+Environment=JAVA_OPTS=-Xms256m -Xmx512m
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/quickboot/app/quickboot-app.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全加固可按环境再收紧
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

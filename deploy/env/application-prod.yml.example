@@ -1,0 +1,47 @@
+# 复制到目标机：/opt/quickboot/config/application-prod.yml
+# 由 systemd Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/opt/quickboot/config/
+# 与 --spring.profiles.active=prod 共同生效。勿提交真实密码到 Git。
+
+server:
+  port: 9993
+
+spring:
+  datasource:
+    url: jdbc:mariadb://127.0.0.1:3306/quickboot?characterEncoding=utf8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true
+    username: CHANGE_ME
+    password: CHANGE_ME
+    driver-class-name: org.mariadb.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: # 无密码可留空
+      database: 0
+
+# 关闭本地开发用嵌入式组件（matchIfMissing=true，生产必须显式关闭）
+qc:
+  dev:
+    embedded-mariadb:
+      enabled: false
+    embedded-redis:
+      enabled: false
+  security:
+    firewall:
+      cors:
+        # 同域 Nginx 反代时可关闭或收紧
+        enabled: false
+  oauth:
+    enable: true
+    # 与前端混淆盐一致；生产请更换并同步前端构建
+    key: QuickBootOAuth1
+  # 按实际公网访问地址填写（含协议与端口）
+  # 若项目使用 issuer / base-url 类配置，在此覆盖；以下为常见占位，按现网 yml 键名调整
+  jimu:
+    base-url: https://CHANGE_ME_HOST
+  file:
+    view-url-base: https://CHANGE_ME_HOST/prod-api/system/file/view
+
+# 按需覆盖日志路径等
+logging:
+  file:
+    name: /opt/quickboot/logs/quickboot.log

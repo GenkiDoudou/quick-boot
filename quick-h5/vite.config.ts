@@ -7,6 +7,9 @@ import UniRoot from '@uni-ku/root'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  // 生产 H5 挂在 Nginx /h5/；开发与其它端保持根路径
+  base:
+    process.env.UNI_PLATFORM === 'h5' && process.env.NODE_ENV === 'production' ? '/h5/' : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

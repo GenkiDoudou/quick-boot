@@ -1,0 +1,126 @@
+/**
+ * quickboot 后端发布 Pipeline。
+ * Job 建议名：deploy-quickboot；Script Path：deploy/jenkins/Jenkinsfile.quickboot
+ *
+ * 依赖节点环境变量：QUICKBOOT_HOST_TEST / QUICKBOOT_HOST_PROD；可选 QUICKBOOT_SSH_USER（默认 quickboot）
+ * Credentials：ENV=test → deploy-test；ENV=prod → deploy-prod
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  parameters {
+    choice(name: 'ENV', choices: ['test', 'prod'], description: '目标环境')
+    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
+    string(name: 'SMOKE_BASE_URL', defaultValue: '', description: '公网根 URL，如 https://app.example.com；空则 SSH 打本机 9993')
+  }
+
+  environment {
+    APP_DIR = '/opt/quickboot/app'
+    JAR_REMOTE_NAME = 'quickboot-app.jar'
+  }
+
+  stages {
+    stage('Resolve ENV') {
+      steps {
+        script {
+          def meta = resolveDeployMeta(params.ENV)
+          env.DEPLOY_CRED_ID = meta.credId
+          env.DEPLOY_HOST = meta.host
+          env.DEPLOY_USER = meta.user
+          echo "ENV=${params.ENV} host=${env.DEPLOY_HOST} cred=${env.DEPLOY_CRED_ID}"
+        }
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+        sh 'git fetch --all --prune'
+        sh "git checkout ${params.BRANCH}"
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('quickboot') {
+          sh 'mvn -pl quickboot-app -am package -DskipTests'
+        }
+      }
+    }
+
+    stage('Archive') {
+      steps {
+        archiveArtifacts artifacts: 'quickboot/quickboot-app/target/quickboot-app-*.jar', fingerprint: true, excludes: '**/*.jar.original'
+      }
+    }
+
+    stage('Deploy') {
+      steps {
+        script {
+          def localJar = sh(
+            script: "ls -1 quickboot/quickboot-app/target/quickboot-app-*.jar | grep -v original | head -n1",
+            returnStdout: true
+          ).trim()
+          if (!localJar) {
+            error('未找到可发布的 quickboot-app jar')
+          }
+          sshagent(credentials: [env.DEPLOY_CRED_ID]) {
+            sh """
+              set -e
+              scp -o StrictHostKeyChecking=accept-new '${localJar}' ${env.DEPLOY_USER}@${env.DEPLOY_HOST}:/tmp/${env.JAR_REMOTE_NAME}.new
+              ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} '
+                set -e
+                sudo mv /tmp/${env.JAR_REMOTE_NAME}.new ${env.APP_DIR}/${env.JAR_REMOTE_NAME}
+                sudo chown quickboot:quickboot ${env.APP_DIR}/${env.JAR_REMOTE_NAME}
+                sudo systemctl restart quickboot
+              '
+            """
+          }
+        }
+      }
+    }
+
+    stage('Smoke') {
+      steps {
+        script {
+          if (params.SMOKE_BASE_URL?.trim()) {
+            def base = params.SMOKE_BASE_URL.trim().replaceAll(/\/$/, '')
+            sh "curl -sf --retry 5 --retry-delay 3 '${base}/prod-api/actuator/health'"
+          } else {
+            sshagent(credentials: [env.DEPLOY_CRED_ID]) {
+              sh """
+                ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
+                  'curl -sf --retry 5 --retry-delay 3 http://127.0.0.1:9993/actuator/health'
+              """
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * ENV → SSH 凭据与主机；未知 ENV 立即失败。
+ * @return Map credId, host, user
+ */
+def resolveDeployMeta(String envName) {
+  def user = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
+  switch (envName) {
+    case 'test':
+      def host = env.QUICKBOOT_HOST_TEST?.trim()
+      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_TEST') }
+      return [credId: 'deploy-test', host: host, user: user]
+    case 'prod':
+      def host = env.QUICKBOOT_HOST_PROD?.trim()
+      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_PROD') }
+      return [credId: 'deploy-prod', host: host, user: user]
+    default:
+      error("未知 ENV: ${envName}，仅支持 test|prod")
+  }
+}

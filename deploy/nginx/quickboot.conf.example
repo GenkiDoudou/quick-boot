@@ -1,0 +1,31 @@
+# 示例：同域名托管 quick-ui / quick-h5，并反代后端
+# 复制到 /etc/nginx/conf.d/quickboot.conf 后修改 server_name 与证书。
+
+server {
+    listen 80;
+    server_name _;
+
+    # 管理端静态（SPA）
+    location / {
+        root /opt/quickboot/www/ui;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # H5 静态（部署在 /h5/；构建 base 须为 /h5/）
+    location /h5/ {
+        alias /opt/quickboot/www/h5/;
+        try_files $uri $uri/ /h5/index.html;
+    }
+
+    # 前端 VITE_APP_BASE_API=/prod-api；去掉前缀转发到本机 jar
+    location /prod-api/ {
+        proxy_pass http://127.0.0.1:9993/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 120s;
+    }
+}
