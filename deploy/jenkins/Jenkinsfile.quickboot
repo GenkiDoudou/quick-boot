@@ -74,8 +74,8 @@ pipeline {
           sshagent(credentials: [env.DEPLOY_CRED_ID]) {
             sh """
               set -e
-              scp -o StrictHostKeyChecking=accept-new '${localJar}' ${env.DEPLOY_USER}@${env.DEPLOY_HOST}:/tmp/${env.JAR_REMOTE_NAME}.new
-              ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} '
+              scp -o StrictHostKeyChecking=no '${localJar}' ${env.DEPLOY_USER}@${env.DEPLOY_HOST}:/tmp/${env.JAR_REMOTE_NAME}.new
+              ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.DEPLOY_HOST} '
                 set -e
                 sudo mv /tmp/${env.JAR_REMOTE_NAME}.new ${env.APP_DIR}/${env.JAR_REMOTE_NAME}
                 sudo chown quickboot:quickboot ${env.APP_DIR}/${env.JAR_REMOTE_NAME}
@@ -96,7 +96,7 @@ pipeline {
           } else {
             sshagent(credentials: [env.DEPLOY_CRED_ID]) {
               sh """
-                ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
+                ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
                   'curl -sf --retry 5 --retry-delay 3 http://127.0.0.1:9993/actuator/health'
               """
             }
