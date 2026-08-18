@@ -117,7 +117,7 @@ def resolveDeployMeta(String envName) {
     case 'test':
       def host = env.QUICKBOOT_HOST_TEST?.trim()
       if (!host) { error('缺少环境变量 QUICKBOOT_HOST_TEST') }
-      return [credId: 'deploy-test', host: host, user: user]
+      return [credId: '105', host: host, user: user]
     case 'prod':
       def host = env.QUICKBOOT_HOST_PROD?.trim()
       if (!host) { error('缺少环境变量 QUICKBOOT_HOST_PROD') }
