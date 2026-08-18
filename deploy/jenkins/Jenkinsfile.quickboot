@@ -12,7 +12,10 @@ pipeline {
     timestamps()
     disableConcurrentBuilds()
   }
-
+  // ↓↓↓ 添加这一段 ↓↓↓
+  tools {
+    maven 'mvn'  // 这里的名字必须和你在"全局工具配置"中给 Maven 起的名字完全一致
+  }
   parameters {
     choice(name: 'ENV', choices: ['test', 'prod'], description: '目标环境')
     string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
@@ -40,7 +43,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-       
+
       }
     }
 
