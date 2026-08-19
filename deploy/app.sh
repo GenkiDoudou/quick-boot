@@ -16,32 +16,42 @@ XMS="256M"
 XMX="256M"
 PROFILE="prod"
 KEEP="5"
+NEW_JAR_TARGET=""
 ROLLBACK_TARGET=""
 
 usage() {
-  echo "Usage: $0 {start|stop|restart|rollback} [options] [backup-file]"
+  echo "Usage: $0 {start|stop|restart|rollback|deploy} [options] [backup-file]"
   echo "  --xms 256M         堆 -Xms（默认 256M）"
   echo "  --xmx 256M         堆 -Xmx（默认 256M）"
   echo "  --profile prod     --spring.profiles.active（默认 prod）"
   echo "  --keep 5           备份保留条数（默认 5）"
   echo "  rollback           恢复 back/ 中最新一份并启动"
   echo "  rollback <file>    恢复指定备份（路径或 back/ 下文件名）并启动"
+  echo "  deploy <new-jar>   备份当前 jar（如存在）并覆盖为新 jar，然后启动"
 }
 
 # 当前目录有且仅有一个 jar，否则无法确定发布物
 resolve_jar() {
-  # shellcheck disable=SC2012
-  FILE=$(ls -1 ./*.jar 2>/dev/null | awk 'END { if (NR==1) print; }')
-  if [ -z "$FILE" ]; then
+  jar_count=$(ls -1 ./*.jar 2>/dev/null | wc -l)
+  jar_count=$(echo "$jar_count" | tr -d ' ')
+  if [ "$jar_count" -eq 0 ]; then
+    # deploy 第一次发布：允许目录无旧 jar
+    if [ "$CMD" = "deploy" ]; then
+      if [ -z "$NEW_JAR_TARGET" ]; then
+        echo "deploy 模式需要 new jar 路径参数" >&2
+        exit 1
+      fi
+      FILE=$(basename "$NEW_JAR_TARGET")
+      return 0
+    fi
     echo "当前目录没有 jar 文件" >&2
     exit 1
   fi
-  jar_count=$(ls -1 ./*.jar 2>/dev/null | wc -l)
-  jar_count=$(echo "$jar_count" | tr -d ' ')
   if [ "$jar_count" -ne 1 ]; then
     echo "当前目录只能有一个 jar（现有 ${jar_count} 个）" >&2
     exit 1
   fi
+  FILE=$(ls -1 ./*.jar 2>/dev/null | awk 'NR==1{print; exit}')
   FILE=$(basename "$FILE")
 }
 
@@ -91,12 +101,25 @@ parse_opts() {
         exit 1
         ;;
       *)
-        if [ -n "$ROLLBACK_TARGET" ]; then
-          echo "多余参数: $1" >&2
+        if [ "$CMD" = "rollback" ]; then
+          if [ -n "$ROLLBACK_TARGET" ]; then
+            echo "多余参数: $1" >&2
+            exit 1
+          fi
+          ROLLBACK_TARGET="$1"
+          shift
+        elif [ "$CMD" = "deploy" ]; then
+          if [ -n "$NEW_JAR_TARGET" ]; then
+            echo "多余参数: $1" >&2
+            exit 1
+          fi
+          NEW_JAR_TARGET="$1"
+          shift
+        else
+          echo "不支持的位置参数: $1" >&2
+          usage
           exit 1
         fi
-        ROLLBACK_TARGET="$1"
-        shift
         ;;
     esac
   done
@@ -209,6 +232,30 @@ rollback() {
   cp "$src" "./${FILE}"
 }
 
+deploy() {
+  if [ -z "$NEW_JAR_TARGET" ]; then
+    echo "deploy 需要 new jar 路径参数" >&2
+    exit 1
+  fi
+  if [ ! -f "$NEW_JAR_TARGET" ]; then
+    echo "找不到 new jar: ${NEW_JAR_TARGET}" >&2
+    exit 1
+  fi
+
+  # 停止旧进程（如存在）
+  stop || true
+
+  # 备份并覆盖
+  if [ -f "./${FILE}" ]; then
+    backup_and_prune
+  fi
+  cp "$NEW_JAR_TARGET" "./${FILE}"
+
+  # 启动新进程（无需再备份，因为已备份旧 jar）
+  start
+  echo "部署完成 PID=$(cat ./run.pid) jar=${FILE} profile=${PROFILE}"
+}
+
 CMD="$1"
 [ -n "$CMD" ] || {
   usage
@@ -242,6 +289,9 @@ case "$CMD" in
     rollback
     start
     echo "回滚并启动完成 PID=$(cat ./run.pid) 当前 jar=${FILE}"
+    ;;
+  deploy)
+    deploy
     ;;
   *)
     usage

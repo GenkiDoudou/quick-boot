@@ -77,6 +77,7 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 | `ENV` | `test` / `prod` / `dev`；凭据 ID 默认 `deploy-${ENV}`（可用节点变量 `DEPLOY_CRED_TEST` 等覆盖） |
 | `BRANCH` | Git 分支 |
 | `DEPLOY_HOSTS` | 部署机，多个用 `,` 分隔（必填） |
+| `DEPLOY_CRED_ID` | 可选：覆盖 SSH 凭据 ID；留空则按 `ENV` 默认映射 |
 | `DEPLOY_DIR` | 部署目录，默认 `/opt/quickboot/app` |
 | `SPRING_PROFILE` | 传给 `app.sh --profile`，默认 `prod` |
 | `operate` | `deploy` 或 `rollback` |
@@ -84,7 +85,7 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 
 SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `quickboot`。
 
-流程：`deploy` → 构建 → 每台 `stop`/备份/覆盖 jar → `./app.sh start --profile …` → Smoke；`rollback` → 同步 `app.sh` → `./app.sh rollback` → Smoke。
+流程：`deploy` → 构建 → 每台上传 `app.sh` 和新 jar → 执行 `./app.sh deploy <newJar> --profile …`（内部负责备份覆盖）→ Smoke；`rollback` → 同步 `app.sh` → `./app.sh rollback --profile …` → Smoke。
 
 ## 创建三个 Pipeline Job
 

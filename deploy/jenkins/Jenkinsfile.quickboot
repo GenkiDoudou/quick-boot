@@ -23,12 +23,15 @@ pipeline {
     JAR_NAME = 'quickboot-app.jar'
     // 应用端口，用于健康检查
     port = '9993'
+    // 本地构建产物目录
+    TARGET_DIR = 'quickboot/quickboot-app/target'
   }
 
   parameters {
     choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '环境（映射 SSH 凭据 deploy-${ENV}）')
     string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
     string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '部署机，多个用英文逗号分隔')
+    string(name: 'DEPLOY_CRED_ID', defaultValue: '', description: '可选：覆盖 SSH 凭据 ID；留空则按 ENV 自动映射')
     string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '部署目录（唯一 jar + app.sh）')
     string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: '传给 app.sh --profile')
     choice(name: 'operate', choices: ['deploy', 'rollback'], description: '操作：部署或回滚')
@@ -47,7 +50,8 @@ pipeline {
           env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
           // 凭据 ID：deploy-test / deploy-prod / deploy-dev，可用 DEPLOY_CRED_<ENV> 覆盖
           def envKey = params.ENV.toUpperCase()
-          env.DEPLOY_CRED_ID = env."DEPLOY_CRED_${envKey}"?.trim() ?: "deploy-${params.ENV}"
+          def computedCredId = env."DEPLOY_CRED_${envKey}"?.trim() ?: "deploy-${params.ENV}"
+          env.DEPLOY_CRED_ID = params.DEPLOY_CRED_ID?.trim() ?: computedCredId
           echo "ENV=${params.ENV} operate=${params.operate} hosts=${env.DEPLOY_HOST_LIST} cred=${env.DEPLOY_CRED_ID} user=${env.DEPLOY_USER_RESOLVED}"
         }
       }
@@ -81,7 +85,7 @@ pipeline {
       steps {
         script {
           def localJar = sh(
-            script: "ls -1 quickboot/quickboot-app/target/quickboot-app-*.jar | grep -v original | head -n1",
+            script: "ls -1 ${env.TARGET_DIR}/quickboot-app-*.jar | grep -v original | head -n1",
             returnStdout: true
           ).trim()
           if (!localJar) {
@@ -92,34 +96,18 @@ pipeline {
           def deployDir = params.DEPLOY_DIR
           def jarName = env.JAR_NAME
           def profile = params.SPRING_PROFILE
+          def remoteNewJar = "/tmp/${env.JAR_NAME}"
           sshagent(credentials: [env.DEPLOY_CRED_ID]) {
             hosts.each { host ->
               echo "部署到 ${host}:${deployDir}"
               sh """
                 set -e
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}'"
                 scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
                 ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} '
-                  set -e
-                  cd "${deployDir}"
-                  if [ -x ./app.sh ]; then
-                    ./app.sh stop || true
-                  fi
-                  if ls -1 ./*.jar >/dev/null 2>&1; then
-                    mkdir -p back
-                    stamp=\$(date +%Y%m%d%H%M%S)
-                    for j in ./*.jar; do
-                      bn=\$(basename "\$j")
-                      cp "\$j" "back/\${bn}.\${stamp}"
-                      echo "已备份 \$j -> back/\${bn}.\${stamp}"
-                    done
-                    rm -f ./*.jar
-                  fi
-                '
-                scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/${jarName}'
+                scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:'${remoteNewJar}'
                 ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
-                  "cd '${deployDir}' && ./app.sh start --profile '${profile}'"
+                  "cd '${deployDir}' && ./app.sh deploy '${remoteNewJar}' --profile '${profile}'"
               """
             }
           }
