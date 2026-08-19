@@ -55,6 +55,7 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 | `QUICKBOOT_HOSTS_TEST` | 测试机列表，逗号分隔（优先于下一档） |
 | `QUICKBOOT_HOST_TEST` | 单台测试机（兼容旧配置） |
 | `QUICKBOOT_HOSTS_PROD` / `QUICKBOOT_HOST_PROD` | 生产机，同上 |
+| `QUICKBOOT_HOST_<凭据ID>` | 按凭据 ID 映射目标机，如 `QUICKBOOT_HOST_105=192.168.1.10` |
 | `QUICKBOOT_SSH_USER` | 可选，默认 `quickboot` |
 | `DEPLOY_CRED_TEST` / `DEPLOY_CRED_PROD` | 可选，覆盖 SSH 凭据 ID |
 | `QUICKBOOT_SSH_OPTS` | 可选，默认 `-o StrictHostKeyChecking=no` |
@@ -86,8 +87,9 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 |--------|------|------------------|------|
 | `ENV` | Choice | `test` | 选项：`test` / `prod` / `dev` |
 | `BRANCH` | String | `main` | Git 分支 |
-| `DEPLOY_HOSTS` | String | （空） | 部署机，逗号分隔；**凭据 ID 默认同主机名**（如填 `105` 用凭据 `105`） |
-| `DEPLOY_CRED_ID` | String | （空） | 可选，全部主机共用此凭据 ID |
+| `DEPLOY_HOSTS` | String | （空） | **Jenkins SSH 凭据 ID**（如 `105`），逗号分隔；**不是服务器 IP** |
+| `DEPLOY_TARGET_HOSTS` | String | （空） | 目标机 **IP/域名**，逗号分隔，顺序与凭据对应；单台时填一个即可 |
+| `DEPLOY_CRED_ID` | String | （空） | 可选，非空则全部目标共用此凭据 ID（忽略 DEPLOY_HOSTS 中的 ID） |
 | `DEPLOY_DIR` | String | `/opt/quickboot/app` | 部署目录 |
 | `SPRING_PROFILE` | String | `prod` | 传给 `app.sh --profile` |
 | `operate` | Choice | `deploy` | 选项：`deploy` / `rollback` |
@@ -96,12 +98,22 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 **推荐流程：**
 
 1. 新建 Job 后直接 **Build** 一次 → 自动写入默认参数（本次会失败并提示）
-2. 打开 **Configure** 按需改默认值（如 `DEPLOY_HOSTS=105`）→ 保存
+2. 打开 **Configure** 按需改默认值，例如：
+   - `DEPLOY_HOSTS=105`（Jenkins 里 SSH 凭据 ID）
+   - `DEPLOY_TARGET_HOSTS=192.168.1.105`（真实服务器 IP）
+   - 或在 Jenkins 节点环境变量设 `QUICKBOOT_HOST_105=192.168.1.105`（可省略 DEPLOY_TARGET_HOSTS）
+   → 保存
 3. 使用 **Build with Parameters** 正式构建
 
 也可跳过自动初始化，在 Configure → **参数化构建过程** 手工按上表添加。
 
-SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `quickboot`。
+SSH 用户：从 Jenkins SSH 凭据读取（如凭据 `105` 的用户 `root`）；失败时回退 `QUICKBOOT_SSH_USER`，再默认 `root`。
+
+目标机地址解析顺序（每台凭据）：
+
+1. `DEPLOY_TARGET_HOSTS`（与凭据顺序对应）
+2. 节点环境变量 `QUICKBOOT_HOST_<凭据ID>`（如 `QUICKBOOT_HOST_105`）
+3. 仅单台时：`QUICKBOOT_HOST_TEST` / `QUICKBOOT_HOST_PROD`（按 `ENV`）
 
 流程：`deploy` → 构建 → 每台上传 `app.sh` 和新 jar → 执行 `./app.sh deploy <newJar> --profile …`（内部负责备份覆盖）→ Smoke；`rollback` → 同步 `app.sh` → `./app.sh rollback --profile …` → Smoke。
 
