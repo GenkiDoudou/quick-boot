@@ -61,21 +61,30 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 
 构建机需：JDK 17、Maven、Node + pnpm、`ssh`、`rsync`、`curl`。
 
-## deploy-quickboot 参数（可在 Jenkins Job 上改默认值）
+## deploy-quickboot
 
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `DEPLOY_HOSTS` | 空 | 本次覆盖主机列表；空则用上面的环境变量 |
-| `DEPLOY_DIR` | `/opt/quickboot/app` | 远程安装目录 |
-| `JAR_NAME` | `quickboot-app.jar` | 远程文件名 |
-| `SERVICE_NAME` | `quickboot` | systemd 单元名 |
-| `DEPLOY_USER` | 空 → `quickboot` | SSH 与进程用户 |
-| `CONFIG_DIR` | `/opt/quickboot/config` | 外部 yml 目录（已有文件不覆盖） |
-| `SMOKE_LOCAL_URL` | `http://127.0.0.1:9993/actuator/health` | **每台** SSH curl；空则不做实例探活 |
-| `SMOKE_BASE_URL` | 空 | 公网 **完整** URL，只打一次 |
-| `SKIP_SMOKE` | false | 跳过全部冒烟 |
+### 固定变量（`environment`）
 
-后端发布脚本：`deploy/scripts/remote-deploy-jar.sh`（建目录、备份旧 jar、无 unit 则写入、`systemctl restart`）。目标机仍需预先安装 JDK 17；`application-prod.yml` 仍须手工放置。
+| 变量 | 值 | 说明 |
+|------|-----|------|
+| `JAR_NAME` | `quickboot-app.jar` | 远程 jar 文件名 |
+| `port` | `9993` | 健康检查端口 → `http://127.0.0.1:${port}/actuator/health` |
+
+### 构建参数
+
+| 参数 | 说明 |
+|------|------|
+| `ENV` | `test` / `prod` / `dev`；凭据 ID 默认 `deploy-${ENV}`（可用节点变量 `DEPLOY_CRED_TEST` 等覆盖） |
+| `BRANCH` | Git 分支 |
+| `DEPLOY_HOSTS` | 部署机，多个用 `,` 分隔（必填） |
+| `DEPLOY_DIR` | 部署目录，默认 `/opt/quickboot/app` |
+| `SPRING_PROFILE` | 传给 `app.sh --profile`，默认 `prod` |
+| `operate` | `deploy` 或 `rollback` |
+| `SKIP_SMOKE` | 跳过健康检查 |
+
+SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `quickboot`。
+
+流程：`deploy` → 构建 → 每台 `stop`/备份/覆盖 jar → `./app.sh start --profile …` → Smoke；`rollback` → 同步 `app.sh` → `./app.sh rollback` → Smoke。
 
 ## 创建三个 Pipeline Job
 
@@ -99,11 +108,11 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 
 | 端 | 实例探活 | 入口探活 |
 |----|----------|----------|
-| 后端 | 每台 `SMOKE_LOCAL_URL`（完整 URL） | 可选 `SMOKE_BASE_URL`（完整 URL，如 `https://app.example.com/prod-api/actuator/health`） |
+| 后端 | 每台 `http://127.0.0.1:${port}/actuator/health`（`port` 默认 9993） | — |
 | quick-ui | — | `GET {SMOKE_BASE_URL}/`；空则 SSH `curl -sfI http://127.0.0.1/` |
 | quick-h5 | — | `GET {SMOKE_BASE_URL}/h5/`；空则 SSH `curl -sfI http://127.0.0.1/h5/` |
 
-后端 health 若需登录，将 `SMOKE_LOCAL_URL` 留空或勾选 `SKIP_SMOKE`。
+后端 health 若需登录，勾选 `SKIP_SMOKE`。
 
 ## H5 构建产物路径
 
@@ -112,9 +121,9 @@ uni-app Vite H5 默认产物目录：`quick-h5/dist/build/h5/`。
 
 ## 首次运维清单
 
-1. 目标机安装 JDK 17、Nginx；后端目录与 systemd 可由 `remote-deploy-jar.sh` 首次自动创建（用户不存在时会 `useradd`）  
-2. 放置 `application-prod.yml`（关嵌入式 DB/Redis，连外部库；脚本不覆盖已有 yml）  
+1. 目标机安装 JDK 17、Nginx；创建 `DEPLOY_DIR`（如 `/opt/quickboot/app`）并保证 SSH 用户可写  
+2. 放置 `application-prod.yml`（关嵌入式 DB/Redis，连外部库）  
 3. 前端仍须手工启用 Nginx conf，`nginx -t && systemctl reload nginx`  
 4. Jenkins 配置 SSH 凭据与三个 Job、主机环境变量  
-5. 部署用户（默认 `quickboot`）对 `systemctl restart quickboot`、`nginx -t`/`nginx -s reload`、移动 jar 具备免密 sudo（或按你们权限模型调整 Jenkinsfile）  
+5. 前端发布若仍用 sudo reload Nginx，按现有 ui/h5 Jenkinsfile 权限模型配置  
 6. 先 `ENV=test` 分别跑通三 Job，再手动 `prod`

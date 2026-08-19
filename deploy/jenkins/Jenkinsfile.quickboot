@@ -2,8 +2,7 @@
  * quickboot 后端发布 Pipeline。
  * Job 建议名：deploy-quickboot；Script Path：deploy/jenkins/Jenkinsfile.quickboot
  *
- * 每次构建：ENV、BRANCH；可选覆盖 DEPLOY_HOSTS。
- * Job/全局可配：主机列表、目录、凭据 ID、冒烟 URL。详见 deploy/env/README.md
+ * 远程用 deploy/app.sh（nohup）。固定 JAR_NAME / port；参数见下方 parameters。
  */
 pipeline {
   agent any
@@ -17,29 +16,38 @@ pipeline {
     maven 'mvn'
   }
 
+  // 定义变量（非构建参数）
+  environment {
+    // 应用 jar 名称
+    JAR_NAME = 'quickboot-app.jar'
+    // 应用端口，用于健康检查
+    port = '9993'
+  }
+
   parameters {
-    choice(name: 'ENV', choices: ['test', 'prod'], description: '目标环境（用于选凭据与默认主机列表）')
+    choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '环境（映射 SSH 凭据 deploy-${ENV}）')
     string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
-    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '目标机，逗号分隔；空则用环境变量 QUICKBOOT_HOSTS_TEST/PROD 或 QUICKBOOT_HOST_TEST/PROD')
-    string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '远程 jar 安装目录')
-    string(name: 'JAR_NAME', defaultValue: 'quickboot-app.jar', description: '远程 jar 文件名')
-    string(name: 'SERVICE_NAME', defaultValue: 'quickboot', description: 'systemd 单元名（不含 .service）')
-    string(name: 'DEPLOY_USER', defaultValue: '', description: 'SSH 与运行用户；空则 QUICKBOOT_SSH_USER 或 quickboot')
-    string(name: 'CONFIG_DIR', defaultValue: '/opt/quickboot/config', description: '远程 Spring 外部配置目录（不覆盖已有 yml）')
-    string(name: 'SMOKE_LOCAL_URL', defaultValue: 'http://127.0.0.1:9993/actuator/health', description: '每台目标机上 SSH curl 的完整 URL；空则跳过实例探活')
-    string(name: 'SMOKE_BASE_URL', defaultValue: '', description: '可选，公网完整探活 URL（不再自动拼接路径）')
+    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '部署机，多个用英文逗号分隔')
+    string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '部署目录（唯一 jar + app.sh）')
+    string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: '传给 app.sh --profile')
+    choice(name: 'operate', choices: ['deploy', 'rollback'], description: '操作：部署或回滚')
     booleanParam(name: 'SKIP_SMOKE', defaultValue: false, description: '跳过全部冒烟')
   }
 
   stages {
-    stage('Resolve ENV') {
+    stage('Resolve') {
       steps {
         script {
-          def meta = resolveDeployMeta()
-          env.DEPLOY_CRED_ID = meta.credId
-          env.DEPLOY_USER_RESOLVED = meta.user
-          env.DEPLOY_HOST_LIST = meta.hosts.join(',')
-          echo "ENV=${params.ENV} hosts=${env.DEPLOY_HOST_LIST} cred=${env.DEPLOY_CRED_ID} user=${env.DEPLOY_USER_RESOLVED}"
+          def hosts = splitHosts(params.DEPLOY_HOSTS)
+          if (hosts.isEmpty()) {
+            error('请填写参数 DEPLOY_HOSTS（多个主机用逗号分隔）')
+          }
+          env.DEPLOY_HOST_LIST = hosts.join(',')
+          env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
+          // 凭据 ID：deploy-test / deploy-prod / deploy-dev，可用 DEPLOY_CRED_<ENV> 覆盖
+          def envKey = params.ENV.toUpperCase()
+          env.DEPLOY_CRED_ID = env."DEPLOY_CRED_${envKey}"?.trim() ?: "deploy-${params.ENV}"
+          echo "ENV=${params.ENV} operate=${params.operate} hosts=${env.DEPLOY_HOST_LIST} cred=${env.DEPLOY_CRED_ID} user=${env.DEPLOY_USER_RESOLVED}"
         }
       }
     }
@@ -52,6 +60,7 @@ pipeline {
     }
 
     stage('Build') {
+      when { expression { params.operate == 'deploy' } }
       steps {
         dir('quickboot') {
           sh 'mvn -pl quickboot-app -am package -DskipTests'
@@ -60,12 +69,14 @@ pipeline {
     }
 
     stage('Archive') {
+      when { expression { params.operate == 'deploy' } }
       steps {
         archiveArtifacts artifacts: 'quickboot/quickboot-app/target/quickboot-app-*.jar', fingerprint: true, excludes: '**/*.jar.original'
       }
     }
 
     stage('Deploy') {
+      when { expression { params.operate == 'deploy' } }
       steps {
         script {
           def localJar = sh(
@@ -77,24 +88,62 @@ pipeline {
           }
           def hosts = splitHosts(env.DEPLOY_HOST_LIST)
           def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
-          def remoteJar = "/tmp/${params.JAR_NAME}.new"
-          def remoteScript = '/tmp/remote-deploy-jar.sh'
+          def deployDir = params.DEPLOY_DIR
+          def jarName = env.JAR_NAME
+          def profile = params.SPRING_PROFILE
           sshagent(credentials: [env.DEPLOY_CRED_ID]) {
             hosts.each { host ->
-              echo "部署到 ${host}"
+              echo "部署到 ${host}:${deployDir}"
               sh """
                 set -e
-                scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:${remoteJar}
-                scp ${sshOpts} deploy/scripts/remote-deploy-jar.sh ${env.DEPLOY_USER_RESOLVED}@${host}:${remoteScript}
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
+                scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} '
+                  set -e
+                  cd "${deployDir}"
+                  if [ -x ./app.sh ]; then
+                    ./app.sh stop || true
+                  fi
+                  if ls -1 ./*.jar >/dev/null 2>&1; then
+                    mkdir -p back
+                    stamp=\$(date +%Y%m%d%H%M%S)
+                    for j in ./*.jar; do
+                      bn=\$(basename "\$j")
+                      cp "\$j" "back/\${bn}.\${stamp}"
+                      echo "已备份 \$j -> back/\${bn}.\${stamp}"
+                    done
+                    rm -f ./*.jar
+                  fi
+                '
+                scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/${jarName}'
                 ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
-                  "sudo env \
-                    NEW_JAR='${remoteJar}' \
-                    DEPLOY_DIR='${params.DEPLOY_DIR}' \
-                    JAR_NAME='${params.JAR_NAME}' \
-                    SERVICE_NAME='${params.SERVICE_NAME}' \
-                    RUN_USER='${env.DEPLOY_USER_RESOLVED}' \
-                    CONFIG_DIR='${params.CONFIG_DIR}' \
-                    bash ${remoteScript}"
+                  "cd '${deployDir}' && ./app.sh start --profile '${profile}'"
+              """
+            }
+          }
+        }
+      }
+    }
+
+    stage('Rollback') {
+      when { expression { params.operate == 'rollback' } }
+      steps {
+        script {
+          def hosts = splitHosts(env.DEPLOY_HOST_LIST)
+          def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
+          def deployDir = params.DEPLOY_DIR
+          def profile = params.SPRING_PROFILE
+          sshagent(credentials: [env.DEPLOY_CRED_ID]) {
+            hosts.each { host ->
+              echo "回滚 ${host}:${deployDir}"
+              sh """
+                set -e
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
+                scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
+                  "cd '${deployDir}' && ./app.sh rollback --profile '${profile}'"
               """
             }
           }
@@ -111,62 +160,50 @@ pipeline {
           }
           def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
           def hosts = splitHosts(env.DEPLOY_HOST_LIST)
-          def localUrl = params.SMOKE_LOCAL_URL?.trim()
+          def smokeUrl = "http://127.0.0.1:${env.port}/actuator/health"
+          def retries = '5'
+          def delaySec = '5'
           sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-            if (localUrl) {
-              hosts.each { host ->
-                echo "实例探活 ${host} ${localUrl}"
-                sh """
-                  ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
-                    "curl -sf --retry 5 --retry-delay 3 '${localUrl}'"
-                """
-              }
+            hosts.each { host ->
+              echo "健康检查 ${host} ${smokeUrl}"
+              sh """
+                set -e
+                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} '
+                  url="${smokeUrl}"
+                  retries=${retries}
+                  delay=${delaySec}
+                  i=1
+                  while [ "\$i" -le "\$retries" ]; do
+                    code=\$(curl -s -o /dev/null -w "%{http_code}" "\$url" || echo 000)
+                    if [ "\$code" = "200" ]; then
+                      echo "健康检查通过 HTTP \$code"
+                      exit 0
+                    fi
+                    echo "等待服务启动... 第 \$i/\$retries 次，HTTP=\$code"
+                    i=\$((i + 1))
+                    if [ "\$i" -le "\$retries" ]; then
+                      sleep "\$delay"
+                    fi
+                  done
+                  echo "健康检查失败：\$url"
+                  exit 1
+                '
+              """
             }
-          }
-          def publicUrl = params.SMOKE_BASE_URL?.trim()
-          if (publicUrl) {
-            echo "入口探活 ${publicUrl}"
-            sh "curl -sf --retry 5 --retry-delay 3 '${publicUrl}'"
-          }
-          if (!localUrl && !publicUrl) {
-            echo '未配置 SMOKE_LOCAL_URL / SMOKE_BASE_URL，跳过冒烟'
           }
         }
       }
     }
   }
-}
 
-/**
- * 解析主机列表、SSH 用户与凭据。
- * DEPLOY_HOSTS 优先；否则 QUICKBOOT_HOSTS_*（逗号分隔）或旧变量 QUICKBOOT_HOST_*。
- */
-def resolveDeployMeta() {
-  def user = params.DEPLOY_USER?.trim() ?: env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
-  def hostsOverride = params.DEPLOY_HOSTS?.trim()
-  def credTest = env.DEPLOY_CRED_TEST?.trim() ?: 'deploy-test'
-  def credProd = env.DEPLOY_CRED_PROD?.trim() ?: 'deploy-prod'
-  def credId
-  def hostsRaw
-  switch (params.ENV) {
-    case 'test':
-      credId = credTest
-      hostsRaw = hostsOverride ?: env.QUICKBOOT_HOSTS_TEST?.trim() ?: env.QUICKBOOT_HOST_TEST?.trim()
-      if (!hostsRaw) { error('请填写参数 DEPLOY_HOSTS，或配置 QUICKBOOT_HOSTS_TEST / QUICKBOOT_HOST_TEST') }
-      break
-    case 'prod':
-      credId = credProd
-      hostsRaw = hostsOverride ?: env.QUICKBOOT_HOSTS_PROD?.trim() ?: env.QUICKBOOT_HOST_PROD?.trim()
-      if (!hostsRaw) { error('请填写参数 DEPLOY_HOSTS，或配置 QUICKBOOT_HOSTS_PROD / QUICKBOOT_HOST_PROD') }
-      break
-    default:
-      error("未知 ENV: ${params.ENV}，仅支持 test|prod")
+  post {
+    success {
+      echo "✅ quickboot ${params.operate} 成功 ENV=${params.ENV} BUILD=${env.BUILD_NUMBER}"
+    }
+    failure {
+      echo "❌ quickboot ${params.operate} 失败 ENV=${params.ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
+    }
   }
-  def hosts = splitHosts(hostsRaw)
-  if (hosts.isEmpty()) {
-    error('主机列表为空')
-  }
-  return [credId: credId, user: user, hosts: hosts]
 }
 
 /** 逗号/空白分隔主机名，去掉空项。 */
