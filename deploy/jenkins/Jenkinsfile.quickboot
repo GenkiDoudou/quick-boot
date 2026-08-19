@@ -1,11 +1,13 @@
 /**
  * quickboot 后端发布 Pipeline。
  *
- * 参数不在此文件声明（避免每次构建用 Jenkinsfile 默认值覆盖 Job Configure 里的配置）。
- * 请在 Jenkins Job → Configure → 「参数化构建过程」中手工添加，见 deploy/env/README.md。
+ * 参数策略：Job Configure 里已有参数定义时不覆盖；全部缺失时首次构建自动写入默认参数并提示再构建一次。
+ * 也可在 Configure 手工维护，见 deploy/env/README.md。
  *
  * SSH 凭据：DEPLOY_CRED_ID 非空则全部主机共用；否则每台用 DEPLOY_HOSTS 同名 Credentials ID。
  */
+import hudson.model.ParametersDefinitionProperty
+
 pipeline {
   agent any
 
@@ -28,6 +30,7 @@ pipeline {
     stage('Resolve') {
       steps {
         script {
+          ensureJobParameters()
           validateJobParameters()
           def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
           env.DEPLOY_HOST_LIST = hosts.join(',')
@@ -167,16 +170,62 @@ pipeline {
   }
 }
 
-/** 从 Job Configure 读取参数；缺省时用 fallback（仅首次未配置 Job 时兜底）。 */
-def validateJobParameters() {
-  def missing = []
-  ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'SPRING_PROFILE', 'operate'].each { name ->
-    if (!params.containsKey(name)) {
-      missing << name
-    }
+/** Job 上必须存在的参数名（DEPLOY_CRED_ID、SKIP_SMOKE 可选，缺省有 fallback）。 */
+def requiredJobParamNames() {
+  return ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'SPRING_PROFILE', 'operate']
+}
+
+/** 读取 Job Configure 里已注册的参数名。 */
+def existingJobParamNames() {
+  def paramProp = currentBuild.getParent().getProperty(ParametersDefinitionProperty.class)
+  if (paramProp == null) {
+    return []
   }
+  return paramProp.getParameterDefinitions()*.name
+}
+
+/** 默认参数定义：仅在 Job 尚未配置任何必需参数时写入，不覆盖已有 Configure。 */
+def defaultJobParameters() {
+  return [
+    choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '部署环境标识'),
+    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支'),
+    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '部署主机，逗号分隔；SSH 凭据 ID 默认同主机名'),
+    string(name: 'DEPLOY_CRED_ID', defaultValue: '', description: '可选，全部主机共用 SSH 凭据 ID'),
+    string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '目标机部署目录'),
+    string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: 'Spring profile，传给 app.sh --profile'),
+    choice(name: 'operate', choices: ['deploy', 'rollback'], description: 'deploy=发布 rollback=回滚'),
+    booleanParam(name: 'SKIP_SMOKE', defaultValue: false, description: '跳过健康检查'),
+  ]
+}
+
+/**
+ * 无参数时自动初始化；已有参数时不动。
+ * 部分缺失时不自动合并（避免 properties 覆盖你在 Configure 改过的项），提示手工补全。
+ */
+def ensureJobParameters() {
+  def required = requiredJobParamNames()
+  def existing = existingJobParamNames()
+  def missing = required.findAll { !existing.contains(it) }
+
+  if (missing.isEmpty()) {
+    echo 'Job 参数已在 Configure 中配置，沿用现有定义（不覆盖）'
+    return
+  }
+
+  if (missing.size() < required.size()) {
+    error("Job 缺少部分参数: ${missing.join(', ')}。请在 Configure → 参数化构建过程 手工添加；或删除全部参数后重新构建以自动初始化。见 deploy/env/README.md")
+  }
+
+  echo 'Job 尚未配置必需参数，正在写入默认参数定义（仅此一次）…'
+  properties([parameters(defaultJobParameters())])
+  error('已在 Job 中写入默认参数。请再次点击「Build with Parameters」开始构建（可在 Configure 修改默认值）。')
+}
+
+/** 从当前构建的 params 读取；可选参数缺省时用 fallback。 */
+def validateJobParameters() {
+  def missing = requiredJobParamNames().findAll { !params.containsKey(it) }
   if (!missing.isEmpty()) {
-    error("Job 未配置参数: ${missing.join(', ')}。请在 Jenkins Job → Configure → 参数化构建过程 中添加，见 deploy/env/README.md")
+    error("当前构建未带入参数: ${missing.join(', ')}。请使用「Build with Parameters」；若刚完成参数自动初始化，请再构建一次。")
   }
 
   env.EFFECTIVE_ENV = paramString('ENV', 'test')
