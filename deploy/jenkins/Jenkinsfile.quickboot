@@ -175,11 +175,13 @@ def requiredJobParamNames() {
   return ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'SPRING_PROFILE', 'operate']
 }
 
-/** 读取 Job Configure 里已注册的参数名。 */
+/** 读取 Job Configure 里已注册的参数名（须 @NonCPS：RunWrapper 无 getParent）。 */
+@NonCPS
 def existingJobParamNames() {
-  def paramProp = currentBuild.getParent().getProperty(ParametersDefinitionProperty.class)
+  def job = currentBuild.rawBuild.getParent()
+  def paramProp = job.getProperty(ParametersDefinitionProperty.class)
   if (paramProp == null) {
-    return []
+    return [] as List<String>
   }
   return paramProp.getParameterDefinitions()*.name
 }
@@ -204,7 +206,18 @@ def defaultJobParameters() {
  */
 def ensureJobParameters() {
   def required = requiredJobParamNames()
-  def existing = existingJobParamNames()
+  def existing = []
+  try {
+    existing = existingJobParamNames()
+  } catch (Exception e) {
+    echo "读取 Job 参数定义失败（${e.message}），改用当前构建 params 判断"
+    if (required.any { params.containsKey(it) }) {
+      echo '当前构建已带入参数，跳过自动初始化'
+      return
+    }
+    existing = []
+  }
+
   def missing = required.findAll { !existing.contains(it) }
 
   if (missing.isEmpty()) {
