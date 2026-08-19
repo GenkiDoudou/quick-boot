@@ -4,6 +4,8 @@
  *
  * 远程用 deploy/app.sh（nohup）。固定 JAR_NAME / port；参数见下方 parameters。
  */
+ // 全局 Git 超时，单位：分钟
+ System.setProperty("org.jenkinsci.plugins.gitclient.Git.timeOut", "60")
 pipeline {
   agent any
 
@@ -55,7 +57,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        sh "git fetch --all --prune && git checkout ${params.BRANCH}"
+
       }
     }
 
