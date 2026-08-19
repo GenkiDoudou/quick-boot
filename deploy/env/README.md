@@ -70,18 +70,29 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 | `JAR_NAME` | `quickboot-app.jar` | 远程 jar 文件名 |
 | `port` | `9993` | 健康检查端口 → `http://127.0.0.1:${port}/actuator/health` |
 
-### 构建参数
+### 构建参数（在 Jenkins Job Configure 配置，不会被 Jenkinsfile 覆盖）
 
-| 参数 | 说明 |
-|------|------|
-| `ENV` | `test` / `prod` / `dev`；凭据 ID 默认 `deploy-${ENV}`（可用节点变量 `DEPLOY_CRED_TEST` 等覆盖） |
-| `BRANCH` | Git 分支 |
-| `DEPLOY_HOSTS` | 部署机，多个用 `,` 分隔（必填） |
-| `DEPLOY_CRED_ID` | 可选：覆盖 SSH 凭据 ID；留空则按 `ENV` 默认映射 |
-| `DEPLOY_DIR` | 部署目录，默认 `/opt/quickboot/app` |
-| `SPRING_PROFILE` | 传给 `app.sh --profile`，默认 `prod` |
-| `operate` | `deploy` 或 `rollback` |
-| `SKIP_SMOKE` | 跳过健康检查 |
+**重要：** `Jenkinsfile.quickboot` **不再**声明 `parameters {}`。请在 Job → **Configure** → **参数化构建过程** 中勾选并添加下列参数；你在 Configure 里改的默认值会保留，下次构建不会被仓库脚本重置。
+
+| 参数名 | 类型 | 建议默认值 | 说明 |
+|--------|------|------------|------|
+| `ENV` | Choice | `test` | 选项：`test` / `prod` / `dev` |
+| `BRANCH` | String | `main` | Git 分支 |
+| `DEPLOY_HOSTS` | String | `105` | 部署机，逗号分隔；**凭据 ID 默认同主机名** |
+| `DEPLOY_CRED_ID` | String | （空） | 可选，全部主机共用此凭据 ID |
+| `DEPLOY_DIR` | String | `/opt/quickboot/app` | 部署目录 |
+| `SPRING_PROFILE` | String | `prod` | 传给 `app.sh --profile` |
+| `operate` | Choice | `deploy` | 选项：`deploy` / `rollback` |
+| `SKIP_SMOKE` | Boolean | 不勾选 | 跳过健康检查 |
+
+首次配置步骤：
+
+1. 打开 Job → **Configure**
+2. 勾选 **This project is parameterized** / **参数化构建过程**
+3. 按上表逐个 **Add Parameter**（名称必须一致）
+4. 保存后使用 **Build with Parameters** 构建
+
+若构建报错「Job 未配置参数: …」，说明 Configure 里还缺对应项。
 
 SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `quickboot`。
 
@@ -101,7 +112,7 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `quickboot`。
 
 1. Definition：Pipeline script from SCM  
 2. SCM：本仓库；Script Path 如上  
-3. 参数由 Jenkinsfile 声明：`ENV`、`BRANCH`；后端另有主机/目录/冒烟参数（见上表）  
+3. **参数在 Job Configure 手工配置**（见上表），不在 Jenkinsfile 里声明，避免覆盖你在 UI 改的默认值  
 4. 触发：默认手动「Build with Parameters」  
 5. **定时建议仅绑测试 Job**（如 `H 2 * * *` 且默认 `ENV=test`），生产 Job 限制触发权限、勿配自动定时
 

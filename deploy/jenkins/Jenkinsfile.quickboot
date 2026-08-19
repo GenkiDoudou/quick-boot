@@ -1,10 +1,11 @@
 /**
  * quickboot 后端发布 Pipeline。
- * Job 建议名：deploy-quickboot；Script Path：deploy/jenkins/Jenkinsfile.quickboot
  *
- * 远程用 deploy/app.sh（nohup）。固定 JAR_NAME / port；参数见下方 parameters。
+ * 参数不在此文件声明（避免每次构建用 Jenkinsfile 默认值覆盖 Job Configure 里的配置）。
+ * 请在 Jenkins Job → Configure → 「参数化构建过程」中手工添加，见 deploy/env/README.md。
+ *
+ * SSH 凭据：DEPLOY_CRED_ID 非空则全部主机共用；否则每台用 DEPLOY_HOSTS 同名 Credentials ID。
  */
-
 pipeline {
   agent any
 
@@ -17,42 +18,27 @@ pipeline {
     maven 'mvn'
   }
 
-  // 定义变量（非构建参数）
   environment {
-    // 应用 jar 名称
     JAR_NAME = 'quickboot-app.jar'
-    // 应用端口，用于健康检查
     port = '9993'
-    // 本地构建产物目录
     TARGET_DIR = 'quickboot/quickboot-app/target'
-  }
-
-  parameters {
-    choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '环境（映射 SSH 凭据 deploy-${ENV}）')
-    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
-    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '部署机，多个用英文逗号分隔')
-    string(name: 'DEPLOY_CRED_ID', defaultValue: '', description: '可选：覆盖 SSH 凭据 ID；留空则按 ENV 自动映射')
-    string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '部署目录（唯一 jar + app.sh）')
-    string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: '传给 app.sh --profile')
-    choice(name: 'operate', choices: ['deploy', 'rollback'], description: '操作：部署或回滚')
-    booleanParam(name: 'SKIP_SMOKE', defaultValue: false, description: '跳过全部冒烟')
   }
 
   stages {
     stage('Resolve') {
       steps {
         script {
-          def hosts = splitHosts(params.DEPLOY_HOSTS)
-          if (hosts.isEmpty()) {
-            error('请填写参数 DEPLOY_HOSTS（多个主机用逗号分隔）')
-          }
+          validateJobParameters()
+          def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
           env.DEPLOY_HOST_LIST = hosts.join(',')
           env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
-          // 凭据 ID：deploy-test / deploy-prod / deploy-dev，可用 DEPLOY_CRED_<ENV> 覆盖
-          def envKey = params.ENV.toUpperCase()
-          def computedCredId = env."DEPLOY_CRED_${envKey}"?.trim() ?: "deploy-${params.ENV}"
-          env.DEPLOY_CRED_ID = params.DEPLOY_CRED_ID?.trim() ?: computedCredId
-          echo "ENV=${params.ENV} operate=${params.operate} hosts=${env.DEPLOY_HOST_LIST} cred=${env.DEPLOY_CRED_ID} user=${env.DEPLOY_USER_RESOLVED}"
+          def credOverride = env.EFFECTIVE_DEPLOY_CRED_ID
+          if (credOverride) {
+            echo "ENV=${env.EFFECTIVE_ENV} operate=${env.EFFECTIVE_OPERATE} hosts=${env.DEPLOY_HOST_LIST} cred(共用)=${credOverride} user=${env.DEPLOY_USER_RESOLVED} DEPLOY_DIR=${env.EFFECTIVE_DEPLOY_DIR}"
+          } else {
+            def mapping = hosts.collect { h -> "${h}->${h}" }.join(', ')
+            echo "ENV=${env.EFFECTIVE_ENV} operate=${env.EFFECTIVE_OPERATE} hosts=${env.DEPLOY_HOST_LIST} cred(按主机)=${mapping} user=${env.DEPLOY_USER_RESOLVED} DEPLOY_DIR=${env.EFFECTIVE_DEPLOY_DIR}"
+          }
         }
       }
     }
@@ -60,12 +46,12 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-
+        sh "git fetch --all --prune && git checkout ${env.EFFECTIVE_BRANCH}"
       }
     }
 
     stage('Build') {
-      when { expression { params.operate == 'deploy' } }
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
         dir('quickboot') {
           sh 'mvn -pl quickboot-app -am package -DskipTests'
@@ -74,14 +60,14 @@ pipeline {
     }
 
     stage('Archive') {
-      when { expression { params.operate == 'deploy' } }
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
-        archiveArtifacts artifacts: 'quickboot/quickboot-app/target/quickboot-app-*.jar', fingerprint: true, excludes: '**/*.jar.original'
+        archiveArtifacts artifacts: "${env.TARGET_DIR}/quickboot-app-*.jar", fingerprint: true, excludes: '**/*.jar.original'
       }
     }
 
     stage('Deploy') {
-      when { expression { params.operate == 'deploy' } }
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
         script {
           def localJar = sh(
@@ -91,50 +77,41 @@ pipeline {
           if (!localJar) {
             error('未找到可发布的 quickboot-app jar')
           }
-          def hosts = splitHosts(env.DEPLOY_HOST_LIST)
-          def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
-          def deployDir = params.DEPLOY_DIR
-          def jarName = env.JAR_NAME
-          def profile = params.SPRING_PROFILE
+          def deployDir = env.EFFECTIVE_DEPLOY_DIR
+          def profile = env.EFFECTIVE_SPRING_PROFILE
           def remoteNewJar = "/tmp/${env.JAR_NAME}"
-          sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-            hosts.each { host ->
-              echo "部署到 ${host}:${deployDir}"
-              sh """
-                set -e
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}'"
-                scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
-                scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:'${remoteNewJar}'
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
-                  "cd '${deployDir}' && ./app.sh deploy '${remoteNewJar}' --profile '${profile}'"
-              """
-            }
+          withEachHost { host, sshOpts ->
+            echo "部署到 ${host}:${deployDir}"
+            sh """
+              set -e
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}'"
+              scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
+              scp ${sshOpts} '${localJar}' ${env.DEPLOY_USER_RESOLVED}@${host}:'${remoteNewJar}'
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
+                "cd '${deployDir}' && ./app.sh deploy '${remoteNewJar}' --profile '${profile}'"
+            """
           }
         }
       }
     }
 
     stage('Rollback') {
-      when { expression { params.operate == 'rollback' } }
+      when { expression { env.EFFECTIVE_OPERATE == 'rollback' } }
       steps {
         script {
-          def hosts = splitHosts(env.DEPLOY_HOST_LIST)
-          def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
-          def deployDir = params.DEPLOY_DIR
-          def profile = params.SPRING_PROFILE
-          sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-            hosts.each { host ->
-              echo "回滚 ${host}:${deployDir}"
-              sh """
-                set -e
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
-                scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
-                  "cd '${deployDir}' && ./app.sh rollback --profile '${profile}'"
-              """
-            }
+          def deployDir = env.EFFECTIVE_DEPLOY_DIR
+          def profile = env.EFFECTIVE_SPRING_PROFILE
+          withEachHost { host, sshOpts ->
+            echo "回滚 ${host}:${deployDir}"
+            sh """
+              set -e
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
+              scp ${sshOpts} deploy/app.sh ${env.DEPLOY_USER_RESOLVED}@${host}:'${deployDir}/app.sh'
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} "chmod +x '${deployDir}/app.sh'"
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} \
+                "cd '${deployDir}' && ./app.sh rollback --profile '${profile}'"
+            """
           }
         }
       }
@@ -143,42 +120,38 @@ pipeline {
     stage('Smoke') {
       steps {
         script {
-          if (params.SKIP_SMOKE) {
+          if (env.EFFECTIVE_SKIP_SMOKE == 'true') {
             echo 'SKIP_SMOKE=true，跳过冒烟'
             return
           }
-          def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
-          def hosts = splitHosts(env.DEPLOY_HOST_LIST)
           def smokeUrl = "http://127.0.0.1:${env.port}/actuator/health"
           def retries = '5'
           def delaySec = '5'
-          sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-            hosts.each { host ->
-              echo "健康检查 ${host} ${smokeUrl}"
-              sh """
-                set -e
-                ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} '
-                  url="${smokeUrl}"
-                  retries=${retries}
-                  delay=${delaySec}
-                  i=1
-                  while [ "\$i" -le "\$retries" ]; do
-                    code=\$(curl -s -o /dev/null -w "%{http_code}" "\$url" || echo 000)
-                    if [ "\$code" = "200" ]; then
-                      echo "健康检查通过 HTTP \$code"
-                      exit 0
-                    fi
-                    echo "等待服务启动... 第 \$i/\$retries 次，HTTP=\$code"
-                    i=\$((i + 1))
-                    if [ "\$i" -le "\$retries" ]; then
-                      sleep "\$delay"
-                    fi
-                  done
-                  echo "健康检查失败：\$url"
-                  exit 1
-                '
-              """
-            }
+          withEachHost { host, sshOpts ->
+            echo "健康检查 ${host} ${smokeUrl}"
+            sh """
+              set -e
+              ssh ${sshOpts} ${env.DEPLOY_USER_RESOLVED}@${host} '
+                url="${smokeUrl}"
+                retries=${retries}
+                delay=${delaySec}
+                i=1
+                while [ "\$i" -le "\$retries" ]; do
+                  code=\$(curl -s -o /dev/null -w "%{http_code}" "\$url" || echo 000)
+                  if [ "\$code" = "200" ]; then
+                    echo "健康检查通过 HTTP \$code"
+                    exit 0
+                  fi
+                  echo "等待服务启动... 第 \$i/\$retries 次，HTTP=\$code"
+                  i=\$((i + 1))
+                  if [ "\$i" -le "\$retries" ]; then
+                    sleep "\$delay"
+                  fi
+                done
+                echo "健康检查失败：\$url"
+                exit 1
+              '
+            """
           }
         }
       }
@@ -187,15 +160,72 @@ pipeline {
 
   post {
     success {
-      echo "✅ quickboot ${params.operate} 成功 ENV=${params.ENV} BUILD=${env.BUILD_NUMBER}"
+      echo "✅ quickboot ${env.EFFECTIVE_OPERATE} 成功 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER}"
     }
     failure {
-      echo "❌ quickboot ${params.operate} 失败 ENV=${params.ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
+      echo "❌ quickboot ${env.EFFECTIVE_OPERATE} 失败 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
     }
   }
 }
 
-/** 逗号/空白分隔主机名，去掉空项。 */
+/** 从 Job Configure 读取参数；缺省时用 fallback（仅首次未配置 Job 时兜底）。 */
+def validateJobParameters() {
+  def missing = []
+  ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'SPRING_PROFILE', 'operate'].each { name ->
+    if (!params.containsKey(name)) {
+      missing << name
+    }
+  }
+  if (!missing.isEmpty()) {
+    error("Job 未配置参数: ${missing.join(', ')}。请在 Jenkins Job → Configure → 参数化构建过程 中添加，见 deploy/env/README.md")
+  }
+
+  env.EFFECTIVE_ENV = paramString('ENV', 'test')
+  env.EFFECTIVE_BRANCH = paramString('BRANCH', 'main')
+  env.EFFECTIVE_DEPLOY_HOSTS = paramString('DEPLOY_HOSTS', '')
+  env.EFFECTIVE_DEPLOY_CRED_ID = paramString('DEPLOY_CRED_ID', '')
+  env.EFFECTIVE_DEPLOY_DIR = paramString('DEPLOY_DIR', '/opt/quickboot/app')
+  env.EFFECTIVE_SPRING_PROFILE = paramString('SPRING_PROFILE', 'prod')
+  env.EFFECTIVE_OPERATE = paramString('operate', 'deploy')
+  env.EFFECTIVE_SKIP_SMOKE = paramBool('SKIP_SMOKE', false)
+
+  if (!splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)) {
+    error('DEPLOY_HOSTS 不能为空')
+  }
+}
+
+def paramString(String name, String fallback) {
+  if (!params.containsKey(name)) {
+    return fallback
+  }
+  def v = params[name]?.toString()?.trim()
+  return v ?: fallback
+}
+
+def paramBool(String name, boolean fallback) {
+  if (!params.containsKey(name)) {
+    return fallback.toString()
+  }
+  return params[name]?.toString()
+}
+
 def splitHosts(String raw) {
   return (raw ?: '').split(/[,;\s]+/).findAll { it }
+}
+
+def resolveSshCredId(String host) {
+  def override = env.EFFECTIVE_DEPLOY_CRED_ID?.trim()
+  return override ?: host
+}
+
+def withEachHost(Closure body) {
+  def hosts = splitHosts(env.DEPLOY_HOST_LIST)
+  def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
+  hosts.each { host ->
+    def credId = resolveSshCredId(host)
+    echo "SSH 主机=${host} 凭据 ID=${credId}"
+    sshagent(credentials: [credId]) {
+      body(host, sshOpts)
+    }
+  }
 }
