@@ -2,38 +2,49 @@
 
 本目录配合仓库根下 `deploy/jenkins`、`deploy/nginx`、`deploy/systemd`，用于 **Linux 传统机**：后端 `java -jar` + Nginx 静态托管。
 
-权威设计见：`docs/superpowers/specs/2026-08-17-jenkins-pipeline-deploy-design.md`  
+权威设计见：
+- 发布流水线：`docs/superpowers/specs/2026-08-17-jenkins-pipeline-deploy-design.md`
+- 线上可变配置：`docs/superpowers/specs/2026-08-20-online-env-properties-design.md`  
 OpenSpec：`openspec/changes/jenkins-pipeline-deploy/`
 
 ## 禁止提交
 
 - 生产 / 测试真实数据库密码、Redis 密码、OAuth client secret、SSH 私钥
-- 真实 `application-prod.yml`（仅提交本目录 `application-prod.yml.example`）
+- 真实 `.env.properties` / `application-prod.yml`（仅提交 `*.example`）
 
-密钥放在：**目标机** `/opt/quickboot/config/` 与 **Jenkins Credentials**。
+密钥放在：**目标机部署目录**的 `.env.properties`（与 jar 同级）；SSH 私钥放 **Jenkins Credentials**。
 
 ## 目标机目录
 
 ```text
 /opt/quickboot/
-  app/                 # quickboot-app-*.jar
-  config/              # application-prod.yml（由 example 复制后改）
+  app/                 # jar + app.sh + .env.properties（运维维护）
   www/ui/              # quick-ui dist
   www/h5/              # quick-h5 H5 产物
   logs/                # 可选
+  config/              # 可选：大段 yml 覆盖（一般不必）
 ```
 
-配置模板：[`application-prod.yml.example`](./application-prod.yml.example)  
-复制：
+### 线上 DB / Redis（推荐）
+
+应用已配置 `spring.config.import: optional:file:./.env.properties`。  
+**Jenkins 只发 jar，不生成、不覆盖 `.env.properties`。**
+
+1. 首装：将 [`/.env.properties.example`](./.env.properties.example) 或  
+   `quickboot/quickboot-app/src/main/resources/.env.properties.example`  
+   复制为 `${DEPLOY_DIR}/.env.properties`，填写真实值  
+2. 发版：Jenkins `app.sh deploy` 只换 jar 并重启  
+3. 改库/改密：SSH 编辑 `.env.properties` 后执行 `./app.sh restart`
 
 ```bash
-sudo mkdir -p /opt/quickboot/{app,config,www/ui,www/h5,logs}
-sudo cp application-prod.yml.example /opt/quickboot/config/application-prod.yml
-# 编辑 datasource / redis / issuer 等后：
+sudo mkdir -p /opt/quickboot/{app,www/ui,www/h5,logs}
+sudo cp deploy/env/.env.properties.example /opt/quickboot/app/.env.properties
+# 编辑 DB_URL / DB_USERNAME / DB_PASSWORD / REDIS_* ：
 sudo chown -R quickboot:quickboot /opt/quickboot
 ```
 
-systemd 示例：`deploy/systemd/quickboot.service.example`（`prod` profile + `SPRING_CONFIG_ADDITIONAL_LOCATION`）。  
+可选大段覆盖仍可用 [`application-prod.yml.example`](./application-prod.yml.example) + `SPRING_CONFIG_ADDITIONAL_LOCATION`。  
+systemd 示例：`deploy/systemd/quickboot.service.example`。  
 Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api/`）。
 
 ## Jenkins Credentials（建议 ID）
@@ -115,7 +126,8 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`（须与 Je
 2. 节点环境变量 `QUICKBOOT_HOST_<凭据ID>`（如 `QUICKBOOT_HOST_105`）
 3. 仅单台时：`QUICKBOOT_HOST_TEST` / `QUICKBOOT_HOST_PROD`（按 `ENV`）
 
-流程：`deploy` → 构建 → 每台上传 `app.sh` 和新 jar → 执行 `./app.sh deploy <newJar> --profile …`（内部负责备份覆盖）→ Smoke；`rollback` → 同步 `app.sh` → `./app.sh rollback --profile …` → Smoke。
+流程：`deploy` → 构建 → 每台上传 `app.sh` 和新 jar → 执行 `./app.sh deploy …` → Smoke。  
+**不**上传 `.env.properties`；目标机须事先放好该文件（见上文「线上 DB / Redis」）。
 
 ## 创建三个 Pipeline Job
 
@@ -152,8 +164,8 @@ uni-app Vite H5 默认产物目录：`quick-h5/dist/build/h5/`。
 
 ## 首次运维清单
 
-1. 目标机安装 JDK 17、Nginx；创建 `DEPLOY_DIR`（如 `/opt/quickboot/app`）并保证 SSH 用户可写  
-2. 放置 `application-prod.yml`（关嵌入式 DB/Redis，连外部库）  
+1. 目标机安装 JDK 17、Nginx；创建 `DEPLOY_DIR` 并保证 SSH 用户可写  
+2. 放置 `.env.properties`（关嵌入式由 `application-prod.yml` 保证；填外部库/Redis）  
 3. 前端仍须手工启用 Nginx conf，`nginx -t && systemctl reload nginx`  
 4. Jenkins 配置 SSH 凭据与三个 Job、主机环境变量  
 5. 前端发布若仍用 sudo reload Nginx，按现有 ui/h5 Jenkinsfile 权限模型配置  

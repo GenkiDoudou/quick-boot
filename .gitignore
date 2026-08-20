@@ -38,3 +38,7 @@ node_modules
 
 # AI personal preferences (do not commit)
 AGENTS.local.md
+
+# 本地 / 目标机密钥配置（仅提交 *.example）
+**/.env.properties
+!**/.env.properties.example

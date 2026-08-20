@@ -70,6 +70,8 @@ spring:
       enabled: true
       max-file-size: 100MB
       max-request-size: 1000MB
+  config:
+    import: optional:file:./.env.properties
 
 logging:
   level:
@@ -180,7 +182,6 @@ captcha:
     expire: 120000
     # 二次验证缓存key前缀，默认是 captcha:secondary
     keyPrefix: "captcha:secondary"
-
 # 积木报表 / JimuBI（不迁 AI；密钥禁止入库）
 qc:
   lite-trace:

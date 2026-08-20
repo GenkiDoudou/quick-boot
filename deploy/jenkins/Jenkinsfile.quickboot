@@ -3,6 +3,9 @@
  *
  * DEPLOY_HOSTS = Jenkins SSH 凭据 ID 列表（非 IP）；真实地址填 DEPLOY_TARGET_HOSTS 或 QUICKBOOT_HOST_<凭据ID>。
  * 参数策略：Job 已有参数不覆盖；全部缺失时首次构建自动写入默认参数。
+ *
+ * 线上 DB/Redis 等：在目标机 ${DEPLOY_DIR}/.env.properties 由运维维护；本 Job 只发 jar，不生成/覆盖该文件。
+ * 骨架见 quickboot-app/src/main/resources/.env.properties.example
  */
 import hudson.model.ParametersDefinitionProperty
 
@@ -78,6 +81,9 @@ pipeline {
             sh """
               set -e
               ssh ${sshOpts} ${target.user}@${target.host} "mkdir -p '${deployDir}'"
+              if ! ssh ${sshOpts} ${target.user}@${target.host} "test -f '${deployDir}/.env.properties'"; then
+                echo "警告: ${target.host}:${deployDir}/.env.properties 不存在。请先按 deploy/env/.env.properties.example 放置后再发版。" >&2
+              fi
               scp ${sshOpts} deploy/app.sh ${target.user}@${target.host}:'${deployDir}/app.sh'
               ssh ${sshOpts} ${target.user}@${target.host} "chmod +x '${deployDir}/app.sh'"
               scp ${sshOpts} '${localJar}' ${target.user}@${target.host}:'${remoteNewJar}'
