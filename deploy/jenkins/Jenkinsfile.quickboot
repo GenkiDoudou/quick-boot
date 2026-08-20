@@ -1,14 +1,14 @@
 /**
  * quickboot 后端发布 Pipeline。
  *
- * DEPLOY_HOSTS = Jenkins SSH 凭据 ID 列表（非 IP）；真实地址填 DEPLOY_TARGET_HOSTS 或 QUICKBOOT_HOST_<凭据ID>。
- * 参数策略：Job 已有参数不覆盖；全部缺失时首次构建自动写入默认参数。
+ * DEPLOY_HOSTS = 目标机 IP/域名（逗号分隔）；Jenkins SSH 凭据 ID 与主机名相同。
+ * 例：DEPLOY_HOSTS=192.168.50.105 → ssh user@192.168.50.105，凭据 ID=192.168.50.105
  *
- * 线上 DB/Redis 等：在目标机 ${DEPLOY_DIR}/.env.properties 由运维维护；本 Job 只发 jar，不生成/覆盖该文件。
+ * 参数：当前构建已带 params 则沿用；全部缺失时写入默认参数并提示再构建一次（不读 Job rawBuild，避免沙箱拦截）。
+ *
+ * 线上 DB/Redis：目标机 ${DEPLOY_DIR}/.env.properties 由运维维护；本 Job 只发 jar。
  * 骨架见 quickboot-app/src/main/resources/.env.properties.example
  */
-import hudson.model.ParametersDefinitionProperty
-
 pipeline {
   agent any
 
@@ -33,8 +33,8 @@ pipeline {
         script {
           ensureJobParameters()
           validateJobParameters()
-          resolveDeployTargets().each { t ->
-            echo "ENV=${env.EFFECTIVE_ENV} operate=${env.EFFECTIVE_OPERATE} cred=${t.credId} host=${t.host} user=${t.user} DEPLOY_DIR=${env.EFFECTIVE_DEPLOY_DIR}"
+          splitHosts(env.EFFECTIVE_DEPLOY_HOSTS).each { host ->
+            echo "ENV=${env.EFFECTIVE_ENV} operate=${env.EFFECTIVE_OPERATE} host=${host} cred=${host} user=${env.DEPLOY_USER_RESOLVED} DEPLOY_DIR=${env.EFFECTIVE_DEPLOY_DIR}"
           }
         }
       }
@@ -76,18 +76,18 @@ pipeline {
           def deployDir = env.EFFECTIVE_DEPLOY_DIR
           def profile = env.EFFECTIVE_SPRING_PROFILE
           def remoteNewJar = "/tmp/${env.JAR_NAME}"
-          withEachDeployTarget { target, sshOpts ->
-            echo "部署到 ${target.host}:${deployDir} (凭据 ${target.credId})"
+          withEachHost { host, user, sshOpts ->
+            echo "部署到 ${host}:${deployDir} (凭据 ${host})"
             sh """
               set -e
-              ssh ${sshOpts} ${target.user}@${target.host} "mkdir -p '${deployDir}'"
-              if ! ssh ${sshOpts} ${target.user}@${target.host} "test -f '${deployDir}/.env.properties'"; then
-                echo "警告: ${target.host}:${deployDir}/.env.properties 不存在。请先按 deploy/env/.env.properties.example 放置后再发版。" >&2
+              ssh ${sshOpts} ${user}@${host} "mkdir -p '${deployDir}'"
+              if ! ssh ${sshOpts} ${user}@${host} "test -f '${deployDir}/.env.properties'"; then
+                echo "警告: ${host}:${deployDir}/.env.properties 不存在。请先按 deploy/env/.env.properties.example 放置后再发版。" >&2
               fi
-              scp ${sshOpts} deploy/app.sh ${target.user}@${target.host}:'${deployDir}/app.sh'
-              ssh ${sshOpts} ${target.user}@${target.host} "chmod +x '${deployDir}/app.sh'"
-              scp ${sshOpts} '${localJar}' ${target.user}@${target.host}:'${remoteNewJar}'
-              ssh ${sshOpts} ${target.user}@${target.host} \
+              scp ${sshOpts} deploy/app.sh ${user}@${host}:'${deployDir}/app.sh'
+              ssh ${sshOpts} ${user}@${host} "chmod +x '${deployDir}/app.sh'"
+              scp ${sshOpts} '${localJar}' ${user}@${host}:'${remoteNewJar}'
+              ssh ${sshOpts} ${user}@${host} \
                 "cd '${deployDir}' && ./app.sh deploy '${remoteNewJar}' --profile '${profile}'"
             """
           }
@@ -101,14 +101,14 @@ pipeline {
         script {
           def deployDir = env.EFFECTIVE_DEPLOY_DIR
           def profile = env.EFFECTIVE_SPRING_PROFILE
-          withEachDeployTarget { target, sshOpts ->
-            echo "回滚 ${target.host}:${deployDir} (凭据 ${target.credId})"
+          withEachHost { host, user, sshOpts ->
+            echo "回滚 ${host}:${deployDir} (凭据 ${host})"
             sh """
               set -e
-              ssh ${sshOpts} ${target.user}@${target.host} "mkdir -p '${deployDir}' '${deployDir}/back'"
-              scp ${sshOpts} deploy/app.sh ${target.user}@${target.host}:'${deployDir}/app.sh'
-              ssh ${sshOpts} ${target.user}@${target.host} "chmod +x '${deployDir}/app.sh'"
-              ssh ${sshOpts} ${target.user}@${target.host} \
+              ssh ${sshOpts} ${user}@${host} "mkdir -p '${deployDir}' '${deployDir}/back'"
+              scp ${sshOpts} deploy/app.sh ${user}@${host}:'${deployDir}/app.sh'
+              ssh ${sshOpts} ${user}@${host} "chmod +x '${deployDir}/app.sh'"
+              ssh ${sshOpts} ${user}@${host} \
                 "cd '${deployDir}' && ./app.sh rollback --profile '${profile}'"
             """
           }
@@ -126,11 +126,11 @@ pipeline {
           def smokeUrl = "http://127.0.0.1:${env.port}/actuator/health"
           def retries = '5'
           def delaySec = '5'
-          withEachDeployTarget { target, sshOpts ->
-            echo "健康检查 ${target.host} ${smokeUrl}"
+          withEachHost { host, user, sshOpts ->
+            echo "健康检查 ${host} ${smokeUrl}"
             sh """
               set -e
-              ssh ${sshOpts} ${target.user}@${target.host} '
+              ssh ${sshOpts} ${user}@${host} '
                 url="${smokeUrl}"
                 retries=${retries}
                 delay=${delaySec}
@@ -167,30 +167,15 @@ pipeline {
   }
 }
 
-/** Job 上必须存在的参数名（DEPLOY_CRED_ID、SKIP_SMOKE 可选，缺省有 fallback）。 */
 def requiredJobParamNames() {
   return ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'SPRING_PROFILE', 'operate']
 }
 
-/** 读取 Job Configure 里已注册的参数名（须 @NonCPS：RunWrapper 无 getParent）。 */
-@NonCPS
-def existingJobParamNames() {
-  def job = currentBuild.rawBuild.getParent()
-  def paramProp = job.getProperty(ParametersDefinitionProperty.class)
-  if (paramProp == null) {
-    return [] as List<String>
-  }
-  return paramProp.getParameterDefinitions()*.name
-}
-
-/** 默认参数定义：仅在 Job 尚未配置任何必需参数时写入，不覆盖已有 Configure。 */
 def defaultJobParameters() {
   return [
     choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '部署环境标识'),
     string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支'),
-    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: 'Jenkins SSH 凭据 ID，逗号分隔（不是 IP）'),
-    string(name: 'DEPLOY_TARGET_HOSTS', defaultValue: '', description: '目标机 IP/域名，逗号分隔，顺序与 DEPLOY_HOSTS 对应；单台可只填一个'),
-    string(name: 'DEPLOY_CRED_ID', defaultValue: '', description: '可选，全部主机共用 SSH 凭据 ID'),
+    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '目标机 IP/域名，逗号分隔；Jenkins SSH 凭据 ID 须与主机名相同'),
     string(name: 'DEPLOY_DIR', defaultValue: '/opt/quickboot/app', description: '目标机部署目录'),
     string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: 'Spring profile，传给 app.sh --profile'),
     choice(name: 'operate', choices: ['deploy', 'rollback'], description: 'deploy=发布 rollback=回滚'),
@@ -199,27 +184,15 @@ def defaultJobParameters() {
 }
 
 /**
- * 无参数时自动初始化；已有参数时不动。
- * 部分缺失时不自动合并（避免 properties 覆盖你在 Configure 改过的项），提示手工补全。
+ * 仅根据当前构建 params 判断：齐全则跳过；全部缺失则写入默认参数；部分缺失则报错提示手工补。
+ * 不访问 rawBuild，避免 Script Security 拦截。
  */
 def ensureJobParameters() {
   def required = requiredJobParamNames()
-  def existing = []
-  try {
-    existing = existingJobParamNames()
-  } catch (Exception e) {
-    echo "读取 Job 参数定义失败（${e.message}），改用当前构建 params 判断"
-    if (required.any { params.containsKey(it) }) {
-      echo '当前构建已带入参数，跳过自动初始化'
-      return
-    }
-    existing = []
-  }
-
-  def missing = required.findAll { !existing.contains(it) }
+  def missing = required.findAll { !params.containsKey(it) }
 
   if (missing.isEmpty()) {
-    echo 'Job 参数已在 Configure 中配置，沿用现有定义（不覆盖）'
+    echo '使用当前构建参数（不覆盖 Job Configure）'
     return
   }
 
@@ -227,30 +200,34 @@ def ensureJobParameters() {
     error("Job 缺少部分参数: ${missing.join(', ')}。请在 Configure → 参数化构建过程 手工添加；或删除全部参数后重新构建以自动初始化。见 deploy/env/README.md")
   }
 
-  echo 'Job 尚未配置必需参数，正在写入默认参数定义（仅此一次）…'
+  echo 'Job 尚未带入必需参数，正在写入默认参数定义（仅此一次）…'
   properties([parameters(defaultJobParameters())])
   error('已在 Job 中写入默认参数。请再次点击「Build with Parameters」开始构建（可在 Configure 修改默认值）。')
 }
 
-/** 从当前构建的 params 读取；可选参数缺省时用 fallback。 */
 def validateJobParameters() {
   def missing = requiredJobParamNames().findAll { !params.containsKey(it) }
   if (!missing.isEmpty()) {
-    error("当前构建未带入参数: ${missing.join(', ')}。请使用「Build with Parameters」；若刚完成参数自动初始化，请再构建一次。")
+    error("当前构建未带入参数: ${missing.join(', ')}。请使用「Build with Parameters」。")
   }
 
   env.EFFECTIVE_ENV = paramString('ENV', 'test')
   env.EFFECTIVE_BRANCH = paramString('BRANCH', 'main')
   env.EFFECTIVE_DEPLOY_HOSTS = paramString('DEPLOY_HOSTS', '')
-  env.EFFECTIVE_DEPLOY_TARGET_HOSTS = paramString('DEPLOY_TARGET_HOSTS', '')
-  env.EFFECTIVE_DEPLOY_CRED_ID = paramString('DEPLOY_CRED_ID', '')
   env.EFFECTIVE_DEPLOY_DIR = paramString('DEPLOY_DIR', '/opt/quickboot/app')
   env.EFFECTIVE_SPRING_PROFILE = paramString('SPRING_PROFILE', 'prod')
   env.EFFECTIVE_OPERATE = paramString('operate', 'deploy')
   env.EFFECTIVE_SKIP_SMOKE = paramBool('SKIP_SMOKE', false)
+  env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
 
-  if (!splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)) {
-    error('DEPLOY_HOSTS 不能为空（填写 Jenkins SSH 凭据 ID）')
+  def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
+  if (!hosts) {
+    error('DEPLOY_HOSTS 不能为空（填写目标机 IP/域名，且 Jenkins 凭据 ID 与之相同）')
+  }
+  hosts.each { host ->
+    if (host ==~ /^\d+$/) {
+      error("DEPLOY_HOSTS 项「${host}」无效（像端口号）。请填完整 IP/域名，例如 192.168.50.105")
+    }
   }
 }
 
@@ -273,80 +250,14 @@ def splitHosts(String raw) {
   return (raw ?: '').split(/[,;\s]+/).findAll { it }
 }
 
-/** 从节点环境变量 QUICKBOOT_HOST_<凭据ID> 读取目标机地址（避免 getEnvironment，兼容 Script Security 沙箱）。 */
-def envHostForCred(String credId) {
-  def key = "QUICKBOOT_HOST_${credId}"
-  def host = env."${key}"?.trim()
-  if (host) {
-    return host
-  }
-  return null
-}
-
-/** SSH 登录用户：节点环境变量 QUICKBOOT_SSH_USER，默认 root（须与凭据里配置的用户一致）。 */
-def resolveSshUser() {
-  return env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
-}
-
-/** 单台时按 ENV 回退到 QUICKBOOT_HOST_TEST / QUICKBOOT_HOST_PROD 等。 */
-def resolveEnvHost(String envName) {
-  switch (envName) {
-    case 'test':
-      return env.QUICKBOOT_HOSTS_TEST?.trim()?.split(/[,;\s]+/)?.find { it }
-          ?: env.QUICKBOOT_HOST_TEST?.trim()
-    case 'prod':
-      return env.QUICKBOOT_HOSTS_PROD?.trim()?.split(/[,;\s]+/)?.find { it }
-          ?: env.QUICKBOOT_HOST_PROD?.trim()
-    case 'dev':
-      return env.QUICKBOOT_HOST_DEV?.trim()
-    default:
-      return null
-  }
-}
-
-/**
- * 解析部署目标：凭据 ID + 真实 host + SSH 用户。
- * DEPLOY_HOSTS 仅为 Jenkins Credentials ID；host 来自 DEPLOY_TARGET_HOSTS 或 QUICKBOOT_HOST_<id>。
- */
-def resolveDeployTargets() {
-  def credIds = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
-  def credOverride = env.EFFECTIVE_DEPLOY_CRED_ID?.trim()
-  if (credOverride) {
-    credIds = credIds.collect { credOverride }
-  }
-  def explicitHosts = splitHosts(env.EFFECTIVE_DEPLOY_TARGET_HOSTS)
-
-  if (explicitHosts.size() > 1 && explicitHosts.size() != credIds.size()) {
-    error("DEPLOY_TARGET_HOSTS 数量（${explicitHosts.size()}）须与 DEPLOY_HOSTS 凭据数（${credIds.size()}）一致")
-  }
-
-  def targets = []
-  credIds.eachWithIndex { credId, idx ->
-    def host = ''
-    if (explicitHosts.size() == credIds.size()) {
-      host = explicitHosts[idx]
-    } else if (explicitHosts.size() == 1) {
-      host = explicitHosts[0]
-    } else {
-      host = envHostForCred(credId)
-    }
-    if (!host && credIds.size() == 1) {
-      host = resolveEnvHost(env.EFFECTIVE_ENV)
-    }
-    if (!host) {
-      error("凭据 ID「${credId}」未解析到目标主机 IP/域名。请填写 DEPLOY_TARGET_HOSTS，或设置节点环境变量 QUICKBOOT_HOST_${credId}，单台时也可设 QUICKBOOT_HOST_TEST/PROD")
-    }
-    targets << [credId: credId, host: host, user: resolveSshUser()]
-  }
-  return targets
-}
-
-def withEachDeployTarget(Closure body) {
+/** 对每台主机：凭据 ID = 主机名。 */
+def withEachHost(Closure body) {
   def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
-  resolveDeployTargets().each { target ->
-    echo "SSH 目标=${target.host} 用户=${target.user} 凭据 ID=${target.credId}"
-    sshagent(credentials: [target.credId]) {
-      body(target, sshOpts)
+  def user = env.DEPLOY_USER_RESOLVED
+  splitHosts(env.EFFECTIVE_DEPLOY_HOSTS).each { host ->
+    echo "SSH 目标=${host} 用户=${user} 凭据 ID=${host}"
+    sshagent(credentials: [host]) {
+      body(host, user, sshOpts)
     }
   }
 }
