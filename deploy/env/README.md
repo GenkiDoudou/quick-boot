@@ -128,7 +128,7 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 
 1. Definition：Pipeline script from SCM  
 2. SCM：本仓库；Script Path 如上  
-3. **quickboot**：参数「有则保留、无则自动初始化」（见上表）；ui/h5 仍以 Jenkinsfile 声明为准  
+3. **三端统一**：`DEPLOY_HOSTS` 填 IP，凭据 ID 与 IP 相同；参数「有则保留、无则自动初始化」（见上表）  
 4. 触发：默认手动「Build with Parameters」  
 5. **定时建议仅绑测试 Job**（如 `H 2 * * *` 且默认 `ENV=test`），生产 Job 限制触发权限、勿配自动定时
 

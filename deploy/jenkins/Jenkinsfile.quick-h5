@@ -1,8 +1,9 @@
 /**
  * quick-h5 H5 静态发布 Pipeline。
- * Job 建议名：deploy-quick-h5；Script Path：deploy/jenkins/Jenkinsfile.quick-h5
  *
- * H5 产物目录固定为 uni-app 常见路径 dist/build/h5（见 deploy/env/README.md）。
+ * DEPLOY_HOSTS = 目标机 IP/域名；Jenkins SSH 凭据 ID 与主机名相同（同 Jenkinsfile.quickboot）。
+ * H5 产物目录：uni-app 常见路径 dist/build/h5（见 deploy/env/README.md）。
+ * 参数：已有 params 则沿用；全部缺失时写入默认参数并提示再构建（不读 rawBuild）。
  */
 pipeline {
   agent any
@@ -12,27 +13,20 @@ pipeline {
     disableConcurrentBuilds()
   }
 
-  parameters {
-    choice(name: 'ENV', choices: ['test', 'prod'], description: '目标环境')
-    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支')
-    string(name: 'SMOKE_BASE_URL', defaultValue: '', description: '公网根 URL；空则 SSH 打本机 Nginx /h5/')
-  }
-
   environment {
-    H5_DIR = '/opt/quickboot/www/h5'
     // uni-app Vite H5 默认输出；升级工具链后若变化请同步改此路径
     H5_DIST = 'quick-h5/dist/build/h5'
   }
 
   stages {
-    stage('Resolve ENV') {
+    stage('Resolve') {
       steps {
         script {
-          def meta = resolveDeployMeta(params.ENV)
-          env.DEPLOY_CRED_ID = meta.credId
-          env.DEPLOY_HOST = meta.host
-          env.DEPLOY_USER = meta.user
-          echo "ENV=${params.ENV} host=${env.DEPLOY_HOST} cred=${env.DEPLOY_CRED_ID}"
+          ensureJobParameters()
+          validateJobParameters()
+          splitHosts(env.EFFECTIVE_DEPLOY_HOSTS).each { host ->
+            echo "ENV=${env.EFFECTIVE_ENV} operate=${env.EFFECTIVE_OPERATE} host=${host} cred=${host} user=${env.DEPLOY_USER_RESOLVED} DEPLOY_DIR=${env.EFFECTIVE_DEPLOY_DIR}"
+          }
         }
       }
     }
@@ -41,11 +35,12 @@ pipeline {
       steps {
         checkout scm
         sh 'git fetch --all --prune'
-        sh "git checkout ${params.BRANCH}"
+        sh "git checkout ${env.EFFECTIVE_BRANCH}"
       }
     }
 
     stage('Build') {
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
         dir('quick-h5') {
           sh '''
@@ -59,58 +54,163 @@ pipeline {
     }
 
     stage('Archive') {
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
         archiveArtifacts artifacts: 'quick-h5/dist/build/h5/**', fingerprint: true
       }
     }
 
     stage('Deploy') {
+      when { expression { env.EFFECTIVE_OPERATE == 'deploy' } }
       steps {
-        sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-          sh """
-            set -e
-            test -d '${env.H5_DIST}'
-            rsync -az --delete -e 'ssh -o StrictHostKeyChecking=accept-new' \
-              ${env.H5_DIST}/ ${env.DEPLOY_USER}@${env.DEPLOY_HOST}:${env.H5_DIR}/
-            ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
-              'sudo nginx -t && sudo nginx -s reload'
-          """
+        script {
+          def deployDir = env.EFFECTIVE_DEPLOY_DIR
+          def dist = env.H5_DIST
+          withEachHost { host, user, sshOpts ->
+            echo "部署 quick-h5 到 ${host}:${deployDir} (凭据 ${host})"
+            sh """
+              set -e
+              test -d '${dist}'
+              ssh ${sshOpts} ${user}@${host} "mkdir -p '${deployDir}'"
+              rsync -az --delete -e "ssh ${sshOpts}" \
+                ${dist}/ ${user}@${host}:'${deployDir}/'
+              ssh ${sshOpts} ${user}@${host} \
+                'sudo nginx -t && sudo nginx -s reload'
+            """
+          }
         }
+      }
+    }
+
+    stage('Rollback') {
+      when { expression { env.EFFECTIVE_OPERATE == 'rollback' } }
+      steps {
+        error('quick-h5 静态资源暂不支持 rollback，请重新 deploy 指定分支/产物')
       }
     }
 
     stage('Smoke') {
       steps {
         script {
-          if (params.SMOKE_BASE_URL?.trim()) {
-            def base = params.SMOKE_BASE_URL.trim().replaceAll(/\/$/, '')
+          if (env.EFFECTIVE_SKIP_SMOKE == 'true') {
+            echo 'SKIP_SMOKE=true，跳过冒烟'
+            return
+          }
+          def base = env.EFFECTIVE_SMOKE_BASE_URL?.trim()
+          if (base) {
+            base = base.replaceAll(/\/$/, '')
             sh "curl -sfI --retry 5 --retry-delay 2 '${base}/h5/'"
-          } else {
-            sshagent(credentials: [env.DEPLOY_CRED_ID]) {
-              sh """
-                ssh -o StrictHostKeyChecking=accept-new ${env.DEPLOY_USER}@${env.DEPLOY_HOST} \
-                  'curl -sfI --retry 5 --retry-delay 2 http://127.0.0.1/h5/'
-              """
-            }
+            return
+          }
+          withEachHost { host, user, sshOpts ->
+            echo "健康检查 ${host} http://127.0.0.1/h5/"
+            sh """
+              set -e
+              ssh ${sshOpts} ${user}@${host} \
+                'curl -sfI --retry 5 --retry-delay 2 http://127.0.0.1/h5/'
+            """
           }
         }
       }
     }
   }
+
+  post {
+    success {
+      echo "✅ quick-h5 ${env.EFFECTIVE_OPERATE} 成功 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER}"
+    }
+    failure {
+      echo "❌ quick-h5 ${env.EFFECTIVE_OPERATE} 失败 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
+    }
+  }
 }
 
-def resolveDeployMeta(String envName) {
-  def user = env.QUICKBOOT_SSH_USER?.trim() ?: 'quickboot'
-  switch (envName) {
-    case 'test':
-      def host = env.QUICKBOOT_HOST_TEST?.trim()
-      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_TEST') }
-      return [credId: 'deploy-test', host: host, user: user]
-    case 'prod':
-      def host = env.QUICKBOOT_HOST_PROD?.trim()
-      if (!host) { error('缺少环境变量 QUICKBOOT_HOST_PROD') }
-      return [credId: 'deploy-prod', host: host, user: user]
-    default:
-      error("未知 ENV: ${envName}，仅支持 test|prod")
+def requiredJobParamNames() {
+  return ['ENV', 'BRANCH', 'DEPLOY_HOSTS', 'DEPLOY_DIR', 'operate']
+}
+
+def defaultJobParameters() {
+  return [
+    choice(name: 'ENV', choices: ['test', 'prod', 'dev'], description: '部署环境标识'),
+    string(name: 'BRANCH', defaultValue: 'main', description: 'Git 分支'),
+    string(name: 'DEPLOY_HOSTS', defaultValue: '', description: '目标机 IP/域名，逗号分隔；凭据 ID 须与主机名相同'),
+    string(name: 'DEPLOY_DIR', defaultValue: '/home/quickboot/h5', description: '目标机静态目录'),
+    choice(name: 'operate', choices: ['deploy', 'rollback'], description: 'deploy=发布；rollback 暂不支持'),
+    booleanParam(name: 'SKIP_SMOKE', defaultValue: false, description: '跳过健康检查'),
+    string(name: 'SMOKE_BASE_URL', defaultValue: '', description: '公网根 URL；空则 SSH 打本机 Nginx /h5/'),
+  ]
+}
+
+def ensureJobParameters() {
+  def required = requiredJobParamNames()
+  def missing = required.findAll { !params.containsKey(it) }
+
+  if (missing.isEmpty()) {
+    echo '使用当前构建参数（不覆盖 Job Configure）'
+    return
+  }
+
+  if (missing.size() < required.size()) {
+    error("Job 缺少部分参数: ${missing.join(', ')}。请在 Configure 手工添加；或删除全部参数后重新构建以自动初始化。见 deploy/env/README.md")
+  }
+
+  echo 'Job 尚未带入必需参数，正在写入默认参数定义（仅此一次）…'
+  properties([parameters(defaultJobParameters())])
+  error('已在 Job 中写入默认参数。请再次点击「Build with Parameters」开始构建。')
+}
+
+def validateJobParameters() {
+  def missing = requiredJobParamNames().findAll { !params.containsKey(it) }
+  if (!missing.isEmpty()) {
+    error("当前构建未带入参数: ${missing.join(', ')}。请使用「Build with Parameters」。")
+  }
+
+  env.EFFECTIVE_ENV = paramString('ENV', 'test')
+  env.EFFECTIVE_BRANCH = paramString('BRANCH', 'main')
+  env.EFFECTIVE_DEPLOY_HOSTS = paramString('DEPLOY_HOSTS', '')
+  env.EFFECTIVE_DEPLOY_DIR = paramString('DEPLOY_DIR', '/opt/quickboot/www/h5')
+  env.EFFECTIVE_OPERATE = paramString('operate', 'deploy')
+  env.EFFECTIVE_SKIP_SMOKE = paramBool('SKIP_SMOKE', false)
+  env.EFFECTIVE_SMOKE_BASE_URL = paramString('SMOKE_BASE_URL', '')
+  env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
+
+  def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
+  if (!hosts) {
+    error('DEPLOY_HOSTS 不能为空（填写目标机 IP/域名，且 Jenkins 凭据 ID 与之相同）')
+  }
+  hosts.each { host ->
+    if (host ==~ /^\d+$/) {
+      error("DEPLOY_HOSTS 项「${host}」无效。请填完整 IP/域名，例如 192.168.50.105")
+    }
+  }
+}
+
+def paramString(String name, String fallback) {
+  if (!params.containsKey(name)) {
+    return fallback
+  }
+  def v = params[name]?.toString()?.trim()
+  return v ?: fallback
+}
+
+def paramBool(String name, boolean fallback) {
+  if (!params.containsKey(name)) {
+    return fallback.toString()
+  }
+  return params[name]?.toString()
+}
+
+def splitHosts(String raw) {
+  return (raw ?: '').split(/[,;\s]+/).findAll { it }
+}
+
+def withEachHost(Closure body) {
+  def sshOpts = env.QUICKBOOT_SSH_OPTS?.trim() ?: '-o StrictHostKeyChecking=no'
+  def user = env.DEPLOY_USER_RESOLVED
+  splitHosts(env.EFFECTIVE_DEPLOY_HOSTS).each { host ->
+    echo "SSH 目标=${host} 用户=${user} 凭据 ID=${host}"
+    sshagent(credentials: [host]) {
+      body(host, user, sshOpts)
+    }
   }
 }
