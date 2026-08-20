@@ -28,8 +28,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        sh 'git fetch --all --prune'
-        sh "git checkout ${env.EFFECTIVE_BRANCH}"
+
       }
     }
 

@@ -124,8 +124,8 @@ pipeline {
             return
           }
           def smokeUrl = "http://127.0.0.1:${env.port}/actuator/health"
-          def retries = '5'
-          def delaySec = '5'
+          def retries = '10'
+          def delaySec = '30'
           withEachHost { host, user, sshOpts ->
             echo "健康检查 ${host} ${smokeUrl}"
             sh """
