@@ -107,7 +107,7 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 
 也可跳过自动初始化，在 Configure → **参数化构建过程** 手工按上表添加。
 
-SSH 用户：从 Jenkins SSH 凭据读取（如凭据 `105` 的用户 `root`）；失败时回退 `QUICKBOOT_SSH_USER`，再默认 `root`。
+SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`（须与 Jenkins SSH 凭据里配置的用户一致，如凭据 `105` 为 `root`）。
 
 目标机地址解析顺序（每台凭据）：
 

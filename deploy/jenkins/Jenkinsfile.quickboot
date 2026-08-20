@@ -4,10 +4,7 @@
  * DEPLOY_HOSTS = Jenkins SSH 凭据 ID 列表（非 IP）；真实地址填 DEPLOY_TARGET_HOSTS 或 QUICKBOOT_HOST_<凭据ID>。
  * 参数策略：Job 已有参数不覆盖；全部缺失时首次构建自动写入默认参数。
  */
-import com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey
-import com.cloudbees.plugins.credentials.CredentialsProvider
 import hudson.model.ParametersDefinitionProperty
-import jenkins.model.Jenkins
 
 pipeline {
   agent any
@@ -270,10 +267,19 @@ def splitHosts(String raw) {
   return (raw ?: '').split(/[,;\s]+/).findAll { it }
 }
 
-/** 从节点环境变量 QUICKBOOT_HOST_<凭据ID> 读取目标机地址。 */
+/** 从节点环境变量 QUICKBOOT_HOST_<凭据ID> 读取目标机地址（避免 getEnvironment，兼容 Script Security 沙箱）。 */
 def envHostForCred(String credId) {
   def key = "QUICKBOOT_HOST_${credId}"
-  return env.getEnvironment()[key]?.trim()
+  def host = env."${key}"?.trim()
+  if (host) {
+    return host
+  }
+  return null
+}
+
+/** SSH 登录用户：节点环境变量 QUICKBOOT_SSH_USER，默认 root（须与凭据里配置的用户一致）。 */
+def resolveSshUser() {
+  return env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
 }
 
 /** 单台时按 ENV 回退到 QUICKBOOT_HOST_TEST / QUICKBOOT_HOST_PROD 等。 */
@@ -290,27 +296,6 @@ def resolveEnvHost(String envName) {
     default:
       return null
   }
-}
-
-/** 从 Jenkins SSH 凭据读取登录用户名。 */
-@NonCPS
-def resolveSshUsername(String credId) {
-  def cred = CredentialsProvider.findCredentialById(
-    credId, BasicSSHUserPrivateKey.class, Jenkins.instance, null, null
-  )
-  return cred?.username?.trim()
-}
-
-def resolveSshUsernameSafe(String credId) {
-  try {
-    def user = resolveSshUsername(credId)
-    if (user) {
-      return user
-    }
-  } catch (Exception e) {
-    echo "读取凭据 ${credId} 用户名失败（${e.message}），使用环境变量或 root"
-  }
-  return env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
 }
 
 /**
@@ -345,7 +330,7 @@ def resolveDeployTargets() {
     if (!host) {
       error("凭据 ID「${credId}」未解析到目标主机 IP/域名。请填写 DEPLOY_TARGET_HOSTS，或设置节点环境变量 QUICKBOOT_HOST_${credId}，单台时也可设 QUICKBOOT_HOST_TEST/PROD")
     }
-    targets << [credId: credId, host: host, user: resolveSshUsernameSafe(credId)]
+    targets << [credId: credId, host: host, user: resolveSshUser()]
   }
   return targets
 }
