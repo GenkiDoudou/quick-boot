@@ -100,19 +100,25 @@ Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api
 | `SPRING_PROFILE` | String | `prod` | 传给 `app.sh --profile` |
 | `operate` | Choice | `deploy` | 选项：`deploy` / `rollback` |
 | `SKIP_SMOKE` | Boolean | 不勾选 | 跳过健康检查 |
+| `RELEASE_NOTES` | Text | （空） | 发版说明；自动附带 git log |
+| `WECOM_WEBHOOK_URL` | String | （空） | 企业微信机器人 Webhook；空则跳过通知 |
+| `DEPLOY_CALLBACK_TOKEN` | String | （空） | 与目标机 `.env` 的 `DEPLOY_CALLBACK_TOKEN` 一致；空则跳过写库 |
 
 **推荐流程：**
 
 1. Jenkins Credentials 中创建 SSH 凭据，**ID = 主机 IP**（如 `192.168.50.105`），用户与 `QUICKBOOT_SSH_USER` 一致（默认 `root`）
 2. Job Configure 中设 `DEPLOY_HOSTS=192.168.50.105`（多台逗号分隔）
-3. 使用 **Build with Parameters** 构建
+3. 目标机 `.env.properties` 配置 `DEPLOY_CALLBACK_TOKEN`；Job 填相同 Token 与企微 Webhook
+4. 使用 **Build with Parameters** 构建（可填 `RELEASE_NOTES`）
 
 也可跳过自动初始化，在 Configure → **参数化构建过程** 手工按上表添加。
 
 SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 
-流程：`deploy` → 构建 → 每台上传 `app.sh` 和新 jar → 执行 `./app.sh deploy …` → Smoke。  
+流程：`deploy` → 收集发版说明 → 构建 → 上传 jar → Smoke → **成功**：callback 写库 + 企微；**失败**：仅企微。  
 **不**上传 `.env.properties`；目标机须事先放好该文件（见上文「线上 DB / Redis」）。
+
+管理端：**系统监控 → 发布记录**（`monitor/deployRecord`）。
 
 ## 创建三个 Pipeline Job
 

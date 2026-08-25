@@ -6,7 +6,7 @@
  *
  * 参数：当前构建已带 params 则沿用；全部缺失时写入默认参数并提示再构建一次（不读 Job rawBuild，避免沙箱拦截）。
  *
- * 线上 DB/Redis：目标机 ${DEPLOY_DIR}/.env.properties 由运维维护；本 Job 只发 jar。
+ * 发版说明：参数 RELEASE_NOTES + git log；成功写库 callback + 企微；失败仅企微。
  * 骨架见 quickboot-app/src/main/resources/.env.properties.example
  */
 pipeline {
@@ -43,6 +43,14 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
+      }
+    }
+
+    stage('CollectNotes') {
+      steps {
+        script {
+          collectReleaseNotes()
+        }
       }
     }
 
@@ -159,10 +167,17 @@ pipeline {
 
   post {
     success {
-      echo "✅ quickboot ${env.EFFECTIVE_OPERATE} 成功 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER}"
+      script {
+        echo "✅ quickboot ${env.EFFECTIVE_OPERATE} 成功 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER}"
+        notifyWeCom(true)
+        reportDeployRecord()
+      }
     }
     failure {
-      echo "❌ quickboot ${env.EFFECTIVE_OPERATE} 失败 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
+      script {
+        echo "❌ quickboot ${env.EFFECTIVE_OPERATE} 失败 ENV=${env.EFFECTIVE_ENV} BUILD=${env.BUILD_NUMBER} 日志=${env.BUILD_URL}"
+        notifyWeCom(false)
+      }
     }
   }
 }
@@ -180,6 +195,9 @@ def defaultJobParameters() {
     string(name: 'SPRING_PROFILE', defaultValue: 'prod', description: 'Spring profile，传给 app.sh --profile'),
     choice(name: 'operate', choices: ['deploy', 'rollback'], description: 'deploy=发布 rollback=回滚'),
     booleanParam(name: 'SKIP_SMOKE', defaultValue: false, description: '跳过健康检查'),
+    text(name: 'RELEASE_NOTES', defaultValue: '', description: '发版说明（可空；会自动附带 git log）'),
+    string(name: 'WECOM_WEBHOOK_URL', defaultValue: '', description: '企业微信机器人 Webhook；空则跳过通知'),
+    string(name: 'DEPLOY_CALLBACK_TOKEN', defaultValue: '', description: '与目标机 .env 中 DEPLOY_CALLBACK_TOKEN 一致；空则跳过写库'),
   ]
 }
 
@@ -218,6 +236,9 @@ def validateJobParameters() {
   env.EFFECTIVE_SPRING_PROFILE = paramString('SPRING_PROFILE', 'prod')
   env.EFFECTIVE_OPERATE = paramString('operate', 'deploy')
   env.EFFECTIVE_SKIP_SMOKE = paramBool('SKIP_SMOKE', false)
+  env.EFFECTIVE_RELEASE_NOTES_MANUAL = paramString('RELEASE_NOTES', '')
+  env.EFFECTIVE_WECOM_WEBHOOK_URL = paramString('WECOM_WEBHOOK_URL', '')
+  env.EFFECTIVE_DEPLOY_CALLBACK_TOKEN = paramString('DEPLOY_CALLBACK_TOKEN', '')
   env.DEPLOY_USER_RESOLVED = env.QUICKBOOT_SSH_USER?.trim() ?: 'root'
 
   def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
@@ -259,5 +280,108 @@ def withEachHost(Closure body) {
     sshagent(credentials: [host]) {
       body(host, user, sshOpts)
     }
+  }
+}
+
+/** Checkout 后合成发版说明：手填 + git log。 */
+def collectReleaseNotes() {
+  def gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+  env.EFFECTIVE_GIT_COMMIT = gitCommit
+
+  def range = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT?.trim()
+  def gitLog
+  if (range) {
+    gitLog = sh(
+      script: "git log --oneline ${range}..HEAD 2>/dev/null | head -n 50 || true",
+      returnStdout: true
+    ).trim()
+  }
+  if (!gitLog) {
+    gitLog = sh(script: 'git log --oneline -n 20', returnStdout: true).trim()
+  }
+
+  def manual = env.EFFECTIVE_RELEASE_NOTES_MANUAL?.trim() ?: ''
+  def notes
+  if (manual && gitLog) {
+    notes = manual + '\n---\n' + gitLog
+  } else {
+    notes = manual ?: gitLog
+  }
+  env.EFFECTIVE_RELEASE_NOTES = notes ?: ''
+  echo "发版说明已收集 commit=${gitCommit} notesLength=${env.EFFECTIVE_RELEASE_NOTES.length()}"
+}
+
+/** 企业微信通知；webhook 为空则跳过。success=true 成功文案。 */
+def notifyWeCom(boolean success) {
+  def webhook = env.EFFECTIVE_WECOM_WEBHOOK_URL?.trim()
+  if (!webhook) {
+    echo 'WECOM_WEBHOOK_URL 为空，跳过企业微信通知'
+    return
+  }
+  def title = success ? '✅ quickboot 发版成功' : '❌ quickboot 发版失败'
+  def notes = (env.EFFECTIVE_RELEASE_NOTES ?: '').take(800)
+  def content = """${title}
+环境: ${env.EFFECTIVE_ENV}
+操作: ${env.EFFECTIVE_OPERATE}
+主机: ${env.EFFECTIVE_DEPLOY_HOSTS}
+分支: ${env.EFFECTIVE_BRANCH}
+构建: #${env.BUILD_NUMBER}
+Commit: ${env.EFFECTIVE_GIT_COMMIT ?: '-'}
+说明:
+${notes}
+日志: ${env.BUILD_URL}"""
+  writeFile file: 'wecom-notify.json', text: groovy.json.JsonOutput.toJson([msgtype: 'text', text: [content: content]])
+  sh '''
+    set +e
+    code=$(curl -s -o /tmp/wecom-resp.txt -w "%{http_code}" -X POST \
+      -H "Content-Type: application/json" \
+      --data-binary @wecom-notify.json \
+      "$EFFECTIVE_WECOM_WEBHOOK_URL")
+    echo "企业微信通知 HTTP=${code}"
+    cat /tmp/wecom-resp.txt || true
+    exit 0
+  '''
+}
+
+/** 仅成功：向首台 http://host:port 写发布记录；失败不阻断构建。 */
+def reportDeployRecord() {
+  def token = env.EFFECTIVE_DEPLOY_CALLBACK_TOKEN?.trim()
+  if (!token) {
+    echo 'DEPLOY_CALLBACK_TOKEN 为空，跳过发布记录入库'
+    return
+  }
+  def hosts = splitHosts(env.EFFECTIVE_DEPLOY_HOSTS)
+  if (!hosts) {
+    echo '无主机，跳过发布记录入库'
+    return
+  }
+  def apiBase = "http://${hosts[0]}:${env.port}"
+  def body = [
+    appName     : 'quickboot',
+    env         : env.EFFECTIVE_ENV,
+    operate     : env.EFFECTIVE_OPERATE,
+    branch      : env.EFFECTIVE_BRANCH,
+    hosts       : env.EFFECTIVE_DEPLOY_HOSTS,
+    buildNumber : env.BUILD_NUMBER,
+    buildUrl    : env.BUILD_URL,
+    gitCommit   : env.EFFECTIVE_GIT_COMMIT ?: '',
+    releaseNotes: env.EFFECTIVE_RELEASE_NOTES ?: ''
+  ]
+  writeFile file: 'deploy-record.json', text: groovy.json.JsonOutput.toJson(body)
+  withEnv(["DEPLOY_RECORD_API=${apiBase}/monitor/deployRecord/callback", "DEPLOY_CB_TOKEN=${token}"]) {
+    sh '''
+      set +e
+      code=$(curl -s -o /tmp/deploy-record-resp.txt -w "%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Deploy-Token: ${DEPLOY_CB_TOKEN}" \
+        --data-binary @deploy-record.json \
+        "${DEPLOY_RECORD_API}")
+      echo "发布记录 callback HTTP=${code} url=${DEPLOY_RECORD_API}"
+      cat /tmp/deploy-record-resp.txt || true
+      if [ "$code" != "200" ]; then
+        echo "警告: 发布记录入库失败（发版本身已成功）" >&2
+      fi
+      exit 0
+    '''
   }
 }

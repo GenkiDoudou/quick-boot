@@ -19,6 +19,7 @@ qc:
       - /drag/**
       - /jimubi/**
       - /jimureport/**
+      - /monitor/deployRecord/callback
   jimu:
     enabled: true
     # 公网可访问的后端根地址；可按环境在 .env 增加键后改为 ${QC_JIMU_BASE_URL}
@@ -89,7 +90,7 @@ spring:
   datasource:
     # DB_URL 不含查询串；查询参数在下方拼接（与本地 Flyway/多语句需求一致）
     url: ${DB_URL}?characterEncoding=utf8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&maxAllowedPacket=268435456
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: org.mariadb.jdbc.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     druid:

@@ -19,6 +19,7 @@ qc:
       - /drag/**
       - /jimubi/**
       - /jimureport/**
+      - /monitor/deployRecord/callback
   jimu:
     enabled: true
     # iframe 直连本后端；须与 server.port 一致
