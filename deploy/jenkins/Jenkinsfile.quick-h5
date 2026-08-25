@@ -73,8 +73,7 @@ pipeline {
               ssh ${sshOpts} ${user}@${host} "mkdir -p '${deployDir}'"
               rsync -az --delete -e "ssh ${sshOpts}" \
                 ${dist}/ ${user}@${host}:'${deployDir}/'
-              ssh ${sshOpts} ${user}@${host} \
-                'sudo nginx -t && sudo nginx -s reload'
+              # 静态文件无需 reload；改 Nginx conf 时请在目标机手工 nginx -t && reload
             """
           }
         }

@@ -159,5 +159,5 @@ uni-app Vite H5 默认产物目录：`quick-h5/dist/build/h5/`。
 2. 放置 `.env.properties`（关嵌入式由 `application-prod.yml` 保证；填外部库/Redis）  
 3. 前端仍须手工启用 Nginx conf，`nginx -t && systemctl reload nginx`  
 4. Jenkins 配置 SSH 凭据与三个 Job、主机环境变量  
-5. 前端发布若仍用 sudo reload Nginx，按现有 ui/h5 Jenkinsfile 权限模型配置  
+5. 前端 Job 只 rsync 静态文件、不执行 sudo nginx；改 conf 时在目标机手工 `nginx -t && reload`  
 6. 先 `ENV=test` 分别跑通三 Job，再手动 `prod`
