@@ -23,7 +23,7 @@ qc:
   jimu:
     enabled: true
     # iframe 直连本后端；须与 server.port 一致
-    base-url: http://localhost:9993
+    base-url: ${QC_JIMU_BASE_URL:http://localhost:9993}
     redis:
       enabled: true
     primary-datasource:
@@ -72,7 +72,7 @@ qc:
     type: local
     local:
       path: ./data/uploads
-    view-url-base: http://localhost:9993/system/file/view
+    view-url-base: ${QC_FILE_VIEW_URL_BASE:http://localhost:9993/system/file/view}
     default-classify: default
     compress:
       # 服务端总开关；min-size/quality/max-edge 为分类未配置时的默认

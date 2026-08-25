@@ -23,7 +23,7 @@ qc:
   jimu:
     enabled: true
     # 公网可访问的后端根地址；可按环境在 .env 增加键后改为 ${QC_JIMU_BASE_URL}
-    base-url: http://127.0.0.1:9993
+    base-url: ${QC_JIMU_BASE_URL}
     redis:
       enabled: true
     primary-datasource:
@@ -62,7 +62,7 @@ qc:
     type: local
     local:
       path: ./data/uploads
-    view-url-base: http://127.0.0.1:9993/system/file/view
+    view-url-base: ${QC_FILE_VIEW_URL_BASE}
     default-classify: default
     compress:
       enabled: false
