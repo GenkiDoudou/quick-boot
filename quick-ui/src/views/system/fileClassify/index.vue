@@ -117,7 +117,8 @@
 /**
  * 文件分类配置：定义上传 classify 键、大小/数量/后缀限制及压缩参数。
  */
-import { computed, reactive, ref } from 'vue'import { ElMessage } from 'element-plus'
+import { computed, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import { formatFileSize } from '@/api/common/file'
 import {
