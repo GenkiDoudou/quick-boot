@@ -44,7 +44,10 @@ pipeline {
         dir('quick-h5') {
           sh '''
             set -e
+            # 锁定 pnpm@9，避免 corepack 拉到 pnpm11（需 Node≥22；Jenkins agent 多为 Node20）
             corepack enable || true
+            corepack prepare pnpm@9.0.0 --activate
+            pnpm --version
             pnpm install --frozen-lockfile
             pnpm build:h5
           '''

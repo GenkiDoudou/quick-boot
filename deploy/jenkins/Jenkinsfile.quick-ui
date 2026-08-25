@@ -38,7 +38,10 @@ pipeline {
         dir('quick-ui') {
           sh '''
             set -e
+            # 与 quick-ui packageManager=pnpm@9.0.0 对齐；避免 corepack 拉到 pnpm11（需 Node≥22）
             corepack enable || true
+            corepack prepare pnpm@9.0.0 --activate
+            pnpm --version
             pnpm install --frozen-lockfile
             pnpm build:prod
           '''
