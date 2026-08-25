@@ -1,3 +1,8 @@
+# 单包工作区（与 quick-ui 一致）；pnpm@9 要求 packages 非空
+packages:
+  - '.'
+
+# 跳过部分依赖的安装脚本（pnpm 较新版本识别；pnpm9 会忽略未知键）
 allowBuilds:
   '@uni-helper/unocss-preset-uni': false
   bufferutil: false
