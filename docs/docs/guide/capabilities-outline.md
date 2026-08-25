@@ -1,19 +1,18 @@
 # QuickBoot 文档大纲
 
-> **状态**：侧栏链接已基本全部落盘（2026-05 补充）。维护时功能变更请同步更新对应模块页。
+> **状态（2026-08）**：实用向三端文档 + **在线演示** + **common / C7 / Qb 组件 API 手册**已落地。设计深链 / skill 站内页等仍暂缓。
 
 ## 快速导航
 
 | 分区 | 入口 |
 |------|------|
-| 指南 | [项目介绍](./introduction) |
-| 后端 | [后端概述](../backend/index) |
-| 前端 | [前端概述](../frontend/index) |
-| 部署 | [环境要求](../deploy/requirements) |
-| 设计 | [设计概述](../design/index) |
-| AI/SDD | [AI 工作流](../skill/) |
+| 指南 | [项目介绍](./introduction)、[在线演示](./demo) |
+| 后端 | [概述](/docs/backend/)、[能力包](/docs/backend/components/) |
+| 管理端 | [概述](/docs/frontend/)、[C7 组件](/docs/frontend/components/) |
+| 移动端 | [概述](/docs/h5/)、[Qb 组件](/docs/h5/components/) |
 
-启动文档站：`cd docs && pnpm dev`
+启动文档站：`cd docs && pnpm dev`  
+构建：`cd docs && pnpm build`（产物用于 Jenkins docs Job）
 
 ---
 
@@ -21,50 +20,43 @@
 
 | 文档 | 状态 |
 |------|------|
-| 项目介绍、大纲、快速上手、环境搭建、FAQ、贡献指南 | ✅ |
+| 项目介绍、大纲、快速上手、**在线演示**、环境搭建、FAQ、贡献指南 | ✅ |
 
 ## 二、后端 `/docs/backend/`
 
-| 分类 | 状态 |
+| 文档 | 状态 |
 |------|------|
-| 概述、规范、结构 | ✅ |
-| 功能模块（含 OAuth2、慢 SQL、全链路、文件管理、导入导出中心） | ✅ |
-| API 规范与用户/权限/系统 | ✅ |
-| 工具类总览 | ✅ |
-| 通用组件使用文档 | ✅ |
+| 概述、上手、结构、约定 | ✅ 实用向 |
+| `components/`：quickboot-common 各包 API 手册 | ✅ |
 
-## 三、前端 `/docs/frontend/`
+## 三、管理端 `/docs/frontend/`
 
-| 分类 | 状态 |
+| 文档 | 状态 |
 |------|------|
-| 概述、规范、结构、业务总览、列表模板 | ✅ |
-| 路由、Store、工具、样式、i18n | ✅ |
-| C7 组件（含 JsonTable/Form、Button、Excel 等） | ✅ |
+| 概述、上手、结构、约定 | ✅ 实用向 |
+| `components/`：C7 组件 API 手册 | ✅ |
 
-## 四、设计 `/docs/design/`
+## 四、移动端 `/docs/h5/`
 
-| 分类 | 状态 |
+| 文档 | 状态 |
 |------|------|
-| 概述、架构、数据库、认证、安全、模块 | ✅ |
-| 后端通用组件设计（中文目录） | ✅ |
+| 概述、上手、结构、约定 | ✅ 实用向 |
+| `components/`：Qb 组件 API 手册 | ✅ |
 
-## 五、部署 `/docs/deploy/`
+## 五、部署（仓库 `deploy/`，非本站分区）
 
-| 分类 | 状态 |
+| 内容 | 状态 |
 |------|------|
-| 环境、配置、本地部署与联调 | ✅ |
-| Docker、Nginx、SSL、优化、监控 | ✅（参考模板，仓库无内置 Dockerfile） |
+| Jenkins：quickboot / quick-ui / quick-h5 / docs | ✅ |
+| Nginx：`/`、`/h5/`、`/docs/`、积木路径、`/prod-api/` | ✅ 示例配置 |
+| 机上目录说明 | ✅ `deploy/env/README.md` |
 
-## 六、AI / SDD
-
-| 分类 | 状态 |
-|------|------|
-| `/docs/skill/*` | ✅ |
-| 编码约定 | 仓库根 `code_formater.md` + `AGENTS.md`（无独立 `sdd/` 目录） |
-
-## 七、源码映射
+## 六、源码映射
 
 ```text
-quickboot-app/  → docs/docs/backend/
-quick-ui/       → docs/docs/frontend/
+quickboot-common/     → docs/docs/backend/components/
+quick-ui/src/packages → docs/docs/frontend/components/
+quick-h5/src/components/qb → docs/docs/h5/components/
 ```
+
+设计与变更记录仍可在 `docs/superpowers/` 查阅（**不**编入 VitePress 构建）。

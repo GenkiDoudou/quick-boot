@@ -21,6 +21,7 @@ OpenSpec：`openspec/changes/jenkins-pipeline-deploy/`
   app/                 # jar + app.sh + .env.properties（运维维护）
   www/ui/              # quick-ui dist
   www/h5/              # quick-h5 H5 产物
+  www/docs/            # VitePress 文档站（Jenkinsfile.docs）
   logs/                # 可选
   config/              # 可选：大段 yml 覆盖（一般不必）
 ```
@@ -37,7 +38,7 @@ OpenSpec：`openspec/changes/jenkins-pipeline-deploy/`
 3. 改库/改密：SSH 编辑 `.env.properties` 后执行 `./app.sh restart`
 
 ```bash
-sudo mkdir -p /opt/quickboot/{app,www/ui,www/h5,logs}
+sudo mkdir -p /opt/quickboot/{app,www/ui,www/h5,www/docs,logs}
 sudo cp deploy/env/.env.properties.example /opt/quickboot/app/.env.properties
 # 编辑 DB_URL / DB_USERNAME / DB_PASSWORD / REDIS_* ：
 sudo chown -R quickboot:quickboot /opt/quickboot
@@ -45,7 +46,8 @@ sudo chown -R quickboot:quickboot /opt/quickboot
 
 可选大段覆盖仍可用 [`application-prod.yml.example`](./application-prod.yml.example) + `SPRING_CONFIG_ADDITIONAL_LOCATION`。  
 systemd 示例：`deploy/systemd/quickboot.service.example`。  
-Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/prod-api/`）。
+Nginx 示例：`deploy/nginx/quickboot.conf.example`（`/`、`/h5/`、`/docs/`、`/prod-api/`）。  
+积木走方案 B：`JIMU_CUSTOM_PRE_PATH=/prod-api` + `QC_JIMU_BASE_URL=https://域名/prod-api`，静态资源请求 `/prod-api/jmreport/...`，由 Nginx 去前缀转到 jar（见 [积木文档](https://help.jimureport.com/config/staticResoure)）。
 
 ## Jenkins Credentials（建议 ID）
 
@@ -120,7 +122,7 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 
 管理端：**系统监控 → 发布记录**（`monitor/deployRecord`）。
 
-## 创建三个 Pipeline Job
+## 创建四个 Pipeline Job
 
 在 Jenkins 新建 **Pipeline** Job（各一个）：
 
@@ -129,14 +131,17 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 | `deploy-quickboot` | `deploy/jenkins/Jenkinsfile.quickboot` |
 | `deploy-quick-ui` | `deploy/jenkins/Jenkinsfile.quick-ui` |
 | `deploy-quick-h5` | `deploy/jenkins/Jenkinsfile.quick-h5` |
+| `deploy-docs` | `deploy/jenkins/Jenkinsfile.docs` |
 
 共同点：
 
 1. Definition：Pipeline script from SCM  
 2. SCM：本仓库；Script Path 如上  
-3. **三端统一**：`DEPLOY_HOSTS` 填 IP，凭据 ID 与 IP 相同；参数「有则保留、无则自动初始化」（见上表）  
+3. **统一**：`DEPLOY_HOSTS` 填 IP，凭据 ID 与 IP 相同；参数「有则保留、无则自动初始化」（见上表 / 各 Jenkinsfile）  
 4. 触发：默认手动「Build with Parameters」  
 5. **定时建议仅绑测试 Job**（如 `H 2 * * *` 且默认 `ENV=test`），生产 Job 限制触发权限、勿配自动定时
+
+`deploy-docs` 默认 `DEPLOY_DIR=/opt/quickboot/www/docs`；构建目录 `docs/`，产物 `docs/.vitepress/dist/`，Nginx 路径 `/docs/`（与 VitePress `base: "/docs"` 一致）。
 
 ## 冒烟 URL
 
@@ -145,6 +150,7 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 | 后端 | 每台 `http://127.0.0.1:${port}/actuator/health`（`port` 默认 9993） | — |
 | quick-ui | — | `GET {SMOKE_BASE_URL}/`；空则 SSH `curl -sfI http://127.0.0.1/` |
 | quick-h5 | — | `GET {SMOKE_BASE_URL}/h5/`；空则 SSH `curl -sfI http://127.0.0.1/h5/` |
+| docs | — | `GET {SMOKE_BASE_URL}/`（填 docs 公网根，如 `https://host/docs`）；空则 SSH `curl -sfI http://127.0.0.1/docs/` |
 
 后端 health 若需登录，勾选 `SKIP_SMOKE`。
 
@@ -153,11 +159,16 @@ SSH 用户：节点环境变量 `QUICKBOOT_SSH_USER`，默认 `root`。
 uni-app Vite H5 默认产物目录：`quick-h5/dist/build/h5/`。  
 `Jenkinsfile.quick-h5` 已按此路径 rsync；若升级 uni 后路径变化，以一次本地 `pnpm build:h5` 输出为准并改 Jenkinsfile。
 
+## Docs 构建产物路径
+
+VitePress 默认产物目录：`docs/.vitepress/dist/`。  
+`Jenkinsfile.docs` 已按此路径 rsync；若升级 VitePress 后 outDir 变化，以一次本地 `cd docs && pnpm build` 为准并改 Jenkinsfile。
+
 ## 首次运维清单
 
 1. 目标机安装 JDK 17、Nginx；创建 `DEPLOY_DIR` 并保证 SSH 用户可写  
 2. 放置 `.env.properties`（关嵌入式由 `application-prod.yml` 保证；填外部库/Redis）  
 3. 前端仍须手工启用 Nginx conf，`nginx -t && systemctl reload nginx`  
-4. Jenkins 配置 SSH 凭据与三个 Job、主机环境变量  
-5. 前端 Job 只 rsync 静态文件、不执行 sudo nginx；改 conf 时在目标机手工 `nginx -t && reload`  
-6. 先 `ENV=test` 分别跑通三 Job，再手动 `prod`
+4. Jenkins 配置 SSH 凭据与四个 Job（含 `deploy-docs`）、主机环境变量  
+5. 前端 / 文档 Job 只 rsync 静态文件、不执行 sudo nginx；改 conf 时在目标机手工 `nginx -t && reload`  
+6. 先 `ENV=test` 分别跑通各 Job，再手动 `prod`

@@ -4,20 +4,20 @@
 
 1. 必须在 **`docs` 目录**执行 `pnpm dev`，不是 `quick-ui`。
 2. 修改 `nav.ts` / `sidebar.ts` 后**重启** dev 服务。
-3. 顶栏点击 **指南 / 后端手册 / 前端手册 / 部署** 进入对应侧栏。
+3. 顶栏点击 **指南 / 后端 / 管理端 / 移动端** 进入对应侧栏。
 
 ## 所有接口返回 30402
 
-- 含义：**Host 不允许**（`MethodAndHostFirewallFilter`）。
-- 原因：请求头 `Host` 不在 `qc.security.firewall.method-and-host.allowed-hosts` 中。
-- 常见情况：用 `http://127.0.0.1:9992` 访问但只配置了 `localhost:9992`；或生产未配置公网域名/IP。
-- 处理：在对应 Profile 的 yml 中增加实际 `Host:端口`，开发环境已默认放行 `localhost:*`、`127.0.0.1:*`。
+- 含义：**Host 不允许**（主机防火墙）。
+- 原因：请求头 `Host` 不在允许列表中。
+- 常见情况：用 `http://127.0.0.1:9993` 访问但只配置了其它 Host；或生产未配置公网域名/IP。
+- 处理：在对应 Profile 的 yml 中增加实际 `Host:端口`，开发环境通常已放行 `localhost` / `127.0.0.1`。
 
-## 登录返回 401 或 code 30002
+## 登录返回 401 或客户端凭证失败
 
-- **30002**：Client HMAC 失败。检查 `VITE_APP_CLIENT_ID`、`VITE_APP_CLIENT_SIGN_KEY` 与库表 `sys_oauth_client` 中明文 secret 一致。
-- 确认请求 path 签名时**不含 query**。
-- 多实例生产需 Redis，否则 nonce 防重放失效。
+- 检查 `VITE_OAUTH_CLIENT_ID` / `VITE_OAUTH_CLIENT_SECRET` 是否与后端种子客户端一致（管理端 `quick-ui`，H5 `quick-h5`）。
+- 确认后端已启动且 Client 记录存在。
+- 多实例生产需 Redis，否则 nonce / Token 相关能力可能异常。
 
 ## 能登录但菜单为空
 
@@ -26,26 +26,25 @@
 
 ## 前端 API 404
 
-- 后端是否已启动在 **9992**。
-- `.env.development` 中 `VITE_APP_BASE_API=/dev-api` 是否与 `vite.config.js` proxy 一致。
+- 后端是否已启动在 **9993**。
+- `.env.development` 中 `VITE_APP_BASE_API=/dev-api` 是否与 Vite 代理一致。
 
 ## Flyway 启动失败
 
-- 勿手工改 H2/MySQL 表不同步脚本。
-- 检查 `db/migration` 是否冲突；开发可备份后删除 `./data/qcc` 重建（仅 dev）。
+- 勿手工改库表导致与迁移脚本不一致。
+- 检查 `db/migration` 是否冲突；开发可备份后清理嵌入式数据目录 `./data/mariadb` 再启动（仅 dev，慎用）。
 
 ## Jasypt 启动报错
+
+若启用了配置加密，按当前 `application*.yml` 要求提供主密钥，例如：
 
 ```bash
 -Djasypt.encryptor.password=你的主密钥
 ```
 
-## OAuth 授权页打不开
-
-- 需已登录管理端；`authorize` 路由由菜单或直链进入。
-- 白名单与 Client `api_path_patterns` 是否包含相关路径。
-
 ## 更多
 
-- [OAuth2 集成](../backend/modules/oauth2)
-- [联调测试](../deploy/local-testing)
+- [后端约定](/docs/backend/conventions)
+- [管理端约定](/docs/frontend/conventions)
+- [移动端约定](/docs/h5/conventions)
+- [快速上手](./quick-start)

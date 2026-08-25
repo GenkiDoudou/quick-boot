@@ -32,46 +32,46 @@ features:
       src: /icons/component.svg
       width: 48
       height: 48
-    title: 丰富组件库
-    details: 提供 50+ 前端组件和 30+ 后端组件，覆盖常见业务场景，支持高度自定义和扩展
-    link: /docs/components/frontend/index
-    linkText: 查看组件
+    title: 管理端 quick-ui
+    details: Vue 3 + Element Plus，动态路由与 C7 JSON 表格/表单，对接后端权限与 OAuth 客户端
+    link: /docs/frontend/
+    linkText: 管理端文档
   
   - icon: 
       src: /icons/security.svg
       width: 48
       height: 48
-    title: 企业级安全
-    details: 内置完善的安全防护机制，包括认证授权、防火墙、加密传输等，保障系统安全稳定
-    link: /docs/design/security
-    linkText: 了解更多
+    title: 后端 quickboot
+    details: Spring Boot 多模块、统一响应与防火墙、OAuth2 / 系统管理 / 监控等企业能力
+    link: /docs/backend/
+    linkText: 后端文档
   
   - icon: 
       src: /icons/performance.svg
       width: 48
       height: 48
-    title: 高性能架构
-    details: 采用微服务架构设计，支持分布式部署，内置缓存优化和性能监控，轻松应对高并发场景
-    link: /docs/design/architecture
-    linkText: 架构设计
+    title: 移动端 quick-h5
+    details: uni-app（H5 / 微信小程序）对接同一套后端登录与菜单能力
+    link: /docs/h5/
+    linkText: 移动端文档
   
   - icon: 
       src: /icons/code.svg
       width: 48
       height: 48
-    title: 代码规范
-    details: 遵循业界最佳实践，提供完整的开发规范和代码模板，保证团队协作的代码质量
-    link: /docs/backend/development-guide
-    linkText: 开发规范
+    title: 开发约定
+    details: 前后端分层、命名与协作规范见仓库 code_formater.md / AGENTS.md
+    link: /docs/backend/conventions
+    linkText: 后端约定
   
   - icon: 
       src: /icons/tools.svg
       width: 48
       height: 48
-    title: 强大工具链
-    details: 集成代码生成器、接口文档、监控面板等开发工具，大幅提升开发效率和团队协作体验
-    link: /docs/guide/introduction
-    linkText: 探索工具
+    title: 环境与联调
+    details: JDK、Node、pnpm 与本地三端启动步骤
+    link: /docs/guide/installation
+    linkText: 环境搭建
 ---
 
 <style>
