@@ -1,15 +1,16 @@
-# 示例：同域名托管 quick-ui / quick-h5，并反代后端
+# 示例：同域名托管 quick-ui / quick-h5 / docs，并反代后端与积木报表
 # 复制到 /etc/nginx/conf.d/quickboot.conf 后修改 server_name 与证书。
+#
+# 积木方案 B（推荐与 SPA 同域）：
+#   - 目标机 .env：JIMU_CUSTOM_PRE_PATH=/prod-api
+#                  QC_JIMU_BASE_URL=https://你的域名/prod-api
+#   - 浏览器请求 /prod-api/jmreport/... ，由下方 location 去前缀转到 jar 的 /jmreport/...
+#   - 勿再单独配 location /jmreport/（否则易与 SPA location / 冲突）
+# 官方说明：https://help.jimureport.com/config/staticResoure
 
 server {
     listen 80;
     server_name _;
-
-    # 管理端静态（SPA）
-    location / {
-        root /opt/quickboot/www/ui;
-        try_files $uri $uri/ /index.html;
-    }
 
     # H5 静态（部署在 /h5/；构建 base 须为 /h5/）
     location /h5/ {
@@ -17,7 +18,14 @@ server {
         try_files $uri $uri/ /h5/index.html;
     }
 
-    # 前端 VITE_APP_BASE_API=/prod-api；去掉前缀转发到本机 jar
+    # VitePress 文档站（base=/docs；产物来自 Jenkinsfile.docs → www/docs）
+    location /docs/ {
+        alias /opt/quickboot/www/docs/;
+        try_files $uri $uri/ /docs/index.html;
+    }
+
+    # 前端 API + 积木（customPrePath=/prod-api）：去掉 /prod-api 前缀转发到 jar
+    # 例：/prod-api/jmreport/xxx → http://127.0.0.1:9993/jmreport/xxx
     location /prod-api/ {
         proxy_pass http://127.0.0.1:9993/;
         proxy_http_version 1.1;
@@ -26,6 +34,12 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_connect_timeout 60s;
-        proxy_read_timeout 120s;
+        proxy_read_timeout 300s;
+    }
+
+    # 管理端静态（SPA）——放在 /prod-api 之后，避免抢走积木与 API
+    location / {
+        root /opt/quickboot/www/ui;
+        try_files $uri $uri/ /index.html;
     }
 }

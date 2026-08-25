@@ -22,7 +22,7 @@ qc:
       - /monitor/deployRecord/callback
   jimu:
     enabled: true
-    # iframe 直连本后端；须与 server.port 一致
+    # iframe 直连本后端；本地一般留空 JIMU_CUSTOM_PRE_PATH
     base-url: ${QC_JIMU_BASE_URL:http://localhost:9993}
     redis:
       enabled: true

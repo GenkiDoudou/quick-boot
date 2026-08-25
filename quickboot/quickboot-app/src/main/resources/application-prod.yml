@@ -22,7 +22,7 @@ qc:
       - /monitor/deployRecord/callback
   jimu:
     enabled: true
-    # 公网可访问的后端根地址；可按环境在 .env 增加键后改为 ${QC_JIMU_BASE_URL}
+    # 须与 JIMU_CUSTOM_PRE_PATH 一致含 /prod-api，例如 https://qc.126w.com/prod-api
     base-url: ${QC_JIMU_BASE_URL}
     redis:
       enabled: true

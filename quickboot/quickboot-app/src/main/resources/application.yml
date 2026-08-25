@@ -227,7 +227,7 @@ qc:
         - /jimureport/
   jimu:
     enabled: true
-    # iframe / 积木访问根地址；可由 .env.properties 的 QC_JIMU_BASE_URL 覆盖
+    # iframe 入口根；生产若走 Nginx /prod-api，须含该前缀，如 https://qc.126w.com/prod-api
     base-url: ${QC_JIMU_BASE_URL:http://localhost:9993}
     redis:
       enabled: false
@@ -237,3 +237,9 @@ qc:
       code: qc2
     share:
       enabled: true
+
+# 积木官方配置（见 https://help.jimureport.com/config/yaml ）
+# customPrePath：虚拟路径前缀，静态资源会拼到 /{pre}/jmreport/...；本地直连 9993 时留空
+jeecg:
+  jmreport:
+    customPrePath: ${JIMU_CUSTOM_PRE_PATH:}
