@@ -90,7 +90,7 @@ spring:
   datasource:
     # DB_URL 不含查询串；查询参数在下方拼接（与本地 Flyway/多语句需求一致）
     url: ${DB_URL}?characterEncoding=utf8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&maxAllowedPacket=268435456
-    driver-class-name: org.mariadb.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     druid:
