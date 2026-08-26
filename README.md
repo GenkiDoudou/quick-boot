@@ -83,6 +83,108 @@ pnpm dev
 | `AGENTS.md` | 协作与 Agent 约定 |
 | `code_formater.md` | 编码、命名、分层红线 |
 | `deploy/env/README.md` | 生产部署、Jenkins Job、目标机目录与密钥约定 |
+| [贡献指南](https://qc.126w.com/docs/docs/guide/contributing) | OpenSpec 流程、文档贡献、提交前检查 |
+
+## 参与开发
+
+欢迎 Fork 后提 Pull Request。上游仓库：[GenkiDoudou/quick-boot](https://gitee.com/GenkiDoudou/quickboot.git)
+
+### 1. Fork 与克隆
+
+1. 在 GitHub 打开上游仓库，点击 **Fork** 到你自己的账号/组织。
+2. 克隆 **你的 Fork**（将 `YOUR_USER` 换成你的 GitHub 用户名）：
+
+```bash
+git clone https://gitee.com/GenkiDoudou/quickboot.git
+cd quick-boot
+git remote add upstream https://gitee.com/GenkiDoudou/quickboot.git
+```
+
+3. 确认远程：
+
+```bash
+git remote -v
+# origin    → 你的 Fork
+# upstream  → 上游仓库
+```
+
+### 2. 创建分支
+
+从上游默认分支（一般为 `main` / `master`）拉最新代码，再开功能分支：
+
+```bash
+git fetch upstream
+git checkout upstream/main   # 或 upstream/master
+git checkout -b feat/your-topic
+```
+
+分支命名建议：`feat/…`、`fix/…`、`docs/…`，与改动类型一致。
+
+### 3. 本地开发与验证
+
+按上文 [快速开始](#快速开始) 启动需要改动的子工程，并遵守：
+
+- 编码与分层：`code_formater.md`
+- 协作约定：`AGENTS.md`
+- 较大功能：先在 `openspec/changes/<change-id>/` 写 proposal / design / tasks（见 [贡献指南](https://qc.126w.com/docs/docs/guide/contributing)）
+
+提交前建议至少验证你改动的部分：
+
+```bash
+# 后端
+cd quickboot && mvn -pl quickboot-app -am package -DskipTests
+
+# 管理端
+cd quick-ui && pnpm build:prod
+
+# 文档（若改了 docs）
+cd docs && pnpm build
+```
+
+**勿提交**：`.env`、真实密钥、`node_modules/`、`target/`、`dist/` 等。
+
+### 4. 提交与推送
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/)（与 `code_formater.md` 一致），例如：
+
+```text
+feat(system): 支持 xxx
+fix(ui): 修复 xxx
+docs: 补充 xxx 说明
+```
+
+```bash
+git add <files>
+git commit -m "feat(scope): 简要说明"
+git push origin feat/your-topic
+```
+
+### 5. 发起 Pull Request
+
+1. 打开 **你的 Fork** 页面，GitHub 会提示 **Compare & pull request**；或手动选：`base` = 上游 `main`，`compare` = 你的分支。
+2. PR 标题与 commit 风格一致；正文说明：**做了什么、为什么、如何验证**。
+3. 若上游已有新提交，先同步再推送：
+
+```bash
+git fetch upstream
+git rebase upstream/main   # 或 merge upstream/main
+git push origin feat/your-topic --force-with-lease   # 仅 rebase 后需要
+```
+
+4. 根据 Review 修改后追加 commit 或 squash（按维护者要求）。
+
+### 6. 保持 Fork 同步（可选）
+
+长期参与时，定期把上游合入本地默认分支：
+
+```bash
+git checkout main
+git fetch upstream
+git merge upstream/main
+git push origin main
+```
+
+问题讨论、Bug 与功能建议也可通过 GitHub **Issues** 提出（若仓库已开启）。
 
 ## 部署
 

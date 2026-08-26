@@ -58,7 +58,7 @@ public class SysLogininforVo {
 
   /** 登录时间。 */
   @ExcelProperty("登录时间")
-  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime loginTime;
 
   /** 勾选导出 / 批量删除主键。 */

@@ -71,7 +71,7 @@ public class SysOperLogVo {
 
   /** 操作时间。 */
   @ExcelProperty("操作时间")
-  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime operTime;
 
   /** 耗时（毫秒）。 */
