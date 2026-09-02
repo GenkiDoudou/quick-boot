@@ -2,14 +2,16 @@
  * 代码生成 API：表元数据查询、配置编辑、预览与生成下载（/tool/gen）。
  */
 import request from '@/utils/request'
+import { createCrudApi, toPageRequest } from '@/api/_factory/createCrudApi'
 
-/** 代码生成配置列表 */
+const crud = createCrudApi('/tool/gen')
+
+/** 代码生成配置分页（POST page）。 */
+export const pageGenTable = crud.page
+
+/** 代码生成配置列表（兼容 C7JsonTable 扁平 query）。 */
 export function listGenTable(query) {
-  return request({
-    url: '/tool/gen/list',
-    method: 'get',
-    params: query
-  })
+  return crud.page(toPageRequest(query))
 }
 
 /** 数据库表候选 */
@@ -22,12 +24,7 @@ export function listDbTable(query) {
 }
 
 /** 配置详情 */
-export function getGenTable(tableId) {
-  return request({
-    url: '/tool/gen/' + tableId,
-    method: 'get'
-  })
-}
+export const getGenTable = crud.get
 
 /** 全局默认配置（参数设置 qc.gen.*） */
 export function getGenDefaults() {

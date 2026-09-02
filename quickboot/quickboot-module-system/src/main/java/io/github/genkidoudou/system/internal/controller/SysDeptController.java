@@ -2,7 +2,11 @@ package io.github.genkidoudou.system.internal.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
+import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.idempotency.Idempotent;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.validation.group.AddGroup;
@@ -12,6 +16,7 @@ import io.github.genkidoudou.system.internal.vo.SysDeptImportRow;
 import io.github.genkidoudou.system.internal.vo.SysDeptVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -40,17 +45,44 @@ public class SysDeptController {
   private final ISysDeptService service;
 
   /**
-   * 部门列表。
+   * 部门树形列表（POST；records 为根节点树，非物理分页）。
+   *
+   * @param pageRequest 筛选条件放在 param（deptName/status）
+   * @return 树形列表包装为 PageInfo
+   */
+  @Operation(summary = "部门树形列表")
+  @SaCheckPermission("system:dept:list")
+  @PostMapping("page")
+  public R<PageInfo<SysDeptVo>> page(@RequestBody(required = false) PageRequest<SysDeptVo> pageRequest) {
+    SysDeptVo param = pageRequest != null ? pageRequest.getParam() : null;
+    String deptName = param != null ? param.getDeptName() : null;
+    String status = param != null ? param.getStatus() : null;
+    List<SysDeptVo> tree = service.list(deptName, status);
+    PageInfo<SysDeptVo> info = new PageInfo<>();
+    info.setCurrent(1);
+    info.setSize(tree.size());
+    info.setRecords(tree);
+    info.setTotal(tree.size());
+    info.setPages(1);
+    return R.ok(info);
+  }
+
+  /**
+   * 部门列表（GET 兼容，请改用 POST {@code /page}）。
    *
    * @param deptName 名称模糊
    * @param status   状态
-   * @return 列表
+   * @return 树形列表
+   * @deprecated 请改用 POST {@code /sys/dept/page}，data 取 records
    */
-  @Operation(summary = "部门列表")
+  @Deprecated
+  @Operation(summary = "部门列表（兼容）", deprecated = true)
   @SaCheckPermission("system:dept:list")
   @GetMapping("list")
-  public R<List<SysDeptVo>> list(@RequestParam(required = false) String deptName,
+  public R<List<SysDeptVo>> list(HttpServletResponse response,
+                                 @RequestParam(required = false) String deptName,
                                  @RequestParam(required = false) String status) {
+    DeprecatedApiSupport.markDeprecated(response);
     return R.ok(service.list(deptName, status));
   }
 
@@ -87,6 +119,7 @@ public class SysDeptController {
    */
   @Operation(summary = "新增部门")
   @SaCheckPermission("system:dept:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.deptName + ':' + #body.parentId", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysDeptVo v) {
     return R.ok(String.valueOf(service.add(v)));
@@ -100,6 +133,7 @@ public class SysDeptController {
    */
   @Operation(summary = "修改部门")
   @SaCheckPermission("system:dept:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.deptId", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysDeptVo v) {
     return R.ok(service.update(v));
@@ -127,6 +161,7 @@ public class SysDeptController {
    */
   @Operation(summary = "批量删除部门")
   @SaCheckPermission("system:dept:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     service.remove(ids);
@@ -167,6 +202,7 @@ public class SysDeptController {
    */
   @Operation(summary = "导入部门")
   @SaCheckPermission("system:dept:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:dept'", message = "请勿重复提交")
   @PostMapping("import")
   public R<ExcelResult<SysDeptImportRow>> importExcel(
     @RequestParam("file") MultipartFile f,

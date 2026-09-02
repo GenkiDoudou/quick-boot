@@ -19,8 +19,12 @@ public final class ErrorCodes {
   public static final class Common {
     /** 参数非法（占位 {0} 为字段或说明）。 */
     public static final int INVALID_PARAM = 10001;
-    /** 请求体格式错误或无法解析。 */
-    public static final int REQUEST_BODY_INVALID = 10002;
+  /** 请求体格式错误或无法解析。 */
+  public static final int REQUEST_BODY_INVALID = 10002;
+  /** 缺少或非法的幂等键 Header。 */
+  public static final int IDEMPOTENCY_KEY_REQUIRED = 10003;
+  /** 重复请求（幂等键仍被占用）。 */
+  public static final int DUPLICATE_REQUEST = 10004;
 
     private Common() {
     }
@@ -137,6 +141,18 @@ public final class ErrorCodes {
     public static final int INVOKE_TARGET_NOT_TASK = 20022;
     /** 任务未注册到调度器。 */
     public static final int JOB_NOT_IN_SCHEDULER = 20023;
+    /** 任务类型非法或未启用。 */
+    public static final int JOB_TYPE_INVALID = 20024;
+    /** HTTP 任务未启用。 */
+    public static final int HTTP_JOB_DISABLED = 20025;
+    /** HTTP 目标被 SSRF 策略拦截。 */
+    public static final int HTTP_JOB_SSRF_BLOCKED = 20026;
+    /** 脚本任务未启用。 */
+    public static final int SCRIPT_JOB_DISABLED = 20027;
+    /** 脚本路径不在白名单。 */
+    public static final int SCRIPT_JOB_PATH_DENIED = 20028;
+    /** 任务参数 JSON 非法或字段缺失。 */
+    public static final int JOB_PARAMS_INVALID = 20029;
 
     private Job() {
     }

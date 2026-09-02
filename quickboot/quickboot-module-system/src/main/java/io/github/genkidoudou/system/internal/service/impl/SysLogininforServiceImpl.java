@@ -8,7 +8,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysLogininfor;
 import io.github.genkidoudou.system.internal.mapper.SysLogininforMapper;
 import io.github.genkidoudou.system.internal.service.ISysLogininforService;
@@ -31,10 +31,42 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class SysLogininforServiceImpl extends BaseServiceImpl<SysLogininforMapper, SysLogininfor>
+public class SysLogininforServiceImpl extends CrudServiceImpl<SysLogininforMapper, SysLogininfor, SysLogininforVo>
   implements ISysLogininforService {
 
   private static final int EXPORT_MAX_ROWS = 10_000;
+
+  @Override
+  protected Class<SysLogininforVo> voClass() {
+    return SysLogininforVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysLogininfor> q, SysLogininforVo param) {
+    if (param == null) {
+      return;
+    }
+    if (StrUtil.isNotBlank(param.getIpaddr())) {
+      q.like(SysLogininfor::getIpaddr, param.getIpaddr().trim());
+    }
+    if (StrUtil.isNotBlank(param.getUserName())) {
+      q.like(SysLogininfor::getUserName, param.getUserName().trim());
+    }
+    if (StrUtil.isNotBlank(param.getClientId())) {
+      q.eq(SysLogininfor::getClientId, param.getClientId().trim());
+    }
+    if (StrUtil.isNotBlank(param.getStatus())) {
+      q.eq(SysLogininfor::getStatus, param.getStatus().trim());
+    }
+    LocalDateTime begin = parseBeginTime(param.getBeginTime());
+    LocalDateTime end = parseEndTime(param.getEndTime());
+    if (begin != null) {
+      q.ge(SysLogininfor::getLoginTime, begin);
+    }
+    if (end != null) {
+      q.le(SysLogininfor::getLoginTime, end);
+    }
+  }
 
   @Override
   public PageInfo<SysLogininforVo> page(PageRequest<SysLogininforVo> pageRequest) {
@@ -42,7 +74,7 @@ public class SysLogininforServiceImpl extends BaseServiceImpl<SysLogininforMappe
     return this.page(pageRequest, q -> {
       applyQuery(q, param);
       q.orderByDesc(SysLogininfor::getLoginTime);
-    }, SysLogininforVo.class);
+    }, voClass());
   }
 
   @Transactional(rollbackFor = Exception.class)
@@ -137,32 +169,6 @@ public class SysLogininforServiceImpl extends BaseServiceImpl<SysLogininforMappe
     applyQuery(w, query);
     w.orderByDesc(SysLogininfor::getLoginTime);
     return this.list(w);
-  }
-
-  private void applyQuery(LambdaQueryWrapper<SysLogininfor> q, SysLogininforVo param) {
-    if (param == null) {
-      return;
-    }
-    if (StrUtil.isNotBlank(param.getIpaddr())) {
-      q.like(SysLogininfor::getIpaddr, param.getIpaddr().trim());
-    }
-    if (StrUtil.isNotBlank(param.getUserName())) {
-      q.like(SysLogininfor::getUserName, param.getUserName().trim());
-    }
-    if (StrUtil.isNotBlank(param.getClientId())) {
-      q.eq(SysLogininfor::getClientId, param.getClientId().trim());
-    }
-    if (StrUtil.isNotBlank(param.getStatus())) {
-      q.eq(SysLogininfor::getStatus, param.getStatus().trim());
-    }
-    LocalDateTime begin = parseBeginTime(param.getBeginTime());
-    LocalDateTime end = parseEndTime(param.getEndTime());
-    if (begin != null) {
-      q.ge(SysLogininfor::getLoginTime, begin);
-    }
-    if (end != null) {
-      q.le(SysLogininfor::getLoginTime, end);
-    }
   }
 
   private LocalDateTime parseBeginTime(String beginTime) {

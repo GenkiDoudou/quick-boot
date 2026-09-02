@@ -22,7 +22,7 @@
     "file-saver": "2.0.5",
     "js-cookie": "3.0.5",
     "jsencrypt": "3.3.2",
-    "lodash": "^4.17.21",
+    "dayjs": "^1.11.20",
     "nprogress": "0.2.0",
     "pinia": "2.2.2",
     "vue": "^3.5.13",

@@ -1,5 +1,6 @@
 package io.github.genkidoudou.system.internal.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -8,7 +9,7 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.file.FilePathSupport;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysFile;
 import io.github.genkidoudou.system.internal.entity.SysFileClassify;
 import io.github.genkidoudou.system.internal.mapper.SysFileClassifyMapper;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 @CacheConfig(cacheNames = SysFileClassifyServiceImpl.CACHE_NAME)
-public class SysFileClassifyServiceImpl extends BaseServiceImpl<SysFileClassifyMapper, SysFileClassify>
+public class SysFileClassifyServiceImpl extends CrudServiceImpl<SysFileClassifyMapper, SysFileClassify, SysFileClassifyVo>
   implements ISysFileClassifyService {
 
   public static final String CACHE_NAME = "sys-fileClassify#3600";
@@ -51,23 +52,31 @@ public class SysFileClassifyServiceImpl extends BaseServiceImpl<SysFileClassifyM
   private final SysFileMapper sysFileMapper;
 
   @Override
-  public PageInfo<SysFileClassifyVo> page(PageRequest<SysFileClassifyVo> pageRequest) {
-    SysFileClassifyVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      if (param == null) {
-        return;
-      }
-      if (StrUtil.isNotBlank(param.getClassify())) {
-        q.like(SysFileClassify::getClassify, param.getClassify().trim());
-      }
-      if (StrUtil.isNotBlank(param.getClassifyName())) {
-        q.like(SysFileClassify::getClassifyName, param.getClassifyName().trim());
-      }
-      if (StrUtil.isNotBlank(param.getStatus())) {
-        q.eq(SysFileClassify::getStatus, param.getStatus().trim());
-      }
+  protected Class<SysFileClassifyVo> voClass() {
+    return SysFileClassifyVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysFileClassify> q, SysFileClassifyVo param) {
+    if (param == null) {
       q.orderByDesc(SysFileClassify::getClassifyId);
-    }, SysFileClassifyVo.class);
+      return;
+    }
+    if (StrUtil.isNotBlank(param.getClassify())) {
+      q.like(SysFileClassify::getClassify, param.getClassify().trim());
+    }
+    if (StrUtil.isNotBlank(param.getClassifyName())) {
+      q.like(SysFileClassify::getClassifyName, param.getClassifyName().trim());
+    }
+    if (StrUtil.isNotBlank(param.getStatus())) {
+      q.eq(SysFileClassify::getStatus, param.getStatus().trim());
+    }
+    q.orderByDesc(SysFileClassify::getClassifyId);
+  }
+
+  @Override
+  public PageInfo<SysFileClassifyVo> page(PageRequest<SysFileClassifyVo> pageRequest) {
+    return crudPage(pageRequest);
   }
 
   @Override
@@ -75,30 +84,28 @@ public class SysFileClassifyServiceImpl extends BaseServiceImpl<SysFileClassifyM
     if (classifyId == null) {
       throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "classifyId 不能为空");
     }
-    SysFileClassify row = this.getById(classifyId);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "分类不存在");
-    }
-    return toVo(row, SysFileClassifyVo.class);
+    return crudGetDetail(classifyId, "分类不存在");
   }
 
   @Cacheable(key = "'by:' + #classify", unless = "#result == null")
   @Override
-  public SysFileClassify getByClassifyKey(String classify) {
+  public SysFileClassifyVo getByClassifyKey(String classify) {
     if (StrUtil.isBlank(classify)) {
       return null;
     }
-    return this.getOne(new LambdaQueryWrapper<SysFileClassify>()
+    SysFileClassify entity = this.getOne(new LambdaQueryWrapper<SysFileClassify>()
       .eq(SysFileClassify::getClassify, classify.trim())
       .last("LIMIT 1"));
+    return entity == null ? null : toVo(entity, SysFileClassifyVo.class);
   }
 
   @Cacheable(key = "'enabled'")
   @Override
-  public List<SysFileClassify> listEnabledEntities() {
-    return this.list(new LambdaQueryWrapper<SysFileClassify>()
+  public List<SysFileClassifyVo> listEnabled() {
+    List<SysFileClassify> entities = this.list(new LambdaQueryWrapper<SysFileClassify>()
       .eq(SysFileClassify::getStatus, "0")
       .orderByAsc(SysFileClassify::getClassify));
+    return BeanUtil.copyToList(entities, SysFileClassifyVo.class);
   }
 
   @CacheEvict(allEntries = true)

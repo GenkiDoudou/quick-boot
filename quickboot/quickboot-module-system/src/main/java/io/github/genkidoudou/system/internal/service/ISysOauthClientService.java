@@ -3,7 +3,6 @@ package io.github.genkidoudou.system.internal.service;
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
-import io.github.genkidoudou.system.internal.entity.SysOauthClient;
 import io.github.genkidoudou.system.internal.vo.SysOauthClientImportResult;
 import io.github.genkidoudou.system.internal.vo.SysOauthClientImportRow;
 import io.github.genkidoudou.system.internal.vo.SysOauthClientVo;
@@ -14,17 +13,17 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * OAuth 客户端管理。
+ * OAuth 客户端管理（公开 API 仅 Vo）。
  */
 public interface ISysOauthClientService {
 
   /**
-   * 按业务 clientId 查询（登录 Basic 鉴权）。
+   * 按业务 clientId 查询（登录 Basic 鉴权；含 secret）。
    *
    * @param clientId 客户端业务标识
-   * @return 实体（含 secret）；不存在则 null
+   * @return Vo（含 secret）；不存在则 null
    */
-  SysOauthClient findByClientId(String clientId);
+  SysOauthClientVo findByClientId(String clientId);
 
   /**
    * 分页（结果不含 secret）。

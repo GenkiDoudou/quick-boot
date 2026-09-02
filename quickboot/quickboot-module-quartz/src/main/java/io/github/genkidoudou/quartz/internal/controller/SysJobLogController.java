@@ -2,7 +2,10 @@ package io.github.genkidoudou.quartz.internal.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
+import io.github.genkidoudou.common.api.PageRequestMapping;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.quartz.internal.dto.SysJobLogQueryBo;
 import io.github.genkidoudou.quartz.internal.dto.SysJobLogVo;
@@ -36,8 +39,20 @@ public class SysJobLogController {
 
     @Operation(summary = "调度日志分页列表")
     @SaCheckPermission("monitor:job:query")
+    @PostMapping("/page")
+    public R<PageInfo<SysJobLogVo>> page(@RequestBody PageRequest<SysJobLogQueryBo> pageRequest) {
+        return R.ok(jobLogService.page(toJobLogQuery(pageRequest)));
+    }
+
+    /**
+     * @deprecated 请改用 POST {@code /monitor/jobLog/page}
+     */
+    @Deprecated
+    @Operation(summary = "调度日志分页列表（兼容）", deprecated = true)
+    @SaCheckPermission("monitor:job:query")
     @GetMapping("/list")
-    public R<PageInfo<SysJobLogVo>> list(@Validated SysJobLogQueryBo query) {
+    public R<PageInfo<SysJobLogVo>> list(HttpServletResponse response, @Validated SysJobLogQueryBo query) {
+        DeprecatedApiSupport.markDeprecated(response);
         return R.ok(jobLogService.page(query));
     }
 
@@ -70,5 +85,14 @@ public class SysJobLogController {
     @PostMapping("/export")
     public void export(@Validated SysJobLogQueryBo query, HttpServletResponse response) {
         jobLogService.export(query, response);
+    }
+
+    private static SysJobLogQueryBo toJobLogQuery(PageRequest<SysJobLogQueryBo> pageRequest) {
+        SysJobLogQueryBo param = pageRequest != null && pageRequest.getParam() != null
+            ? pageRequest.getParam()
+            : new SysJobLogQueryBo();
+        param.setPageNum(PageRequestMapping.pageNum(pageRequest));
+        param.setPageSize(PageRequestMapping.pageSize(pageRequest));
+        return param;
     }
 }

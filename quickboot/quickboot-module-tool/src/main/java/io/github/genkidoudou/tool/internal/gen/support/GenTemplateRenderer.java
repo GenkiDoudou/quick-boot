@@ -52,15 +52,14 @@ public class GenTemplateRenderer {
             {"domain.java.ftl", "main/java/" + pkg + "/internal/entity/" + className + ".java"},
             {"mapper.java.ftl", "main/java/" + pkg + "/internal/mapper/" + className + "Mapper.java"},
             {"mapper.xml.ftl", "main/resources/mapper/" + module + "/" + className + "Mapper.xml"},
-            {"service.java.ftl", "main/java/" + pkg + "/internal/service/" + className + "Service.java"},
+            {"service.java.ftl", "main/java/" + pkg + "/internal/service/I" + className + "Service.java"},
             {"serviceImpl.java.ftl", "main/java/" + pkg + "/internal/service/impl/" + className + "ServiceImpl.java"},
             {"controller.java.ftl", "main/java/" + pkg + "/internal/controller/" + className + "Controller.java"},
-            {"queryBo.java.ftl", "main/java/" + pkg + "/internal/dto/" + className + "QueryBo.java"},
-            {"bo.java.ftl", "main/java/" + pkg + "/internal/dto/" + className + "Bo.java"},
-            {"vo.java.ftl", "main/java/" + pkg + "/internal/dto/" + className + "Vo.java"},
+            {"vo.java.ftl", "main/java/" + pkg + "/internal/vo/" + className + "Vo.java"},
             {"api.js.ftl", "vue/api/" + module + "/" + business + ".js"},
+            {"schema.js.ftl", "vue/views/_schemas/" + module + "/" + business + ".schema.js"},
             {"index.vue.ftl", "vue/views/" + module + "/" + business + "/index.vue"},
-            {"menu.sql.ftl", "sql/" + module + "/" + tableName + "_menu.sql"}
+            {"menu.sql.ftl", "sql/flyway/V__" + tableName + "_menu.sql"}
         };
         String vueTemplate = resolveVueTemplate(context);
         for (String[] def : defs) {

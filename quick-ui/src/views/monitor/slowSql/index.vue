@@ -68,184 +68,34 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { cleanSlowSql, getSlowSql, listSlowSql, removeSlowSql } from '@/api/monitor/slowSql'
-import { parseTime } from '@/utils/ruoyi'
+import { formatTime } from '@/utils/formatTime'
+import { confirmCleanList, useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/slowSql.schema'
 
-/**
- * 慢 SQL 监控：分页列表、详情、批量删除、清空、导出。
- */
+/** 慢 SQL 监控：分页列表、详情、批量删除、清空、导出。 */
 defineOptions({ name: 'SysSlowSql' })
 
-const SQL_SOURCE_OPTIONS = [
-  { label: '业务', value: 'BUSINESS' },
-  { label: '积木', value: 'JIMU' },
-  { label: '系统', value: 'SYSTEM' },
-]
+const { tableRef, detailVisible, detail: detailRow, openDetailFromApi } = useCrudListPage()
 
-/** 与后端 SlowSqlType 对齐，列表筛选常用 DML */
-const SQL_TYPE_OPTIONS = [
-  { label: 'SELECT', value: 'SELECT' },
-  { label: 'INSERT', value: 'INSERT' },
-  { label: 'UPDATE', value: 'UPDATE' },
-  { label: 'DELETE', value: 'DELETE' },
-  { label: 'MERGE', value: 'MERGE' },
-  { label: 'EXEC', value: 'EXEC' },
-  { label: 'CREATE', value: 'CREATE' },
-  { label: 'ALTER', value: 'ALTER' },
-  { label: 'DROP', value: 'DROP' },
-  { label: 'TRUNCATE', value: 'TRUNCATE' },
-  { label: 'OTHER', value: 'OTHER' },
-]
+const defaultSearchParam = schema.defaultSearch
+const searchColumns = schema.searchColumns
+const tableColumns = schema.tableColumns
+const sourceTagType = schema.sourceTagType
+const sqlTypeTagType = schema.sqlTypeTagType
+const sqlPreview = schema.sqlPreview
+const normalizeListParams = schema.normalizeListParams
 
-const tableRef = ref(null)
-const detailVisible = ref(false)
-const detailRow = ref(null)
-
-const defaultSearchParam = {
-  sqlSource: '',
-  sqlType: '',
-  mapperId: '',
-  sqlText: '',
-  requestUri: '',
-  traceId: '',
-  minCostTime: '',
-  createTimeRange: [],
-}
-
-const searchColumns = computed(() => [
-  {
-    prop: 'sqlSource',
-    label: '来源',
-    type: 'select',
-    span: 8,
-    options: SQL_SOURCE_OPTIONS,
-    props: { placeholder: '来源', clearable: true, style: 'width: 240px' },
-  },
-  {
-    prop: 'sqlType',
-    label: '操作类型',
-    type: 'select',
-    span: 8,
-    options: SQL_TYPE_OPTIONS,
-    props: { placeholder: '操作类型', clearable: true, style: 'width: 240px' },
-  },
-  { prop: 'traceId', label: '链路ID', type: 'input', span: 8, props: { placeholder: 'traceId', clearable: true } },
-  { prop: 'mapperId', label: 'Mapper', type: 'input', span: 8, props: { placeholder: 'Mapper 片段', clearable: true } },
-  { prop: 'sqlText', label: 'SQL', type: 'input', span: 8, props: { placeholder: 'SQL 片段', clearable: true } },
-  { prop: 'requestUri', label: '请求URI', type: 'input', span: 8, props: { placeholder: 'URI 片段', clearable: true } },
-  { prop: 'minCostTime', label: '最小耗时(ms)', type: 'input', span: 8, props: { clearable: true } },
-  {
-    prop: 'createTimeRange',
-    label: '记录时间',
-    type: 'daterange',
-    span: 16,
-    props: { valueFormat: 'YYYY-MM-DD', startPlaceholder: '开始', endPlaceholder: '结束' },
-  },
-])
-
-const tableColumns = computed(() => [
-  { prop: 'slowId', label: '编号', width: 110 },
-  { prop: 'sqlSource', label: '来源', columnType: 'slot', slotName: 'sqlSource', width: 90 },
-  { prop: 'sqlType', label: '操作类型', columnType: 'slot', slotName: 'sqlType', width: 100 },
-  { prop: 'costTime', label: '耗时(ms)', width: 100, sortable: 'custom' },
-  { prop: 'sqlText', label: 'SQL', columnType: 'slot', slotName: 'sqlText', minWidth: 280 },
-  { prop: 'traceId', label: '链路ID', minWidth: 120, showOverflowTooltip: true },
-  { prop: 'mapperId', label: 'Mapper', minWidth: 160, showOverflowTooltip: true },
-  { prop: 'requestUri', label: '请求URI', minWidth: 140, showOverflowTooltip: true },
-  { prop: 'createTime', label: '记录时间', columnType: 'slot', slotName: 'createTime', width: 170, sortable: 'custom' },
-  { prop: 'actions', label: '操作', columnType: 'slot', slotName: 'actions', width: 90, fixed: 'right' },
-])
-
-/**
- * @param {string} source
- * @returns {string}
- */
-function sourceTagType(source) {
-  if (source === 'JIMU') return 'warning'
-  if (source === 'SYSTEM') return 'info'
-  return 'primary'
-}
-
-/**
- * @param {string|undefined|null} sqlType
- * @returns {string}
- */
-function sqlTypeTagType(sqlType) {
-  switch (sqlType) {
-    case 'SELECT':
-      return 'success'
-    case 'INSERT':
-      return ''
-    case 'UPDATE':
-      return 'warning'
-    case 'DELETE':
-      return 'danger'
-    case 'MERGE':
-    case 'EXEC':
-      return 'primary'
-    default:
-      return 'info'
-  }
-}
-
-function formatTime(value) {
-  return parseTime(value) || ''
-}
-
-/**
- * 列表 SQL 预览：单行截断，悬停 title 展示完整格式化 SQL。
- * @param {string|undefined|null} text
- * @param {number} [maxLen=160]
- */
-function sqlPreview(text, maxLen = 160) {
-  if (!text) return '—'
-  const oneLine = String(text).replace(/\s+/g, ' ').trim()
-  return oneLine.length > maxLen ? `${oneLine.slice(0, maxLen)}…` : oneLine
-}
-
-/** C7JsonTable 列表传参适配：日期范围转 beginTime/endTime */
-function normalizeListParams(raw) {
-  const p = { ...raw }
-  const range = p.createTimeRange
-  if (Array.isArray(range) && range.length === 2 && range[0] && range[1]) {
-    p.beginTime = range[0]
-    p.endTime = range[1]
-  }
-  delete p.createTimeRange
-  Object.keys(p).forEach((k) => {
-    if (p[k] === '') delete p[k]
-  })
-  if (p.minCostTime != null && p.minCostTime !== '') {
-    p.minCostTime = Number(p.minCostTime)
-  }
-  return p
-}
-
-function listFunction(params) {
-  return listSlowSql(normalizeListParams(params))
-}
-
-function batchDeleteFunction(ids) {
-  return removeSlowSql(ids || [])
-}
+const listFunction = (params) => listSlowSql(normalizeListParams(params))
+const batchDeleteFunction = (ids) => removeSlowSql(ids || [])
 
 function handleClean(refreshData) {
-  ElMessageBox.confirm('确认清空全部慢 SQL 记录？', '提示', { type: 'warning' })
-    .then(() => cleanSlowSql())
-    .then(() => {
-      ElMessage.success('已清空')
-      refreshData?.()
-    })
-    .catch(() => {})
+  confirmCleanList('确认清空全部慢 SQL 记录？', cleanSlowSql, refreshData)
 }
 
-async function openDetail(row) {
+function openDetail(row) {
   if (!row?.slowId) return
-  const res = await getSlowSql(row.slowId)
-  detailRow.value = res?.data ?? res
-  detailVisible.value = true
+  openDetailFromApi(row, getSlowSql, schema.rowKey)
 }
 </script>
 

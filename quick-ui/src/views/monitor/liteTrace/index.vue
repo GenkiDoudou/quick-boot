@@ -493,7 +493,7 @@ import {
   listLiteTraceSpans
 } from '@/api/monitor/liteTrace'
 import C7Copy from '@/packages/C7Copy/index.vue'
-import { parseTime } from '@/utils/ruoyi'
+import { formatTime } from '@/utils/formatTime'
 
 /**
  * 请求链路（Lite Trace）：页面访问 / 接口 / 定时任务索引，瀑布图与 Span 详情。
@@ -684,7 +684,7 @@ function formatDateTime(v) {
   if (!v) return '—'
   if (typeof v === 'string') {
     const s = v.replace('T', ' ').slice(0, 19)
-    return parseTime(s, '{y}-{m}-{d} {h}:{i}:{s}') || s
+    return formatTime(s, '{y}-{m}-{d} {h}:{i}:{s}') || s
   }
   if (Array.isArray(v) && v.length >= 6) {
     const [y, mo, d, h, mi, s] = v

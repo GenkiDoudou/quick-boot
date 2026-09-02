@@ -13,6 +13,7 @@ export default defineConfig({
       'src/test/**/*.test.{js,ts}',
       'src/packages/C7Preview/**/*.test.ts',
       'src/utils/**/*.test.{js,ts}',
+      'src/packages/__tests__/**/*.test.{js,ts}',
       'src/directive/**/__tests__/**/*.test.{js,ts}'
     ],
     environment: 'node',

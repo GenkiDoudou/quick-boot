@@ -24,6 +24,8 @@ public class JobTaskSnapshot implements Serializable {
     private String misfirePolicy;
     private String concurrent;
     private String status;
+    /** 任务类型：0 Bean，1 HTTP，2 Script。 */
+    private String jobType;
     private String params;
 
     /**
@@ -39,6 +41,7 @@ public class JobTaskSnapshot implements Serializable {
         s.setMisfirePolicy(job.getMisfirePolicy());
         s.setConcurrent(job.getConcurrent());
         s.setStatus(job.getStatus());
+        s.setJobType(job.getJobType());
         s.setParams(job.getParams());
         return s;
     }

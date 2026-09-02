@@ -35,7 +35,7 @@
 
 <script setup>
 import {computed, onMounted, ref, shallowRef, useAttrs, useSlots, watch} from 'vue'
-import get from 'lodash/get'
+import { get } from '@/utils/object'
 
 defineOptions({name: 'C7Radio', inheritAttrs: false})
 

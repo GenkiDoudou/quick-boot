@@ -2,77 +2,65 @@
   <div class="app-container">
     <C7JsonTable
       ref="tableRef"
-      row-key="${pkField!"id"}"
-      :show-index="false"
-      :show-selection="true"
-      :list-function="listFunction"
+      :list-function="page${className}"
       :table-columns="tableColumns"
       :search-columns="searchColumns"
-      :default-search-param="defaultSearchParam"
-      :delete-function="batchDeleteFunction"
-      :show-add-button="true"
-      :show-edit-button="true"
+      :default-search-param="defaultSearch"
       :show-delete-button="true"
-      rows-key="data.records"
-      total-key="data.total"
+      :delete-function="del${className}"
+      :row-key="rowKey"
+      :show-add-button="true"
+      :add-button-permi="[permPrefix + ':add']"
+      :delete-button-permi="[permPrefix + ':remove']"
+      :on-add="openAdd"
+      :export-function="export${className}"
+      :export-button-permi="[permPrefix + ':export']"
+      export-default-file-name="${businessName}.xlsx"
     >
       <template #action="{ row }">
-        <el-button link @click="openEdit(row)">修改</el-button>
-        <c7-button
-          btn-type="delete"
-          link
-          confirm
-          :confirm-message="'确认删除该记录吗？'"
-          :click-function="() => removeRow(row)"
-        />
+        <el-button link type="primary" v-hasPermi="[permPrefix + ':edit']" @click="openEdit(row)">修改</el-button>
+        <el-button link type="danger" v-hasPermi="[permPrefix + ':remove']" @click="removeRow(row)">删除</el-button>
       </template>
     </C7JsonTable>
+
+    <C7Dialog v-model="formVisible" :title="isAdd ? '新增' : '修改'" width="560px" :on-confirm="submitForm">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+<#list editColumns as col>
+        <el-form-item label="${col.columnComment!}" prop="${col.javaField}">
+          <el-input v-model="form.${col.javaField}" <#if col.htmlType?? && col.htmlType == "textarea">type="textarea" :rows="3"</#if> />
+        </el-form-item>
+</#list>
+      </el-form>
+    </C7Dialog>
   </div>
 </template>
 
 <script setup>
 /**
- * ${tableComment!} 列表（代码生成；结构对齐 views/system/config/index.vue）。
+ * ${tableComment!}：schema + useCrudPage 驱动的标准 CRUD 页（codegen）。
  */
-import { ref } from 'vue'
-import { list${className}, del${className} } from '@/api/${moduleName}/${businessName}'
+import {
+  page${className}, add${className}, update${className}, del${className}, export${className}, get${className}
+} from '@/api/${moduleName}/${businessName}'
+import { useCrudPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/${moduleName}/${businessName}.schema'
 
 defineOptions({ name: '${className}' })
 
-const tableRef = ref(null)
+const rowKey = schema.rowKey
+const permPrefix = schema.permPrefix
+const defaultSearch = schema.defaultSearch
+const searchColumns = schema.searchColumns
+const tableColumns = schema.tableColumns
 
-const defaultSearchParam = {
-<#list queryColumns as col>
-  ${col.javaField}: '',
-</#list>
-}
-
-const searchColumns = ref([
-<#list queryColumns as col>
-  { prop: '${col.javaField}', label: '${col.columnComment!}', type: 'input', span: 8, props: { placeholder: '请输入${col.columnComment!}', clearable: true } },
-</#list>
-])
-
-const tableColumns = ref([
-<#list listColumns as col>
-  { prop: '${col.javaField}', label: '${col.columnComment!}', minWidth: 120, showOverflowTooltip: true },
-</#list>
-  { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 160, fixed: 'right' }
-])
-
-function listFunction(params) {
-  return list${className}(params)
-}
-
-function batchDeleteFunction(ids) {
-  return del${className}(ids || [])
-}
-
-function openEdit(row) {
-  // TODO: 对接编辑弹窗（参照 system/config/index.vue）
-}
-
-function removeRow(row) {
-  return del${className}([row.${pkField!"id"}]).then(() => tableRef.value?.refreshData?.())
-}
+const {
+  tableRef, formRef, formVisible, isAdd, form, formRules,
+  openAdd, openEdit, submitForm, removeRow
+} = useCrudPage({
+  idField: schema.rowKey,
+  formInitial: schema.formInitial,
+  formRules: schema.formRules,
+  api: { add: add${className}, update: update${className}, remove: del${className} },
+  loadDetail: async (row) => (await get${className}(row[schema.rowKey])).data
+})
 </script>

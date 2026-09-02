@@ -41,6 +41,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 defineOptions({name: 'C7Title', inheritAttrs: true})
 
 /**
+ * @deprecated 新页面优先使用 {@code ElText} + 布局类；本组件保留兼容旧区块标题样式。
  * C7 区块标题：统一字号/加粗、底部分割线、左侧图标（EP 图标名或 `#icon`）、右侧默认插槽操作区。
  *
  * **`resolvedTag`（语义标签）**

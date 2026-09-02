@@ -6,7 +6,7 @@ import io.github.genkidoudou.common.security.service.LoginUserService;
 import io.github.genkidoudou.common.security.vo.LoginUser;
 import io.github.genkidoudou.core.entity.security.LoginHelper;
 import io.github.genkidoudou.system.internal.entity.SysUser;
-import io.github.genkidoudou.system.internal.service.ISysUserService;
+import io.github.genkidoudou.system.internal.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SaTokenLoginUserService implements LoginUserService {
 
-  private final ISysUserService sysUserService;
+  private final SysUserMapper sysUserMapper;
 
   @Override
   public LoginUser getLoginUser() {
@@ -30,7 +30,7 @@ public class SaTokenLoginUserService implements LoginUserService {
     }
     Long userId = StpUtil.getLoginIdAsLong();
     LoginUser sessionUser = readSessionLoginUser();
-    SysUser user = sysUserService.findByUserId(userId);
+    SysUser user = sysUserMapper.selectById(userId);
 
     LoginUser loginUser = sessionUser != null ? sessionUser : new LoginUser();
     loginUser.setUserId(userId);

@@ -7,12 +7,14 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
 import io.github.genkidoudou.system.internal.service.ISysDictDataService;
 import io.github.genkidoudou.system.internal.vo.SysDictDataImportRow;
 import io.github.genkidoudou.system.internal.vo.SysDictDataVo;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +65,7 @@ public class SysDictDataController {
   @Operation(summary = "字典数据详情")
   @SaCheckPermission(value = {"system:dictData:list", "system:dict:query", "system:dict:list"}, mode = SaMode.OR)
   @GetMapping("/{dictCode}")
-  public R<SysDictDataVo> get(@PathVariable Long dictCode) {
+  public R<SysDictDataVo> get(@Parameter(description = "字典数据主键") @PathVariable Long dictCode) {
     return R.ok(service.getDetail(dictCode));
   }
 
@@ -75,7 +77,7 @@ public class SysDictDataController {
    */
   @Operation(summary = "按类型查询字典数据")
   @GetMapping("type/{dictType}")
-  public R<List<SysDictDataVo>> listByType(@PathVariable String dictType) {
+  public R<List<SysDictDataVo>> listByType(@Parameter(description = "字典类型编码") @PathVariable String dictType) {
     return R.ok(service.listByType(dictType));
   }
 
@@ -87,6 +89,7 @@ public class SysDictDataController {
    */
   @Operation(summary = "新增字典数据")
   @SaCheckPermission("system:dictData:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.dictType + ':' + #body.dictValue", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysDictDataVo vo) {
     Long id = service.add(vo);
@@ -101,6 +104,7 @@ public class SysDictDataController {
    */
   @Operation(summary = "修改字典数据")
   @SaCheckPermission("system:dictData:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.dictCode", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysDictDataVo vo) {
     return R.ok(service.update(vo));
@@ -115,7 +119,7 @@ public class SysDictDataController {
   @Operation(summary = "删除字典数据")
   @SaCheckPermission("system:dictData:remove")
   @GetMapping("remove/{dictCode}")
-  public R<Void> removeGet(@PathVariable Long dictCode) {
+  public R<Void> removeGet(@Parameter(description = "字典数据主键") @PathVariable Long dictCode) {
     service.remove(List.of(dictCode));
     return R.ok();
   }
@@ -128,6 +132,7 @@ public class SysDictDataController {
    */
   @Operation(summary = "批量删除字典数据")
   @SaCheckPermission("system:dictData:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     service.remove(ids);
@@ -168,6 +173,7 @@ public class SysDictDataController {
    */
   @Operation(summary = "导入字典数据")
   @SaCheckPermission("system:dictData:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:dictData'", message = "请勿重复提交")
   @PostMapping("import")
   public R<ExcelResult<SysDictDataImportRow>> importExcel(
     @RequestParam("file") MultipartFile file,

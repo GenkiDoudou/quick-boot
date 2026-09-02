@@ -6,6 +6,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
@@ -59,6 +60,7 @@ public class SysLogininforController {
    */
   @Operation(summary = "删除登录日志")
   @SaCheckPermission("monitor:logininfor:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     service.remove(ids);
@@ -72,6 +74,7 @@ public class SysLogininforController {
    */
   @Operation(summary = "清空登录日志")
   @SaCheckPermission("monitor:logininfor:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':clean:logininfor'", message = "请勿重复提交")
   @PostMapping("/clean")
   public R<Void> clean() {
     service.cleanAll();
@@ -101,6 +104,7 @@ public class SysLogininforController {
    */
   @Operation(summary = "账户解锁")
   @SaCheckPermission("monitor:logininfor:unlock")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':unlock:' + #userName", message = "请勿重复提交")
   @GetMapping("/unlock/{userName}")
   public R<Void> unlock(@Parameter(description = "登录用户名") @PathVariable String userName) {
     String name = StrUtil.trim(userName);

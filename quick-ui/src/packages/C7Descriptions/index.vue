@@ -65,7 +65,7 @@
 
 <script setup>
 import {computed, shallowRef, useSlots} from 'vue'
-import get from 'lodash/get'
+import { get } from '@/utils/object'
 import C7DictTag from '../C7DictTag/index.vue'
 import C7Copy from '../C7Copy/index.vue'
 

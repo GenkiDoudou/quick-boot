@@ -7,5 +7,6 @@ io.github.genkidoudou.common.monitor.operlog.OperLogCaptureAutoConfiguration
 io.github.genkidoudou.common.monitor.slowsql.SlowSqlCaptureAutoConfiguration
 io.github.genkidoudou.common.tracing.ClientOperationTracingAutoConfiguration
 io.github.genkidoudou.common.desensitization.SensitiveJacksonAutoConfiguration
+io.github.genkidoudou.common.idempotency.IdempotencyAutoConfiguration
 io.github.genkidoudou.common.security.firewall.cors.FirewallCorsAutoConfiguration
 io.github.genkidoudou.common.file.FileStorageAutoConfiguration

@@ -15,20 +15,22 @@ import io.github.genkidoudou.common.security.vo.LoginUser;
 import io.github.genkidoudou.core.entity.enums.CommonEnums;
 import io.github.genkidoudou.core.entity.security.LoginHelper;
 import io.github.genkidoudou.system.internal.entity.SysUser;
-import io.github.genkidoudou.system.internal.service.*;
+import io.github.genkidoudou.system.internal.mapper.SysUserMapper;
 import io.github.genkidoudou.system.internal.online.support.OnlineSessionRecorder;
+import io.github.genkidoudou.system.internal.service.ILoginService;
+import io.github.genkidoudou.system.internal.service.ISysLogininforService;
+import io.github.genkidoudou.system.internal.service.ISysPermissionService;
 import io.github.genkidoudou.system.internal.support.LoginLockSupport;
 import io.github.genkidoudou.system.internal.vo.LoginRequestVo;
 import io.github.genkidoudou.system.internal.vo.LoginTokenVo;
 import io.github.genkidoudou.system.internal.vo.SysMenuVo;
 import io.github.genkidoudou.system.internal.vo.SysRoleVo;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Null;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import java.util.HashSet;
 import java.util.List;
@@ -43,7 +45,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LoginServiceImpl implements ILoginService {
 
-  private final ISysUserService sysUserService;
+  private final SysUserMapper sysUserMapper;
   private final PasswordCodec passwordCodec;
   private final LoginLockSupport loginLockSupport;
   private final CaptchaProperties captchaProperties;
@@ -74,7 +76,9 @@ public class LoginServiceImpl implements ILoginService {
       throw new WarningException(ErrorCodes.Auth.ACCOUNT_LOCKED_GENERIC);
     }
 
-    SysUser user = sysUserService.findByUserName(username);
+    SysUser user = StrUtil.isBlank(username) ? null
+      : sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+      .eq(SysUser::getUserName, username), false);
     if (user == null || !passwordCodec.matches(request.getPassword(), user.getPassword())) {
       boolean lockedNow = loginLockSupport.recordFailure(username);
       if (lockedNow) {

@@ -44,8 +44,9 @@ public class SysUserVo {
   @ExcelProperty("用户昵称")
   private String nickName;
 
-  /** 邮箱。 */
+  /** 邮箱；列表分页 JSON 响应经 {@link Sensitive} 脱敏，详情/编辑接口原样返回便于回显。 */
   @ExcelProperty("邮箱")
+  @Sensitive(type = SensitiveType.EMAIL)
   private String email;
 
   /** 手机号。 */

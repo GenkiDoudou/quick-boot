@@ -5,12 +5,14 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.system.internal.service.ISysFileService;
 import io.github.genkidoudou.system.internal.vo.SysFileUploadVo;
 import io.github.genkidoudou.system.internal.vo.SysFileVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +48,20 @@ public class SysFileController {
   private final ISysFileService sysFileService;
 
   /**
-   * 分页列表。
+   * 分页列表（POST 标准契约）。
+   *
+   * @param pageRequest 分页与筛选
+   * @return 文件记录分页
+   */
+  @Operation(summary = "文件分页列表")
+  @SaCheckPermission("system:file:list")
+  @PostMapping("/page")
+  public R<PageInfo<SysFileVo>> page(@RequestBody PageRequest<SysFileVo> pageRequest) {
+    return R.ok(sysFileService.page(pageRequest));
+  }
+
+  /**
+   * 分页列表（GET 兼容，请改用 POST {@code /page}）。
    *
    * @param pageNum          页码，默认 1
    * @param pageSize         每页条数，默认 10
@@ -54,24 +69,28 @@ public class SysFileController {
    * @param uploaderUserName 上传人用户名模糊
    * @param classify         分类键
    * @return 文件记录分页
+   * @deprecated 请改用 POST {@code /system/file/page}
    */
-  @Operation(summary = "文件分页列表")
+  @Deprecated
+  @Operation(summary = "文件分页列表（兼容）", deprecated = true)
   @SaCheckPermission("system:file:list")
   @GetMapping("/list")
   public R<PageInfo<SysFileVo>> list(
+    HttpServletResponse response,
     @RequestParam(value = "pageNum", required = false, defaultValue = "1") Integer pageNum,
     @RequestParam(value = "pageSize", required = false, defaultValue = "10") Integer pageSize,
     @RequestParam(value = "originalName", required = false) String originalName,
     @RequestParam(value = "uploaderUserName", required = false) String uploaderUserName,
     @RequestParam(value = "classify", required = false) String classify
   ) {
+    DeprecatedApiSupport.markDeprecated(response);
     SysFileVo param = new SysFileVo();
     param.setOriginalName(originalName);
     param.setUploaderUserName(uploaderUserName);
     param.setClassify(classify);
     int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
     int size = pageSize == null || pageSize < 1 ? 10 : pageSize;
-    return R.ok(sysFileService.page(new PageRequest<>(current, size, param)));
+    return page(new PageRequest<>(current, size, param));
   }
 
   /**
@@ -83,6 +102,7 @@ public class SysFileController {
    */
   @Operation(summary = "文件上传（登记）")
   @SaCheckPermission("system:file:upload")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upload:' + #classify", message = "请勿重复提交")
   @PostMapping(value = "/upload/{classify}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public R<SysFileUploadVo> upload(
     @Parameter(description = "文件") @RequestPart("file") MultipartFile file,
@@ -151,6 +171,7 @@ public class SysFileController {
    */
   @Operation(summary = "删除文件")
   @SaCheckPermission("system:file:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody Long[] ids) {
     List<Long> idList = ids == null ? List.of() : Arrays.asList(ids);

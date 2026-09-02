@@ -60,20 +60,14 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
   private final SysRoleMapper roleMapper;
   private final SysDeptMapper deptMapper;
 
-  @Override
-  public SysUser findByUserName(String username) {
+  /**
+   * 按登录账号查实体（仅实现内部 / 导入判重使用，不在公开接口暴露）。
+   */
+  private SysUser findEntityByUserName(String username) {
     if (StrUtil.isBlank(username)) {
       return null;
     }
     return this.getOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserName, username), false);
-  }
-
-  @Override
-  public SysUser findByUserId(Long userId) {
-    if (userId == null) {
-      return null;
-    }
-    return this.getById(userId);
   }
 
   @Override
@@ -282,7 +276,7 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
           throw new ExcelDataCheckException("用户账号不能为空");
         }
         String userName = row.getUserName().trim();
-        SysUser existing = findByUserName(userName);
+        SysUser existing = findEntityByUserName(userName);
         SysUser entity = new SysUser();
         entity.setUserName(userName);
         entity.setNickName(StrUtil.blankToDefault(row.getNickName(), userName));

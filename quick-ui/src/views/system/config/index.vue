@@ -35,7 +35,7 @@
     </C7JsonTable>
 
     <C7Dialog v-model="formVisible" :title="isAdd ? '新增参数' : '修改参数'" width="560px" :on-confirm="submitForm">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
         <el-form-item label="参数名称" prop="configName"><el-input v-model="form.configName" /></el-form-item>
         <el-form-item label="参数键名" prop="configKey">
           <el-input v-model="form.configKey" :disabled="isBuiltinEdit" placeholder="如 qc.login.fail-lock-enabled" />
@@ -58,90 +58,44 @@
 /**
  * 系统参数配置：分页 CRUD、内置参数删除保护、刷新参数缓存、Excel 导入导出。
  */
-import { computed, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import {
   pageConfig, addConfig, updateConfig, removeConfig, refreshConfigCache,
   exportConfig, importConfig, downloadConfigImportTemplate, getConfig
 } from '@/api/system/config'
+import { useCrudPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/config.schema'
 
 defineOptions({ name: 'SysConfig' })
 
 const { sys_yes_no } = useDict('sys_yes_no')
 
-const tableRef = ref(null)
-const formRef = ref(null)
-const formVisible = ref(false)
-const isAdd = ref(true)
-const form = reactive({
-  configId: null, configName: '', configKey: '', configValue: '', configType: '0', remark: ''
+const {
+  tableRef, formRef, formVisible, isAdd, form, formRules,
+  openAdd, openEdit, submitForm, removeRow
+} = useCrudPage({
+  idField: schema.rowKey,
+  labelField: 'configName',
+  formInitial: schema.formInitial,
+  formRules: schema.formRules,
+  api: { add: addConfig, update: updateConfig, remove: removeConfig },
+  loadDetail: async (row) => (await getConfig(row.configId)).data,
+  beforeRemove: (row) => {
+    if (row.configType === '1') {
+      ElMessage.warning('系统内置参数不允许删除')
+      return false
+    }
+  }
 })
+
 /** 系统内置参数（configType=1）编辑时禁止改键名与内置标记 */
 const isBuiltinEdit = computed(() => !isAdd.value && form.configType === '1')
-const rules = {
-  configName: [{ required: true, message: '必填', trigger: 'blur' }],
-  configKey: [{ required: true, message: '必填', trigger: 'blur' }],
-  configValue: [{ required: true, message: '必填', trigger: 'blur' }]
-}
-const defaultSearch = { configName: '', configKey: '', configType: '' }
-const searchColumns = computed(() => [
-  { prop: 'configName', label: '参数名称', type: 'input', span: 8 },
-  { prop: 'configKey', label: '参数键名', type: 'input', span: 8 },
-  {
-    prop: 'configType',
-    label: '系统内置',
-    type: 'select',
-    span: 8,
-    props: { options: sys_yes_no.value || [] }
-  }
-])
-const tableColumns = [
-  { prop: 'configName', label: '参数名称', minWidth: 140 },
-  { prop: 'configKey', label: '参数键名', minWidth: 200 },
-  { prop: 'configValue', label: '参数键值', minWidth: 180 },
-  { prop: 'configType', label: '系统内置', width: 100, columnType: 'slot', slotName: 'configType' },
-  { prop: 'remark', label: '备注', minWidth: 140 },
-  { prop: 'action', label: '操作', width: 160, fixed: 'right', columnType: 'slot', slotName: 'action' }
-]
 
-function openAdd() {
-  isAdd.value = true
-  Object.assign(form, { configId: null, configName: '', configKey: '', configValue: '', configType: '0', remark: '' })
-  formVisible.value = true
-}
-
-async function openEdit(row) {
-  isAdd.value = false
-  const res = await getConfig(row.configId)
-  Object.assign(form, res.data)
-  formVisible.value = true
-}
-
-async function submitForm() {
-  await formRef.value?.validate()
-  if (isAdd.value) {
-    const { configId, ...payload } = form
-    await addConfig(payload)
-  } else {
-    await updateConfig({ ...form })
-  }
-  ElMessage.success('保存成功')
-  formVisible.value = false
-  tableRef.value?.refreshData?.()
-}
-
-/** 内置参数不允许删除 */
-function removeRow(row) {
-  if (row.configType === '1') {
-    ElMessage.warning('系统内置参数不允许删除')
-    return
-  }
-  ElMessageBox.confirm(`确认删除「${row.configName}」？`, '提示', { type: 'warning' })
-    .then(() => removeConfig([row.configId]))
-    .then(() => { ElMessage.success('删除成功'); tableRef.value?.refreshData?.() })
-    .catch(() => {})
-}
+const defaultSearch = schema.defaultSearch
+const searchColumns = computed(() => schema.buildSearchColumns(sys_yes_no))
+const tableColumns = schema.tableColumns
 
 function handleRefresh() {
   refreshConfigCache().then(() => ElMessage.success('缓存已刷新'))

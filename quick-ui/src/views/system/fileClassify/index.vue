@@ -128,12 +128,14 @@ import {
   removeFileClassify,
   updateFileClassify
 } from '@/api/system/fileClassify'
+import { useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/fileClassify.schema'
 
 defineOptions({ name: 'SysFileClassify' })
 
 const { sys_yes_no, sys_normal_disable } = useDict('sys_yes_no', 'sys_normal_disable')
+const { tableRef } = useCrudListPage()
 
-const tableRef = ref(null)
 const formRef = ref(null)
 const formVisible = ref(false)
 const isAdd = ref(true)
@@ -170,31 +172,9 @@ const rules = {
   limitCount: [{ required: true, message: '必填', trigger: 'change' }]
 }
 
-const defaultSearch = { classify: '', classifyName: '', status: '' }
-
-const searchColumns = computed(() => [
-  { prop: 'classify', label: '分类键', type: 'input', span: 8, props: { clearable: true } },
-  { prop: 'classifyName', label: '展示名', type: 'input', span: 8, props: { clearable: true } },
-  {
-    prop: 'status',
-    label: '状态',
-    type: 'select',
-    span: 8,
-    props: { clearable: true, options: sys_normal_disable.value || [] }
-  }
-])
-
-const tableColumns = [
-  { prop: 'classify', label: '分类键', minWidth: 120 },
-  { prop: 'classifyName', label: '展示名', minWidth: 120 },
-  { prop: 'limitExt', label: '允许后缀', minWidth: 140, showOverflowTooltip: true },
-  { prop: 'limitSizeBytes', label: '大小上限', width: 110, columnType: 'slot', slotName: 'limitSizeBytes' },
-  { prop: 'limitCount', label: '数量', width: 80, align: 'center' },
-  { prop: 'compressEnabled', label: '压缩', width: 80, columnType: 'slot', slotName: 'compressEnabled' },
-  { prop: 'anonymous', label: '匿名', width: 80, columnType: 'slot', slotName: 'anonymous' },
-  { prop: 'status', label: '状态', width: 90, columnType: 'slot', slotName: 'status' },
-  { prop: 'action', label: '操作', width: 140, fixed: 'right', columnType: 'slot', slotName: 'action' }
-]
+const defaultSearch = schema.defaultSearch
+const searchColumns = computed(() => schema.buildSearchColumns(sys_normal_disable))
+const tableColumns = schema.tableColumns
 
 function listFunction(params) {
   return listFileClassify(params)

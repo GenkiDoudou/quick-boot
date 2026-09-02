@@ -2,6 +2,7 @@ package io.github.genkidoudou.monitor.internal.litetrace.support;
 
 import cn.hutool.core.util.StrUtil;
 import io.github.genkidoudou.common.api.TraceIds;
+import io.github.genkidoudou.common.monitor.ExceptionReporter;
 import io.github.genkidoudou.monitor.internal.litetrace.service.TraceProjectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LiteTraceExceptionReporterImpl implements LiteTraceExceptionReporter {
+public class LiteTraceExceptionReporterImpl implements ExceptionReporter {
 
     private final TraceProjectionService projectionService;
 

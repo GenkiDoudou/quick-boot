@@ -46,7 +46,10 @@ public class DevMariaDb4jStartupListener
     startIfNeeded(event.getEnvironment());
   }
 
-  static void startIfNeeded(ConfigurableEnvironment environment) {
+  /**
+   * 在 dev + embedded-mariadb 启用时启动 mariadb4j（供 main 与集成测试共用）。
+   */
+  public static void startIfNeeded(ConfigurableEnvironment environment) {
     if (!environment.acceptsProfiles(Profiles.of("dev"))) {
       return;
     }

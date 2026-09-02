@@ -5,8 +5,8 @@ import io.github.genkidoudou.common.exception.ErrorException;
 import io.github.genkidoudou.common.oauth.OauthClientVo;
 import io.github.genkidoudou.common.oauth.OauthServiceSupport;
 import io.github.genkidoudou.core.entity.enums.CommonEnums;
-import io.github.genkidoudou.system.internal.entity.SysOauthClient;
 import io.github.genkidoudou.system.internal.service.ISysOauthClientService;
+import io.github.genkidoudou.system.internal.vo.SysOauthClientVo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -31,28 +31,26 @@ public class OauthServiceSupportImpl implements OauthServiceSupport {
    */
   @Override
   public OauthClientVo findByClientId(String clientId) {
-    SysOauthClient sysOauthClient = iSysOauthClientService.findByClientId(clientId);
-    if (null == sysOauthClient) {
+    SysOauthClientVo row = iSysOauthClientService.findByClientId(clientId);
+    if (row == null) {
       throw new ErrorException(600);
-
     }
-    String status = sysOauthClient.getStatus();
-    if (!status.equals(CommonEnums.STATUS_ENABLE.getValue())) {
+    String status = row.getStatus();
+    if (status == null || !status.equals(CommonEnums.STATUS_ENABLE.getValue())) {
       throw new ErrorException(601);
     }
     OauthClientVo oauthClientVo = new OauthClientVo();
-    oauthClientVo.setClientId(sysOauthClient.getClientId());
-    oauthClientVo.setClientSecret(sysOauthClient.getClientSecret());
-    String patterns = sysOauthClient.getApiPathPatterns();
+    oauthClientVo.setClientId(row.getClientId());
+    oauthClientVo.setClientSecret(row.getClientSecret());
+    String patterns = row.getApiPathPatterns();
     if (StrUtil.isNotBlank(patterns)) {
       oauthClientVo.setApiPathPatterns(Arrays.stream(patterns.split(","))
         .map(String::trim)
         .filter(StrUtil::isNotBlank)
         .toList());
     }
-    oauthClientVo.setTokenTimeout(sysOauthClient.getTokenTimeout());
-    oauthClientVo.setCheckCaptcha(sysOauthClient.getCheckCaptcha());
+    oauthClientVo.setTokenTimeout(row.getTokenTimeout());
+    oauthClientVo.setCheckCaptcha(row.getCheckCaptcha());
     return oauthClientVo;
   }
-
 }

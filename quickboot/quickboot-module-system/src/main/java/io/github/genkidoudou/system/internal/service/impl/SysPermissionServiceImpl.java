@@ -338,6 +338,10 @@ public class SysPermissionServiceImpl implements ISysPermissionService {
     Map<String, Object> meta = new LinkedHashMap<>();
     meta.put("title", menu.getMenuName());
     meta.put("icon", StrUtil.blankToDefault(menu.getIcon(), ""));
+    // remark 约定 activeMenu:/xxx 供 hidden 子页侧栏高亮（原 dynamicRoutes meta.activeMenu）
+    if (StrUtil.isNotBlank(menu.getRemark()) && menu.getRemark().startsWith("activeMenu:")) {
+      meta.put("activeMenu", menu.getRemark().substring("activeMenu:".length()).trim());
+    }
     // is_cache：0=缓存 1=不缓存 → noCache
     meta.put("noCache", "1".equals(menu.getIsCache()));
     if (isFrame && hasFrameLink) {

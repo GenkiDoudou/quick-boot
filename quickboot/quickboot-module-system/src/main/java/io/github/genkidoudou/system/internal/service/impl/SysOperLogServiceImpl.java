@@ -9,7 +9,7 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.monitor.operlog.OperLogProperties;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysOperLog;
 import io.github.genkidoudou.system.internal.mapper.SysOperLogMapper;
 import io.github.genkidoudou.system.internal.service.ISysOperLogService;
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  * 操作日志管理服务实现。
  */
 @Service
-public class SysOperLogServiceImpl extends BaseServiceImpl<SysOperLogMapper, SysOperLog>
+public class SysOperLogServiceImpl extends CrudServiceImpl<SysOperLogMapper, SysOperLog, SysOperLogVo>
   implements ISysOperLogService {
 
   private final OperLogProperties operLogProperties;
@@ -43,63 +43,12 @@ public class SysOperLogServiceImpl extends BaseServiceImpl<SysOperLogMapper, Sys
   }
 
   @Override
-  public PageInfo<SysOperLogVo> page(PageRequest<SysOperLogVo> pageRequest) {
-    SysOperLogVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      applyQuery(q, param);
-      q.orderByDesc(SysOperLog::getOperTime);
-    }, SysOperLogVo.class);
+  protected Class<SysOperLogVo> voClass() {
+    return SysOperLogVo.class;
   }
 
   @Override
-  public SysOperLogVo getDetail(Long operId) {
-    SysOperLog row = this.getById(operId);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "日志不存在");
-    }
-    return toVo(row, SysOperLogVo.class);
-  }
-
-  @Transactional(rollbackFor = Exception.class)
-  @Override
-  public void remove(Collection<Long> ids) {
-    if (CollectionUtil.isEmpty(ids)) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "请选择要删除的日志");
-    }
-    this.remove(Wrappers.<SysOperLog>lambdaQuery().in(SysOperLog::getOperId, ids));
-  }
-
-  @Transactional(rollbackFor = Exception.class)
-  @Override
-  public void cleanAll() {
-    this.remove(Wrappers.<SysOperLog>lambdaQuery());
-  }
-
-  @Override
-  public List<SysOperLogVo> export(SysOperLogVo query) {
-    SysOperLogVo q = query == null ? new SysOperLogVo() : query;
-    List<SysOperLog> list = listForExport(q);
-    int max = Math.max(1, operLogProperties.getExportMaxRows());
-    if (list.size() > max) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM,
-        "导出数据超过上限（" + max + " 条），请缩小筛选条件");
-    }
-    return list.stream().map(x -> toVo(x, SysOperLogVo.class)).collect(Collectors.toList());
-  }
-
-  private List<SysOperLog> listForExport(SysOperLogVo query) {
-    List<Long> ids = query.getIds() == null ? Collections.emptyList() : query.getIds().stream()
-      .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-    if (!ids.isEmpty()) {
-      return this.listByIds(ids);
-    }
-    LambdaQueryWrapper<SysOperLog> w = Wrappers.lambdaQuery();
-    applyQuery(w, query);
-    w.orderByDesc(SysOperLog::getOperTime);
-    return this.list(w);
-  }
-
-  private void applyQuery(LambdaQueryWrapper<SysOperLog> q, SysOperLogVo param) {
+  public void applyQuery(LambdaQueryWrapper<SysOperLog> q, SysOperLogVo param) {
     if (param == null) {
       return;
     }
@@ -141,6 +90,59 @@ public class SysOperLogServiceImpl extends BaseServiceImpl<SysOperLogMapper, Sys
     if (end != null) {
       q.le(SysOperLog::getOperTime, end);
     }
+  }
+
+  @Override
+  public PageInfo<SysOperLogVo> page(PageRequest<SysOperLogVo> pageRequest) {
+    SysOperLogVo param = pageRequest != null ? pageRequest.getParam() : null;
+    return this.page(pageRequest, q -> {
+      applyQuery(q, param);
+      q.orderByDesc(SysOperLog::getOperTime);
+    }, voClass());
+  }
+
+  @Override
+  public SysOperLogVo getDetail(Long operId) {
+    return crudGetDetail(operId, "日志不存在");
+  }
+
+  @Transactional(rollbackFor = Exception.class)
+  @Override
+  public void remove(Collection<Long> ids) {
+    if (CollectionUtil.isEmpty(ids)) {
+      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "请选择要删除的日志");
+    }
+    this.remove(Wrappers.<SysOperLog>lambdaQuery().in(SysOperLog::getOperId, ids));
+  }
+
+  @Transactional(rollbackFor = Exception.class)
+  @Override
+  public void cleanAll() {
+    this.remove(Wrappers.<SysOperLog>lambdaQuery());
+  }
+
+  @Override
+  public List<SysOperLogVo> export(SysOperLogVo query) {
+    SysOperLogVo q = query == null ? new SysOperLogVo() : query;
+    List<SysOperLog> list = listForExport(q);
+    int max = Math.max(1, operLogProperties.getExportMaxRows());
+    if (list.size() > max) {
+      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM,
+        "导出数据超过上限（" + max + " 条），请缩小筛选条件");
+    }
+    return list.stream().map(x -> toVo(x, SysOperLogVo.class)).collect(Collectors.toList());
+  }
+
+  private List<SysOperLog> listForExport(SysOperLogVo query) {
+    List<Long> ids = query.getIds() == null ? Collections.emptyList() : query.getIds().stream()
+      .filter(Objects::nonNull).distinct().collect(Collectors.toList());
+    if (!ids.isEmpty()) {
+      return this.listByIds(ids);
+    }
+    LambdaQueryWrapper<SysOperLog> w = Wrappers.lambdaQuery();
+    applyQuery(w, query);
+    w.orderByDesc(SysOperLog::getOperTime);
+    return this.list(w);
   }
 
   private LocalDateTime parseBeginTime(String beginTime) {

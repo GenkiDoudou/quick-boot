@@ -16,6 +16,9 @@ public class SysJobVo {
 
     private String jobGroup;
 
+    /** 任务类型：0 Bean，1 HTTP，2 Script。 */
+    private String jobType;
+
     private String invokeTarget;
 
     private String cronExpression;
@@ -37,4 +40,10 @@ public class SysJobVo {
 
     /** Cron 语义说明（避免秒字段 * 误解为每分钟）。 */
     private String cronDescription;
+
+    /** HTTP 模式结构化配置（详情/编辑回填）。 */
+    private JobHttpConfigBo httpConfig;
+
+    /** Script 模式结构化配置（详情/编辑回填）。 */
+    private JobScriptConfigBo scriptConfig;
 }

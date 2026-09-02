@@ -6,6 +6,9 @@ import lombok.Data;
 
 /**
  * 定时任务新增/修改载荷。
+ * <p>
+ * Bean 模式使用 {@link #invokeTarget} + {@link #params}；
+ * HTTP / Script 模式使用 {@link #httpConfig} / {@link #scriptConfig} 结构化字段（后端写入 invoke_target/params）。
  */
 @Data
 public class SysJobSaveBo {
@@ -20,7 +23,10 @@ public class SysJobSaveBo {
     @Size(max = 64, message = "任务组名过长")
     private String jobGroup;
 
-    @NotBlank(message = "调用目标不能为空")
+    /** 任务类型：0 Bean，1 HTTP，2 Script；默认 0。 */
+    private String jobType = "0";
+
+    /** Bean 模式：ITask Bean 名称。 */
     @Size(max = 500, message = "调用目标过长")
     private String invokeTarget;
 
@@ -36,9 +42,16 @@ public class SysJobSaveBo {
 
     private String status;
 
-    @Size(max = 500, message = "参数过长")
+    /** Bean 模式可选参数字符串。 */
+    @Size(max = 2000, message = "参数过长")
     private String params;
 
     @Size(max = 500, message = "备注过长")
     private String remark;
+
+    /** HTTP 模式结构化配置。 */
+    private JobHttpConfigBo httpConfig;
+
+    /** Script 模式结构化配置。 */
+    private JobScriptConfigBo scriptConfig;
 }

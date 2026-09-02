@@ -4,7 +4,11 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
+import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.idempotency.Idempotent;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.security.utils.LoginUserUtils;
@@ -112,6 +116,7 @@ public class SysMenuController {
    * @return ok
    */
   @Operation(summary = "保存 H5 首页快捷")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':h5sc:' + #body.menuIds", message = "请勿重复提交")
   @PostMapping("/h5HomeShortcuts/save")
   public R<Void> saveH5HomeShortcuts(@RequestBody(required = false) H5HomeShortcutSaveVo body) {
     StpUtil.checkLogin();
@@ -135,18 +140,45 @@ public class SysMenuController {
   }
 
   /**
-   * 菜单树列表。
+   * 菜单树列表（POST；records 为根节点树，非物理分页）。
+   *
+   * @param pageRequest 筛选条件放在 param（menuName/status）
+   * @return 树形列表包装为 PageInfo
+   */
+  @Operation(summary = "菜单树形列表")
+  @SaCheckPermission("system:menu:list")
+  @PostMapping("/page")
+  public R<PageInfo<SysMenuVo>> page(@RequestBody(required = false) PageRequest<SysMenuVo> pageRequest) {
+    SysMenuVo param = pageRequest != null ? pageRequest.getParam() : null;
+    String menuName = param != null ? param.getMenuName() : null;
+    String status = param != null ? param.getStatus() : null;
+    List<SysMenuVo> tree = menuService.listTree(menuName, status);
+    PageInfo<SysMenuVo> info = new PageInfo<>();
+    info.setCurrent(1);
+    info.setSize(tree.size());
+    info.setRecords(tree);
+    info.setTotal(tree.size());
+    info.setPages(1);
+    return R.ok(info);
+  }
+
+  /**
+   * 菜单树列表（GET 兼容，请改用 POST {@code /page}）。
    *
    * @param menuName 名称模糊
    * @param status   状态
    * @return 树
+   * @deprecated 请改用 POST {@code /system/menu/page}，data 取 records
    */
-  @Operation(summary = "菜单树列表")
+  @Deprecated
+  @Operation(summary = "菜单树列表（兼容）", deprecated = true)
   @SaCheckPermission("system:menu:list")
   @GetMapping("/list")
   public R<List<SysMenuVo>> list(
+    HttpServletResponse response,
     @RequestParam(required = false) String menuName,
     @RequestParam(required = false) String status) {
+    DeprecatedApiSupport.markDeprecated(response);
     return R.ok(menuService.listTree(menuName, status));
   }
 
@@ -200,6 +232,7 @@ public class SysMenuController {
    */
   @Operation(summary = "新增菜单")
   @SaCheckPermission("system:menu:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.menuName + ':' + #body.parentId", message = "请勿重复提交")
   @PostMapping("/add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysMenuVo vo) {
     Long id = menuService.add(vo);
@@ -214,6 +247,7 @@ public class SysMenuController {
    */
   @Operation(summary = "修改菜单")
   @SaCheckPermission("system:menu:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.menuId", message = "请勿重复提交")
   @PostMapping("/update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysMenuVo vo) {
     return R.ok(menuService.update(vo));
@@ -227,6 +261,7 @@ public class SysMenuController {
    */
   @Operation(summary = "批量保存排序")
   @SaCheckPermission("system:menu:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':sort:' + #sort.menuIds", message = "请勿重复提交")
   @PostMapping("/updateSort")
   public R<Void> updateSort(@RequestBody MenuSortVo sort) {
     menuService.updateSort(sort);
@@ -255,6 +290,7 @@ public class SysMenuController {
    */
   @Operation(summary = "批量删除菜单")
   @SaCheckPermission("system:menu:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #menuIds", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> menuIds) {
     menuService.remove(menuIds);

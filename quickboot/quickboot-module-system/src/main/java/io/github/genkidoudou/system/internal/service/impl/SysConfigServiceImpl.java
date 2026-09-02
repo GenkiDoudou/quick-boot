@@ -11,7 +11,7 @@ import io.github.genkidoudou.common.excel.exception.ExcelDataCheckException;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysConfig;
 import io.github.genkidoudou.system.internal.mapper.SysConfigMapper;
 import io.github.genkidoudou.system.internal.service.ISysConfigService;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @CacheConfig(cacheNames = "sys-config#3600")
-public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysConfig>
+public class SysConfigServiceImpl extends CrudServiceImpl<SysConfigMapper, SysConfig, SysConfigVo>
   implements ISysConfigService, ConfigValueLookup {
 
   public static final int IMPORT_MAX_ROWS = 5000;
@@ -47,31 +47,34 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
     Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$");
 
   @Override
+  protected Class<SysConfigVo> voClass() {
+    return SysConfigVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysConfig> q, SysConfigVo param) {
+    if (param == null) {
+      return;
+    }
+    if (StrUtil.isNotBlank(param.getConfigName())) {
+      q.like(SysConfig::getConfigName, param.getConfigName().trim());
+    }
+    if (StrUtil.isNotBlank(param.getConfigKey())) {
+      q.like(SysConfig::getConfigKey, param.getConfigKey().trim());
+    }
+    if (StrUtil.isNotBlank(param.getConfigType())) {
+      q.eq(SysConfig::getConfigType, param.getConfigType().trim());
+    }
+  }
+
+  @Override
   public PageInfo<SysConfigVo> page(PageRequest<SysConfigVo> pageRequest) {
-    SysConfigVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      if (param == null) {
-        return;
-      }
-      if (StrUtil.isNotBlank(param.getConfigName())) {
-        q.like(SysConfig::getConfigName, param.getConfigName().trim());
-      }
-      if (StrUtil.isNotBlank(param.getConfigKey())) {
-        q.like(SysConfig::getConfigKey, param.getConfigKey().trim());
-      }
-      if (StrUtil.isNotBlank(param.getConfigType())) {
-        q.eq(SysConfig::getConfigType, param.getConfigType().trim());
-      }
-    }, SysConfigVo.class);
+    return crudPage(pageRequest);
   }
 
   @Override
   public SysConfigVo getDetail(Long configId) {
-    SysConfig row = this.getById(configId);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "参数不存在");
-    }
-    return toVo(row, SysConfigVo.class);
+    return crudGetDetail(configId, "参数不存在");
   }
 
   @CacheEvict(allEntries = true)
@@ -175,7 +178,7 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
     if (list.size() > IMPORT_MAX_ROWS) {
       throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "导出条数超过上限 " + IMPORT_MAX_ROWS);
     }
-    return list.stream().map(x -> toVo(x, SysConfigVo.class)).collect(Collectors.toList());
+    return crudToVoList(list);
   }
 
   @CacheEvict(allEntries = true)
@@ -239,21 +242,6 @@ public class SysConfigServiceImpl extends BaseServiceImpl<SysConfigMapper, SysCo
   }
 
   private List<SysConfig> listForExport(SysConfigVo query) {
-    List<Long> ids = query.getIds() == null ? Collections.emptyList() : query.getIds().stream()
-      .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-    if (!ids.isEmpty()) {
-      return this.listByIds(ids);
-    }
-    LambdaQueryWrapper<SysConfig> q = new LambdaQueryWrapper<>();
-    if (StrUtil.isNotBlank(query.getConfigName())) {
-      q.like(SysConfig::getConfigName, query.getConfigName().trim());
-    }
-    if (StrUtil.isNotBlank(query.getConfigKey())) {
-      q.like(SysConfig::getConfigKey, query.getConfigKey().trim());
-    }
-    if (StrUtil.isNotBlank(query.getConfigType())) {
-      q.eq(SysConfig::getConfigType, query.getConfigType().trim());
-    }
-    return this.list(q);
+    return crudListForQuery(query, SysConfigVo::getIds);
   }
 }

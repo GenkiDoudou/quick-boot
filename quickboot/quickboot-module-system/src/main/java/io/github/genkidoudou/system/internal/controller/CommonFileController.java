@@ -4,8 +4,11 @@ import cn.dev33.satoken.annotation.SaIgnore;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.file.FileAccessService;
-import io.github.genkidoudou.common.file.FileClassifyVo;
+import io.github.genkidoudou.common.idempotency.Idempotent;
+import io.github.genkidoudou.common.file.FileClassifyRule;
 import io.github.genkidoudou.common.file.FileUploadResult;
+import io.github.genkidoudou.system.internal.support.SysFileClassifyVoMapper;
+import io.github.genkidoudou.system.internal.vo.SysFileClassifyVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,26 +43,29 @@ public class CommonFileController {
   /**
    * 启用中的上传分类列表。
    *
-   * @return 分类规则 Vo 列表
+   * @return 分类 Vo 列表（统一 {@link SysFileClassifyVo}）
    */
   @Operation(summary = "查询上传分类配置")
   @GetMapping("/classifies")
-  public R<List<FileClassifyVo>> listClassifies() {
-    return R.ok(fileAccessService.listClassifies());
+  public R<List<SysFileClassifyVo>> listClassifies() {
+    return R.ok(fileAccessService.listEnabledClassifyRules().stream()
+      .map(rule -> SysFileClassifyVoMapper.fromUploadRule(rule, fileAccessService.compressDefaults()))
+      .toList());
   }
 
   /**
    * 单个启用分类规则。
    *
    * @param classify 分类键名
-   * @return 分类规则 Vo
+   * @return 分类 Vo
    */
   @Operation(summary = "查询单个上传分类配置")
   @GetMapping("/classifies/{classify}")
-  public R<FileClassifyVo> getClassify(
+  public R<SysFileClassifyVo> getClassify(
     @Parameter(description = "分类名") @PathVariable("classify") String classify
   ) {
-    return R.ok(fileAccessService.getClassify(classify));
+    FileClassifyRule rule = fileAccessService.getEnabledClassifyRule(classify);
+    return R.ok(SysFileClassifyVoMapper.fromUploadRule(rule, fileAccessService.compressDefaults()));
   }
 
   /**
@@ -70,6 +76,7 @@ public class CommonFileController {
    * @return 存储路径与访问 URL 等上传结果
    */
   @Operation(summary = "按分类上传文件")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upload:' + #classify", message = "请勿重复提交")
   @PostMapping(value = "/upload/{classify}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public R<FileUploadResult> upload(
     @Parameter(description = "文件") @RequestPart("file") MultipartFile file,

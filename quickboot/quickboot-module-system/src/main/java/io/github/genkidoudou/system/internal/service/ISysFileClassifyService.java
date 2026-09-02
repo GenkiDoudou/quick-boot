@@ -2,14 +2,13 @@ package io.github.genkidoudou.system.internal.service;
 
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
-import io.github.genkidoudou.system.internal.entity.SysFileClassify;
 import io.github.genkidoudou.system.internal.vo.SysFileClassifyVo;
 
 import java.util.Collection;
 import java.util.List;
 
 /**
- * 文件分类管理。
+ * 文件分类管理（公开 API 仅 Vo）。
  */
 public interface ISysFileClassifyService {
 
@@ -33,16 +32,16 @@ public interface ISysFileClassifyService {
    * 按分类键查询（含停用；软删不返回）。
    *
    * @param classify 分类键
-   * @return 实体；不存在则 {@code null}
+   * @return Vo；不存在则 {@code null}
    */
-  SysFileClassify getByClassifyKey(String classify);
+  SysFileClassifyVo getByClassifyKey(String classify);
 
   /**
    * 列出启用中的分类（未删且 status=0）。
    *
-   * @return 实体列表
+   * @return Vo 列表
    */
-  List<SysFileClassify> listEnabledEntities();
+  List<SysFileClassifyVo> listEnabled();
 
   /**
    * 新增。

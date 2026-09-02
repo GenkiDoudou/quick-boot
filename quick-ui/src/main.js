@@ -19,21 +19,14 @@ import './permission'
 import { initMobileEnvironment } from '@/utils/mobile'
 import { setupLiteRum } from '@/monitor'
 import { useDict } from '@/utils/dict'
-import { parseTime, resetForm, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi'
 import { checkPermission } from '@/directive/permission/permissionUtils'
 import * as validate from '@/utils/validate'
 
 const app = createApp(App)
 
-// 全局属性（向后兼容）
+// 全局属性（向后兼容；时间/树/字典工具请直接 import 对应 utils）
 app.config.globalProperties.useDict = useDict
 app.config.globalProperties.$validate = validate
-app.config.globalProperties.parseTime = parseTime
-app.config.globalProperties.resetForm = resetForm
-app.config.globalProperties.handleTree = handleTree
-app.config.globalProperties.addDateRange = addDateRange
-app.config.globalProperties.selectDictLabel = selectDictLabel
-app.config.globalProperties.selectDictLabels = selectDictLabels
 app.config.globalProperties.checkPermission = checkPermission
 
 app.use(store)

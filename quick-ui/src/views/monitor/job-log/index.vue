@@ -58,136 +58,44 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import { cleanJobLog, exportJobLog, getJobLog, listJobLog, removeJobLog } from '@/api/monitor/jobLog'
+import { confirmCleanList, useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/jobLog.schema'
 
-/**
- * 调度日志：查询、详情、删除、清空、导出；支持从任务页带入筛选。
- */
+/** 调度日志：查询、详情、删除、清空、导出；支持从任务页带入筛选。 */
 defineOptions({ name: 'SysJobLog' })
 
 const route = useRoute()
 const router = useRouter()
-const tableRef = ref(null)
-const detailVisible = ref(false)
-const detailRow = ref(null)
-
+const defaultSearchParam = ref({ ...schema.defaultSearch })
 const { sys_job_group, sys_job_log_status } = useDict('sys_job_group', 'sys_job_log_status')
-
-const defaultSearchParam = ref({
-  jobName: '',
-  jobGroup: '',
-  status: '',
-  timeRange: [],
-})
+const { tableRef, detailVisible, detail: detailRow, openDetailFromApi } = useCrudListPage()
 
 onMounted(() => {
   if (route.query.jobName) defaultSearchParam.value.jobName = String(route.query.jobName)
   if (route.query.jobGroup) defaultSearchParam.value.jobGroup = String(route.query.jobGroup)
 })
 
-const searchColumns = computed(() => [
-  { prop: 'jobName', label: '任务名称', type: 'input', span: 8, props: { clearable: true } },
-  {
-    prop: 'jobGroup',
-    label: '任务组名',
-    type: 'select',
-    span: 8,
-    options: sys_job_group.value,
-    props: { clearable: true, style: 'width: 240px' },
-  },
-  {
-    prop: 'status',
-    label: '执行状态',
-    type: 'select',
-    span: 8,
-    options: sys_job_log_status.value,
-    props: { clearable: true, style: 'width: 240px' },
-  },
-  {
-    prop: 'timeRange',
-    label: '执行时间',
-    type: 'daterange',
-    span: 16,
-    props: { valueFormat: 'YYYY-MM-DD', startPlaceholder: '开始', endPlaceholder: '结束' },
-  },
-])
+const searchColumns = computed(() => schema.buildSearchColumns({
+  sys_job_group,
+  sys_job_log_status
+}))
+const tableColumns = computed(() => schema.buildTableColumns({
+  sys_job_group,
+  sys_job_log_status
+}))
 
-const tableColumns = computed(() => [
-  { prop: 'jobLogId', label: '日志编号', width: 100 },
-  { prop: 'jobName', label: '任务名称', minWidth: 120, showOverflowTooltip: true },
-  {
-    prop: 'jobGroup',
-    label: '任务组名',
-    width: 100,
-    columnType: 'tag',
-    dictList: sys_job_group.value,
-  },
-  { prop: 'invokeTarget', label: '调用目标', minWidth: 120, showOverflowTooltip: true },
-  { prop: 'jobMessage', label: '日志信息', minWidth: 120, showOverflowTooltip: true },
-  { prop: 'status', label: '执行状态', columnType: 'slot', slotName: 'status', width: 100 },
-  { prop: 'createTime', label: '执行时间', width: 180 },
-  { prop: 'actions', label: '操作', columnType: 'slot', slotName: 'actions', width: 90, fixed: 'right' },
-])
-
-function normalizeParams(raw) {
-  const p = { ...raw }
-  const range = p.timeRange
-  if (Array.isArray(range) && range.length === 2 && range[0] && range[1]) {
-    p.beginTime = range[0]
-    p.endTime = range[1]
-  }
-  delete p.timeRange
-  if (p.status === '') delete p.status
-  if (p.jobGroup === '') delete p.jobGroup
-  if (p.jobName === '') delete p.jobName
-  return p
-}
-
-/** C7JsonTable 列表传 { current, size, param }；导出传扁平 searchParam */
-function toJobLogQuery(pageReq) {
-  const raw = pageReq && typeof pageReq === 'object' ? pageReq : {}
-  const nested =
-    raw.param && typeof raw.param === 'object' && !Array.isArray(raw.param)
-      ? { ...raw.param }
-      : { ...raw }
-  delete nested.current
-  delete nested.size
-  delete nested.param
-  return normalizeParams({
-    ...nested,
-    pageNum: raw.current ?? raw.pageNum ?? 1,
-    pageSize: raw.size ?? raw.pageSize ?? 10
-  })
-}
-
-function listFunction(pageReq) {
-  return listJobLog(toJobLogQuery(pageReq))
-}
-
-function exportJobLogWrapped(snapshot) {
-  return exportJobLog(toJobLogQuery(snapshot || {}))
-}
-
-function batchDeleteFunction(ids) {
-  return removeJobLog(ids || [])
-}
+const listFunction = (pageReq) => listJobLog(schema.toJobLogQuery(pageReq))
+const exportJobLogWrapped = (snapshot) => exportJobLog(schema.toJobLogQuery(snapshot || {}))
+const batchDeleteFunction = (ids) => removeJobLog(ids || [])
 
 function handleClean(refreshData) {
-  ElMessageBox.confirm('确认清空全部调度日志？', '提示', { type: 'warning' })
-    .then(() => cleanJobLog())
-    .then(() => {
-      ElMessage.success('已清空')
-      refreshData?.()
-    })
-    .catch(() => {})
+  confirmCleanList('确认清空全部调度日志？', cleanJobLog, refreshData)
 }
 
-async function openDetail(row) {
-  const res = await getJobLog(row.jobLogId)
-  detailRow.value = res.data || res
-  detailVisible.value = true
+function openDetail(row) {
+  openDetailFromApi(row, getJobLog, schema.rowKey)
 }
 
 function goJob() {

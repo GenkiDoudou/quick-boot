@@ -6,6 +6,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.desensitization.SensitiveResponse;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.validation.group.AddGroup;
@@ -79,6 +80,7 @@ public class SysUserController {
    */
   @Operation(summary = "新增用户")
   @SaCheckPermission("system:user:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.userName", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysUserVo vo) {
     Long id = userService.add(vo);
@@ -93,6 +95,7 @@ public class SysUserController {
    */
   @Operation(summary = "修改用户")
   @SaCheckPermission("system:user:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.userId", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysUserVo vo) {
     return R.ok(userService.update(vo));
@@ -120,6 +123,7 @@ public class SysUserController {
    */
   @Operation(summary = "批量删除用户")
   @SaCheckPermission("system:user:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #userIds", message = "请勿重复提交")
   @PostMapping("remove")
   public R<Void> remove(@RequestBody List<Long> userIds) {
     userService.remove(userIds);
@@ -134,6 +138,7 @@ public class SysUserController {
    */
   @Operation(summary = "修改用户状态")
   @SaCheckPermission("system:user:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':st:' + #body.userId + ':' + #body.status", message = "请勿重复提交")
   @PostMapping("changeStatus")
   public R<Void> changeStatus(@RequestBody ChangeStatusBody body) {
     userService.changeStatus(body.getUserId(), body.getStatus());
@@ -148,6 +153,7 @@ public class SysUserController {
    */
   @Operation(summary = "重置密码")
   @SaCheckPermission("system:user:resetPwd")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':pwd:' + #body.userId", message = "请勿重复提交")
   @PostMapping("resetPwd")
   public R<Void> resetPwd(@RequestBody ResetPwdBody body) {
     userService.resetPwd(body.getUserId(), body.getPassword());
@@ -175,6 +181,7 @@ public class SysUserController {
    */
   @Operation(summary = "保存授权角色")
   @SaCheckPermission("system:user:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':role:' + #body.userId + ':' + #body.roleIds", message = "请勿重复提交")
   @PostMapping("authRole")
   public R<Void> saveAuthRole(@RequestBody AuthRoleBody body) {
     userService.saveAuthRole(body.getUserId(), body.getRoleIds());
@@ -215,6 +222,7 @@ public class SysUserController {
    */
   @Operation(summary = "导入用户")
   @SaCheckPermission("system:user:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:user'", message = "请勿重复提交")
   @PostMapping("import")
   public R<ExcelResult<SysUserImportRow>> importExcel(
     @RequestParam("file") MultipartFile file,

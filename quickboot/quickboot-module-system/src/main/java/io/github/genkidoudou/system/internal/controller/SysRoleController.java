@@ -6,6 +6,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
@@ -78,6 +79,7 @@ public class SysRoleController {
    */
   @Operation(summary = "新增角色")
   @SaCheckPermission("system:role:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.roleKey", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysRoleVo vo) {
     Long roleId = roleService.add(vo);
@@ -92,6 +94,7 @@ public class SysRoleController {
    */
   @Operation(summary = "修改角色")
   @SaCheckPermission("system:role:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.roleId", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysRoleVo vo) {
     return R.ok(roleService.update(vo));
@@ -119,6 +122,7 @@ public class SysRoleController {
    */
   @Operation(summary = "批量删除角色")
   @SaCheckPermission("system:role:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #roleIds", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> roleIds) {
     roleService.remove(roleIds);
@@ -133,6 +137,7 @@ public class SysRoleController {
    */
   @Operation(summary = "修改角色状态")
   @SaCheckPermission("system:role:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':st:' + #body.roleId + ':' + #body.status", message = "请勿重复提交")
   @PostMapping("changeStatus")
   public R<Void> changeStatus(@RequestBody ChangeStatusBody body) {
     roleService.changeStatus(body.getRoleId(), body.getStatus());
@@ -147,6 +152,7 @@ public class SysRoleController {
    */
   @Operation(summary = "保存角色菜单")
   @SaCheckPermission("system:role:menu")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':menu:' + #body.roleId + ':' + #body.menuIds", message = "请勿重复提交")
   @PostMapping("menu")
   public R<Void> saveMenu(@RequestBody RoleMenuBody body) {
     roleService.saveMenus(body.getRoleId(), body.getMenuIds());
@@ -202,6 +208,7 @@ public class SysRoleController {
    */
   @Operation(summary = "授权用户")
   @SaCheckPermission("system:role:authUser")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':grant:' + #body.roleId + ':' + #body.userIds", message = "请勿重复提交")
   @PostMapping("authUser/grant")
   public R<Void> grant(@RequestBody RoleUsersBody body) {
     roleService.grantUsers(body.getRoleId(), body.getUserIds());
@@ -216,6 +223,7 @@ public class SysRoleController {
    */
   @Operation(summary = "取消用户授权")
   @SaCheckPermission("system:role:authUser")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':cancel:' + #body.roleId + ':' + #body.userIds", message = "请勿重复提交")
   @PostMapping("authUser/cancel")
   public R<Void> cancel(@RequestBody RoleUsersBody body) {
     roleService.cancelUsers(body.getRoleId(), body.getUserIds());
@@ -230,6 +238,7 @@ public class SysRoleController {
    */
   @Operation(summary = "批量取消用户授权")
   @SaCheckPermission("system:role:authUser")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':cancelAll:' + #body.roleId + ':' + #body.userIds", message = "请勿重复提交")
   @PostMapping("authUser/cancelAll")
   public R<Void> cancelAll(@RequestBody RoleUsersBody body) {
     roleService.cancelUsers(body.getRoleId(), body.getUserIds());
@@ -264,6 +273,7 @@ public class SysRoleController {
    */
   @Operation(summary = "导入角色")
   @SaCheckPermission("system:role:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:role'", message = "请勿重复提交")
   @PostMapping("/import")
   public R<ExcelResult<SysRoleImportRow>> importExcel(@RequestParam("file") MultipartFile file,
                                                       @RequestParam(value = "updateSupport", defaultValue = "false")

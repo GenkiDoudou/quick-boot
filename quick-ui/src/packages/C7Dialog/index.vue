@@ -69,6 +69,7 @@
 
 <script setup>
 import {computed, onBeforeUnmount, ref, useAttrs, useSlots, watch} from 'vue'
+import {resolveDialogOpen} from '../support/c7DialogSupport.js'
 
 defineOptions({name: 'C7Dialog', inheritAttrs: false})
 
@@ -147,15 +148,7 @@ const internalConfirmLoading = ref(false)
 /** 每个「打开周期」至多提示一次双源不一致 */
 const mismatchWarnedForCycle = ref(false)
 
-const isOpen = computed(() => {
-  if (props.modelValue !== undefined) {
-    return Boolean(props.modelValue)
-  }
-  if (props.visible !== undefined) {
-    return Boolean(props.visible)
-  }
-  return false
-})
+const isOpen = computed(() => resolveDialogOpen(props.modelValue, props.visible))
 
 const footerSectionVisible = computed(() => Boolean(slots.footer) || props.footer)
 

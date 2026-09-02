@@ -37,6 +37,9 @@ public class SysJob implements Serializable {
     /** 0 正常，1 暂停。 */
     private String status;
 
+    /** 任务类型：0 Bean，1 HTTP，2 Script；字典 sys_job_type。 */
+    private String jobType;
+
     private String params;
 
     private String createBy;

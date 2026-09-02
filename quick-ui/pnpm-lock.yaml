@@ -17,6 +17,9 @@ importers:
       axios:
         specifier: ^1.7.9
         version: 1.13.6
+      dayjs:
+        specifier: ^1.11.20
+        version: 1.11.20
       echarts:
         specifier: ^6.1.0
         version: 6.1.0
@@ -32,9 +35,6 @@ importers:
       jsencrypt:
         specifier: 3.3.2
         version: 3.3.2
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.23
       nprogress:
         specifier: 0.2.0
         version: 0.2.0

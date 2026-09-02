@@ -33,63 +33,28 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { forceLogout, listOnline } from '@/api/monitor/online'
+import { useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/online.schema'
+import { toLegacyPageQuery } from '@/views/_schemas/tier-a/_shared'
 
-/**
- * 在线用户：查询 Sa-Token 会话列表并支持强退。
- */
+/** 在线用户：查询 Sa-Token 会话列表并支持强退。 */
 defineOptions({ name: 'SysUserOnline' })
 
-const tableRef = ref(null)
+const { tableRef, refreshTable } = useCrudListPage()
 
-const defaultSearchParam = {
-  ipaddr: '',
-  userName: '',
-}
-
-const searchColumns = computed(() => [
-  { prop: 'ipaddr', label: '登录地址', type: 'input', span: 8, props: { placeholder: '请输入登录地址', clearable: true } },
-  { prop: 'userName', label: '用户名称', type: 'input', span: 8, props: { placeholder: '请输入用户名称', clearable: true } },
-])
-
-const tableColumns = computed(() => [
-  { prop: 'tokenId', label: '会话编号', minWidth: 200, showOverflowTooltip: true },
-  { prop: 'userName', label: '登录名称', width: 120 },
-  { prop: 'deptName', label: '部门', width: 140, showOverflowTooltip: true },
-  { prop: 'ipaddr', label: '主机', width: 140 },
-  { prop: 'loginLocation', label: '登录地点', width: 120 },
-  { prop: 'browser', label: '浏览器', width: 120, showOverflowTooltip: true },
-  { prop: 'os', label: '操作系统', width: 120, showOverflowTooltip: true },
-  { prop: 'loginTime', label: '登录时间', width: 180 },
-  { prop: 'action', label: '操作', columnType: 'slot', slotName: 'action', width: 100, fixed: 'right' },
-])
-
-/** C7JsonTable 列表传 { current, size, param }；映射为扁平 GET query */
-function toOnlineQuery(pageReq) {
-  const raw = pageReq && typeof pageReq === 'object' ? pageReq : {}
-  const nested =
-    raw.param && typeof raw.param === 'object' && !Array.isArray(raw.param)
-      ? { ...raw.param }
-      : { ...raw }
-  delete nested.current
-  delete nested.size
-  delete nested.param
-  return {
-    ...nested,
-    pageNum: raw.current ?? raw.pageNum ?? 1,
-    pageSize: raw.size ?? raw.pageSize ?? 10,
-  }
-}
+const defaultSearchParam = schema.defaultSearch
+const searchColumns = schema.searchColumns
+const tableColumns = schema.tableColumns
 
 function listFunction(pageReq) {
-  return listOnline(toOnlineQuery(pageReq))
+  return listOnline(toLegacyPageQuery(pageReq))
 }
 
 async function handleForceLogout(row) {
   await forceLogout(row.tokenId)
   ElMessage.success('强退成功')
-  tableRef.value?.refreshData?.()
+  refreshTable()
 }
 </script>

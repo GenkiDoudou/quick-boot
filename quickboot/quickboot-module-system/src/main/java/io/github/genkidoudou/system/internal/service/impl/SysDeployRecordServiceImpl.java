@@ -6,7 +6,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.dto.DeployRecordCallbackBo;
 import io.github.genkidoudou.system.internal.entity.SysDeployRecord;
 import io.github.genkidoudou.system.internal.mapper.SysDeployRecordMapper;
@@ -19,8 +19,27 @@ import org.springframework.transaction.annotation.Transactional;
  * 发布记录服务实现。
  */
 @Service
-public class SysDeployRecordServiceImpl extends BaseServiceImpl<SysDeployRecordMapper, SysDeployRecord>
+public class SysDeployRecordServiceImpl extends CrudServiceImpl<SysDeployRecordMapper, SysDeployRecord, SysDeployRecordVo>
   implements ISysDeployRecordService {
+
+  @Override
+  protected Class<SysDeployRecordVo> voClass() {
+    return SysDeployRecordVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysDeployRecord> q, SysDeployRecordVo param) {
+    if (param == null) {
+      return;
+    }
+    q.eq(StrUtil.isNotBlank(param.getAppName()), SysDeployRecord::getAppName, param.getAppName());
+    q.like(StrUtil.isNotBlank(param.getAppNameLike()), SysDeployRecord::getAppName, param.getAppNameLike());
+    q.eq(StrUtil.isNotBlank(param.getEnv()), SysDeployRecord::getEnv, param.getEnv());
+    q.eq(StrUtil.isNotBlank(param.getOperate()), SysDeployRecord::getOperate, param.getOperate());
+    q.eq(StrUtil.isNotBlank(param.getStatus()), SysDeployRecord::getStatus, param.getStatus());
+    q.like(StrUtil.isNotBlank(param.getBranch()), SysDeployRecord::getBranch, param.getBranch());
+    q.orderByDesc(SysDeployRecord::getCreateTime);
+  }
 
   @Transactional(rollbackFor = Exception.class)
   @Override
@@ -44,31 +63,11 @@ public class SysDeployRecordServiceImpl extends BaseServiceImpl<SysDeployRecordM
 
   @Override
   public PageInfo<SysDeployRecordVo> page(PageRequest<SysDeployRecordVo> pageRequest) {
-    SysDeployRecordVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      applyQuery(q, param);
-      q.orderByDesc(SysDeployRecord::getCreateTime);
-    }, SysDeployRecordVo.class);
+    return crudPage(pageRequest);
   }
 
   @Override
   public SysDeployRecordVo getDetail(Long recordId) {
-    SysDeployRecord row = this.getById(recordId);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "发布记录不存在");
-    }
-    return toVo(row, SysDeployRecordVo.class);
-  }
-
-  private void applyQuery(LambdaQueryWrapper<SysDeployRecord> q, SysDeployRecordVo param) {
-    if (param == null) {
-      return;
-    }
-    q.eq(StrUtil.isNotBlank(param.getAppName()), SysDeployRecord::getAppName, param.getAppName());
-    q.like(StrUtil.isNotBlank(param.getAppNameLike()), SysDeployRecord::getAppName, param.getAppNameLike());
-    q.eq(StrUtil.isNotBlank(param.getEnv()), SysDeployRecord::getEnv, param.getEnv());
-    q.eq(StrUtil.isNotBlank(param.getOperate()), SysDeployRecord::getOperate, param.getOperate());
-    q.eq(StrUtil.isNotBlank(param.getStatus()), SysDeployRecord::getStatus, param.getStatus());
-    q.like(StrUtil.isNotBlank(param.getBranch()), SysDeployRecord::getBranch, param.getBranch());
+    return crudGetDetail(recordId, "发布记录不存在");
   }
 }

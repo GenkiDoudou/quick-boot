@@ -7,6 +7,7 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
@@ -14,6 +15,7 @@ import io.github.genkidoudou.system.internal.service.ISysConfigService;
 import io.github.genkidoudou.system.internal.vo.SysConfigImportRow;
 import io.github.genkidoudou.system.internal.vo.SysConfigVo;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +66,7 @@ public class SysConfigController {
   @Operation(summary = "参数详情")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
   @GetMapping("/{configId}")
-  public R<SysConfigVo> get(@PathVariable Long configId) {
+  public R<SysConfigVo> get(@Parameter(description = "参数主键") @PathVariable Long configId) {
     return R.ok(service.getDetail(configId));
   }
 
@@ -77,7 +79,7 @@ public class SysConfigController {
   @Operation(summary = "按键名查询值")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
   @GetMapping("/configKey/{configKey}")
-  public R<String> getByKey(@PathVariable String configKey) {
+  public R<String> getByKey(@Parameter(description = "参数键名") @PathVariable String configKey) {
     return R.ok(service.getConfigValueByKey(configKey));
   }
 
@@ -89,6 +91,7 @@ public class SysConfigController {
    */
   @Operation(summary = "新增参数")
   @SaCheckPermission("system:config:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.configKey", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysConfigVo vo) {
     Long id = service.add(vo);
@@ -103,6 +106,7 @@ public class SysConfigController {
    */
   @Operation(summary = "修改参数")
   @SaCheckPermission("system:config:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.configId", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysConfigVo vo) {
     return R.ok(service.update(vo));
@@ -117,7 +121,7 @@ public class SysConfigController {
   @Operation(summary = "删除参数")
   @SaCheckPermission("system:config:remove")
   @GetMapping("remove/{configId}")
-  public R<Void> removeGet(@PathVariable Long configId) {
+  public R<Void> removeGet(@Parameter(description = "参数主键") @PathVariable Long configId) {
     service.remove(List.of(configId));
     return R.ok();
   }
@@ -130,6 +134,7 @@ public class SysConfigController {
    */
   @Operation(summary = "批量删除参数")
   @SaCheckPermission("system:config:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     service.remove(ids);
@@ -143,6 +148,7 @@ public class SysConfigController {
    */
   @Operation(summary = "刷新参数缓存")
   @SaCheckPermission(value = {"system:config:query", "system:config:list"}, mode = SaMode.OR)
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':refreshCache'", message = "请勿重复提交")
   @PostMapping("/refreshCache")
   public R<Void> refreshCache() {
     service.refreshCache();
@@ -187,6 +193,7 @@ public class SysConfigController {
    */
   @Operation(summary = "导入参数")
   @SaCheckPermission("system:config:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:config'", message = "请勿重复提交")
   @PostMapping("/import")
   public R<ExcelResult<SysConfigImportRow>> importExcel(@RequestParam("file") MultipartFile file,
                                                         @RequestParam(value = "updateSupport", defaultValue = "false")

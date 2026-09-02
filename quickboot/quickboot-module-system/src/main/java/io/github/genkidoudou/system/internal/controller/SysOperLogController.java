@@ -6,6 +6,7 @@ import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.system.internal.service.ISysOperLogService;
 import io.github.genkidoudou.system.internal.vo.SysOperLogVo;
@@ -69,6 +70,7 @@ public class SysOperLogController {
    */
   @Operation(summary = "删除操作日志")
   @SaCheckPermission("monitor:operlog:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     service.remove(ids);
@@ -82,6 +84,7 @@ public class SysOperLogController {
    */
   @Operation(summary = "清空操作日志")
   @SaCheckPermission("monitor:operlog:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':clean:operlog'", message = "请勿重复提交")
   @PostMapping("/clean")
   public R<Void> clean() {
     service.cleanAll();

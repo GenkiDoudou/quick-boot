@@ -7,6 +7,7 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.excel.ExcelUtils;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
+import io.github.genkidoudou.common.idempotency.Idempotent;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.common.validation.group.AddGroup;
 import io.github.genkidoudou.common.validation.group.UpdateGroup;
@@ -79,6 +80,7 @@ public class SysOauthClientController {
    */
   @Operation(summary = "新增客户端")
   @SaCheckPermission("system:oauthClient:add")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':add:' + #body.clientId", message = "请勿重复提交")
   @PostMapping("add")
   public R<String> add(@RequestBody @Validated(AddGroup.class) SysOauthClientVo vo) {
     Long id = iSysOauthClientService.add(vo);
@@ -93,6 +95,7 @@ public class SysOauthClientController {
    */
   @Operation(summary = "修改客户端")
   @SaCheckPermission("system:oauthClient:edit")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':upd:' + #body.id", message = "请勿重复提交")
   @PostMapping("update")
   public R<Boolean> update(@RequestBody @Validated(UpdateGroup.class) SysOauthClientVo vo) {
     return R.ok(iSysOauthClientService.update(vo));
@@ -120,6 +123,7 @@ public class SysOauthClientController {
    */
   @Operation(summary = "批量删除客户端")
   @SaCheckPermission("system:oauthClient:remove")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':rm:' + #ids", message = "请勿重复提交")
   @PostMapping("/remove")
   public R<Void> remove(@RequestBody List<Long> ids) {
     iSysOauthClientService.remove(ids);
@@ -163,6 +167,7 @@ public class SysOauthClientController {
    */
   @Operation(summary = "导入客户端")
   @SaCheckPermission("system:oauthClient:import")
+  @Idempotent(ttlSeconds = 10, key = "#userId + ':import:oauthClient'", message = "请勿重复提交")
   @PostMapping("/import")
   public R<ExcelResult<SysOauthClientImportRow>> importExcel(@RequestParam("file") MultipartFile file,
                                                              @RequestParam(value = "updateSupport", defaultValue = "false")

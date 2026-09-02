@@ -10,7 +10,7 @@ import io.github.genkidoudou.common.excel.exception.ExcelDataCheckException;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysDictData;
 import io.github.genkidoudou.system.internal.entity.SysDictType;
 import io.github.genkidoudou.system.internal.mapper.SysDictDataMapper;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @CacheConfig(cacheNames = "sys-dict#3600")
-public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, SysDictType>
+public class SysDictTypeServiceImpl extends CrudServiceImpl<SysDictTypeMapper, SysDictType, SysDictTypeVo>
   implements ISysDictTypeService {
 
   public static final int IMPORT_MAX_ROWS = 5000;
@@ -47,31 +47,34 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, S
   private final SysDictDataMapper dictDataMapper;
 
   @Override
+  protected Class<SysDictTypeVo> voClass() {
+    return SysDictTypeVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysDictType> q, SysDictTypeVo param) {
+    if (param == null) {
+      return;
+    }
+    if (StrUtil.isNotBlank(param.getDictName())) {
+      q.like(SysDictType::getDictName, param.getDictName().trim());
+    }
+    if (StrUtil.isNotBlank(param.getDictType())) {
+      q.like(SysDictType::getDictType, param.getDictType().trim());
+    }
+    if (StrUtil.isNotBlank(param.getStatus())) {
+      q.eq(SysDictType::getStatus, param.getStatus().trim());
+    }
+  }
+
+  @Override
   public PageInfo<SysDictTypeVo> page(PageRequest<SysDictTypeVo> pageRequest) {
-    SysDictTypeVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      if (param == null) {
-        return;
-      }
-      if (StrUtil.isNotBlank(param.getDictName())) {
-        q.like(SysDictType::getDictName, param.getDictName().trim());
-      }
-      if (StrUtil.isNotBlank(param.getDictType())) {
-        q.like(SysDictType::getDictType, param.getDictType().trim());
-      }
-      if (StrUtil.isNotBlank(param.getStatus())) {
-        q.eq(SysDictType::getStatus, param.getStatus().trim());
-      }
-    }, SysDictTypeVo.class);
+    return crudPage(pageRequest);
   }
 
   @Override
   public SysDictTypeVo getDetail(Long dictId) {
-    SysDictType row = this.getById(dictId);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "字典类型不存在");
-    }
-    return toVo(row, SysDictTypeVo.class);
+    return crudGetDetail(dictId, "字典类型不存在");
   }
 
   @CacheEvict(allEntries = true)
@@ -162,7 +165,7 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, S
     if (list.size() > IMPORT_MAX_ROWS) {
       throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "导出条数超过上限 " + IMPORT_MAX_ROWS);
     }
-    return list.stream().map(x -> toVo(x, SysDictTypeVo.class)).collect(Collectors.toList());
+    return crudToVoList(list);
   }
 
   @CacheEvict(allEntries = true)
@@ -210,21 +213,6 @@ public class SysDictTypeServiceImpl extends BaseServiceImpl<SysDictTypeMapper, S
   }
 
   private List<SysDictType> listForExport(SysDictTypeVo query) {
-    List<Long> ids = query.getIds() == null ? Collections.emptyList() : query.getIds().stream()
-      .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-    if (!ids.isEmpty()) {
-      return this.listByIds(ids);
-    }
-    LambdaQueryWrapper<SysDictType> q = new LambdaQueryWrapper<>();
-    if (StrUtil.isNotBlank(query.getDictName())) {
-      q.like(SysDictType::getDictName, query.getDictName().trim());
-    }
-    if (StrUtil.isNotBlank(query.getDictType())) {
-      q.like(SysDictType::getDictType, query.getDictType().trim());
-    }
-    if (StrUtil.isNotBlank(query.getStatus())) {
-      q.eq(SysDictType::getStatus, query.getStatus().trim());
-    }
-    return this.list(q);
+    return crudListForQuery(query, SysDictTypeVo::getIds);
   }
 }

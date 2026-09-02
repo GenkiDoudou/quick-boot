@@ -75,10 +75,11 @@ const formOpen = ref(false)
 const editJobId = ref(null)
 const formReadOnly = ref(false)
 
-const { sys_job_group, sys_job_status, sys_job_concurrent } = useDict(
+const { sys_job_group, sys_job_status, sys_job_concurrent, sys_job_type } = useDict(
   'sys_job_group',
   'sys_job_status',
-  'sys_job_concurrent'
+  'sys_job_concurrent',
+  'sys_job_type'
 )
 
 const defaultSearchParam = { jobName: '', jobGroup: '', status: '' }
@@ -112,6 +113,13 @@ const tableColumns = computed(() => [
     width: 100,
     columnType: 'tag',
     dictList: sys_job_group.value,
+  },
+  {
+    prop: 'jobType',
+    label: '任务类型',
+    width: 100,
+    columnType: 'tag',
+    dictList: sys_job_type.value,
   },
   { prop: 'invokeTarget', label: '调用目标', minWidth: 120, showOverflowTooltip: true },
   { prop: 'cronExpression', label: 'Cron', width: 140, showOverflowTooltip: true },

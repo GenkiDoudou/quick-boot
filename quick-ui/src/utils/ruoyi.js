@@ -1,7 +1,10 @@
 /**
- * 若依遗留工具函数集合。
- * 新代码优先使用具名 export 并补 JSDoc；全局挂载见 main.js（parseTime、handleTree 等）。
+ * 若依遗留工具函数集合（逐步收缩）。
+ * 时间：{@link @/utils/formatTime}；树：{@link @/utils/tree}；路径：{@link @/utils/path}。
  */
+export { formatTime, parseTime } from '@/utils/formatTime'
+export { handleTree, dfs } from '@/utils/tree'
+export { getNormalPath } from '@/utils/path'
 
 /**
  * 将 undefined/null 字符串字面量转为空串。
@@ -13,22 +16,6 @@ export function parseStrEmpty(str) {
     return ''
   }
   return str
-}
-
-/**
- * 规范化路由 path：去除重复斜杠、去掉末尾斜杠。
- * @param {string} p
- * @returns {string}
- */
-export function getNormalPath(p) {
-  if (!p || p.length === 0 || p === 'undefined') {
-    return p
-  }
-  let res = p.replace('//', '/')
-  if (res[res.length - 1] === '/') {
-    return res.slice(0, res.length - 1)
-  }
-  return res
 }
 
 /**
@@ -66,108 +53,12 @@ export function blobValidate(data) {
 }
 
 /**
- * 格式化日期时间。
- * @param {Date|string|number} time 支持 Date、时间戳（10/13 位）、日期字符串
- * @param {string} [pattern='{y}-{m}-{d} {h}:{i}:{s}'] 占位符 y/m/d/h/i/s/a（a=星期）
- * @returns {string|null} 无效输入返回 null
- * @example parseTime(1609459200000) // '2021-01-01 00:00:00'
- */
-export function parseTime(time, pattern) {
-  if (!time || time === '') {
-    return null
-  }
-  const format = pattern || '{y}-{m}-{d} {h}:{i}:{s}'
-  let date;
-  if (typeof time === 'object') {
-    date = new Date(time)
-  } else {
-    if ((typeof time === 'string') && (/^[0-9]+$/.test(time))) {
-      time = parseInt(time)
-    }
-    if ((typeof time === 'number') && (time.toString().length === 10)) {
-      time = time * 1000
-    }
-    date = new Date(time)
-  }
-  const formatObj = {
-    y: date.getFullYear(),
-    m: date.getMonth() + 1,
-    d: date.getDate(),
-    h: date.getHours(),
-    i: date.getMinutes(),
-    s: date.getSeconds(),
-    a: date.getDay()
-  }
-  const time_str = format.replace(/{(y|m|d|h|i|s|a)+}/g, (result, key) => {
-    let value = formatObj[key]
-    if (key === 'a') return ['一', '二', '三', '四', '五', '六', '日'][value]
-    if (result.length > 0 && value < 10) {
-      value = '0' + value
-    }
-    return value || 0
-  })
-  return time_str
-}
-
-/**
  * 重置 Element Plus 表单（需在 Options API 组件内通过 this 调用）。
  * @param {string} refName 表单 ref 名
  */
 export function resetForm(refName) {
   if (this.$refs[refName]) {
     this.$refs[refName].resetFields();
-  }
-}
-
-/**
- * 扁平数组转树形结构（DFS 挂载 children）。
- * @param {Array<Record<string, unknown>>} data 扁平节点列表
- * @param {string} [id='id'] 主键字段名
- * @param {string} [parentId='parentId'] 父键字段名
- * @param {string} [children='children'] 子节点字段名
- * @returns {Array} 根节点数组
- */
-export function handleTree(data, id, parentId, children) {
-  let config = {
-    id: id || 'id',
-    parentId: parentId || 'parentId',
-    children: children || 'children'
-  };
-
-  var childrenMap = {};
-  var nodeIds = {};
-  var tree = [];
-
-  for (let d of data) {
-    let parentId = d[config.parentId];
-    if (childrenMap[parentId] == null) {
-      childrenMap[parentId] = [];
-    }
-    childrenMap[parentId].push(d);
-    nodeIds[d[config.id]] = d;
-  }
-
-  for (let d of data) {
-    let parentId = d[config.parentId];
-    if (nodeIds[parentId] == null) {
-      tree.push(d);
-    }
-  }
-
-  for (let t of tree) {
-    dfs(t, childrenMap, config);
-  }
-
-  return tree;
-}
-
-/** @private handleTree 内部 DFS */
-export function dfs(node, childrenMap, config) {
-  if (childrenMap[node[config.id]] != null) {
-    node[config.children] = childrenMap[node[config.id]];
-    for (let child of node[config.children]) {
-      dfs(child, childrenMap, config);
-    }
   }
 }
 

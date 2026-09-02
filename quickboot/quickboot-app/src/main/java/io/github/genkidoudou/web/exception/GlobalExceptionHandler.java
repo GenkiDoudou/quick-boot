@@ -22,7 +22,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
-import io.github.genkidoudou.monitor.internal.litetrace.support.LiteTraceExceptionReporter;
+import io.github.genkidoudou.common.monitor.ExceptionReporter;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Objects;
@@ -37,14 +37,14 @@ public class GlobalExceptionHandler {
 
   private static final String DEFAULT_FALLBACK_MESSAGE = "系统繁忙，请稍后再试";
 
-  private final ObjectProvider<LiteTraceExceptionReporter> liteTraceExceptionReporter;
+  private final ObjectProvider<ExceptionReporter> exceptionReporter;
 
-  public GlobalExceptionHandler(ObjectProvider<LiteTraceExceptionReporter> liteTraceExceptionReporter) {
-    this.liteTraceExceptionReporter = liteTraceExceptionReporter;
+  public GlobalExceptionHandler(ObjectProvider<ExceptionReporter> exceptionReporter) {
+    this.exceptionReporter = exceptionReporter;
   }
 
   private void projectBeError(Throwable ex) {
-    LiteTraceExceptionReporter reporter = liteTraceExceptionReporter.getIfAvailable();
+    ExceptionReporter reporter = exceptionReporter.getIfAvailable();
     if (reporter != null) {
       reporter.report(ex);
     }

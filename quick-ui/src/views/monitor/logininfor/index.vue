@@ -53,59 +53,29 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import {
   pageLogininfor, cleanLogininfor, unlockLogininfor, exportLogininfor
 } from '@/api/monitor/logininfor'
+import { confirmCleanList, useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/logininfor.schema'
 
-/**
- * 登录日志：分页查询、详情、清空、批量解锁、导出。
- */
+/** 登录日志：分页查询、详情、清空、批量解锁、导出。 */
 defineOptions({ name: 'SysLogininfor' })
 
-const tableRef = ref(null)
-const detailVisible = ref(false)
-const detail = ref(null)
 const { sys_login_status } = useDict('sys_login_status')
+const { tableRef, detailVisible, detail, refreshTable, openDetailFromRow } = useCrudListPage()
 
-const defaultSearch = { ipaddr: '', userName: '', clientId: '', status: '' }
-const searchColumns = computed(() => [
-  { prop: 'ipaddr', label: '登录地址', type: 'input', span: 8 },
-  { prop: 'userName', label: '用户名', type: 'input', span: 8 },
-  { prop: 'clientId', label: '客户端ID', type: 'input', span: 8 },
-  {
-    prop: 'status',
-    label: '状态',
-    type: 'select',
-    span: 8,
-    options: sys_login_status.value || []
-  }
-])
-const tableColumns = [
-  { prop: 'userName', label: '用户名', minWidth: 110 },
-  { prop: 'clientId', label: '客户端', width: 100 },
-  { prop: 'ipaddr', label: 'IP', width: 130 },
-  { prop: 'status', label: '状态', width: 90, columnType: 'slot', slotName: 'status' },
-  { prop: 'msg', label: '描述', minWidth: 160, showOverflowTooltip: true },
-  { prop: 'loginTime', label: '访问时间', width: 170 },
-  { prop: 'action', label: '操作', width: 90, fixed: 'right', columnType: 'slot', slotName: 'action' }
-]
+const defaultSearch = schema.defaultSearch
+const searchColumns = computed(() => schema.buildSearchColumns(sys_login_status))
+const tableColumns = schema.tableColumns
 
-function openDetail(row) {
-  detail.value = { ...row }
-  detailVisible.value = true
-}
+const openDetail = openDetailFromRow
 
 function handleClean() {
-  ElMessageBox.confirm('确认清空全部登录日志？', '提示', { type: 'warning' })
-    .then(() => cleanLogininfor())
-    .then(() => {
-      ElMessage.success('已清空')
-      tableRef.value?.refreshData?.()
-    })
-    .catch(() => {})
+  confirmCleanList('确认清空全部登录日志？', cleanLogininfor, refreshTable)
 }
 
 /** 批量解锁选中行对应用户名的登录锁定 */
@@ -121,7 +91,7 @@ function handleUnlock(selectedRows) {
         await unlockLogininfor(n)
       }
       ElMessage.success('解锁成功')
-      tableRef.value?.refreshData?.()
+      refreshTable()
     })
     .catch(() => {})
 }

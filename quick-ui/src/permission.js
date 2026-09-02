@@ -17,7 +17,7 @@ import { isHttp } from '@/utils/validate'
 import useUserStore from '@/store/modules/user'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
-import { getRouters } from '@/api/menu'
+import { getMenuRoutes } from '@/api/menu'
 import defaultSetting from '@/settings'
 
 NProgress.configure({ showSpinner: false })
@@ -42,7 +42,7 @@ router.beforeEach((to, from, next) => {
         // 首次进入：并行拉用户信息与菜单，减少登录后白屏等待
         Promise.all([
           useUserStore().getInfo(),
-          getRouters()
+          getMenuRoutes()
         ]).then(([, routersRes]) => {
           usePermissionStore().buildRoutesFromMenuData(routersRes.data || []).then(accessRoutes => {
             accessRoutes.forEach(route => {

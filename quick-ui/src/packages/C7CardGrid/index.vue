@@ -149,8 +149,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
-import cloneDeep from 'lodash/cloneDeep'
-import get from 'lodash/get'
+import { cloneDeep, get } from '@/utils/object'
 import C7Pagination from '../C7Pagination/index.vue'
 import C7Select from '../C7Select/index.vue'
 import C7DatePicker from '../C7DatePicker/index.vue'

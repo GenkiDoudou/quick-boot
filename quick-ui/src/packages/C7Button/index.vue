@@ -36,6 +36,8 @@ defineOptions({inheritAttrs: false})
 
 /**
 
+ * @deprecated 新页面优先使用 Element Plus {@code ElButton}；本组件保留供 C7ButtonGroup 等遗留封装。
+
  * C7 业务按钮：在 ElButton 上封装「校验 → 确认 → 异步执行 → 成功判定 → 提示 → 回调」固定流水线。
 
  *
@@ -60,7 +62,7 @@ defineOptions({inheritAttrs: false})
 
 import {computed, ref, unref, useAttrs, useSlots, watch, onUnmounted} from 'vue'
 
-import debounce from 'lodash/debounce'
+import { debounce } from '@/utils/object'
 
 import {ElMessage, ElMessageBox, ElNotification} from 'element-plus'
 

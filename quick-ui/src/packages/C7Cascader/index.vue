@@ -16,7 +16,7 @@
 
 <script setup>
 import {computed, onMounted, onUnmounted, ref, shallowRef, useAttrs, watch} from 'vue'
-import get from 'lodash/get'
+import { get } from '@/utils/object'
 
 defineOptions({name: 'C7Cascader', inheritAttrs: false})
 

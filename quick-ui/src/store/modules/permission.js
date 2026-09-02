@@ -2,16 +2,15 @@
  * 权限路由 Store
  *
  * 职责：
- * 1. 调用 /getRouters 获取后端菜单树
+ * 1. 调用 /api/menu/routes 获取后端菜单树
  * 2. 将 component 字符串转为 Vue 懒加载组件（import.meta.glob）
  * 3. 区分 sidebarRoutes / rewriteRoutes / topbarRouters 供不同导航模式使用
  * 4. 混合导航模式（navType=2）下联动 appStore 切换侧栏
  *
  * 注意：业务 views 多数由 Flyway sys_menu 动态挂载，勿在 router/index.js 重复注册
  */
-import auth from '@/plugins/auth'
-import router, { constantRoutes, dynamicRoutes } from '@/router'
-import { getRouters } from '@/api/menu'
+import router, { constantRoutes } from '@/router'
+import { getMenuRoutes } from '@/api/menu'
 import Layout from '@/layout/index.vue'
 import ParentView from '@/components/ParentView/index.vue'
 import InnerLink from '@/layout/components/InnerLink/index.vue'
@@ -69,11 +68,11 @@ const usePermissionStore = defineStore(
        * @returns {Promise<Array>} rewriteRoutes，供 permission.js 中 router.addRoute
        */
       generateRoutes(roles) {
-        return getRouters().then(res => this.buildRoutesFromMenuData(res.data || []))
+        return getMenuRoutes().then(res => this.buildRoutesFromMenuData(res.data || []))
       },
       /**
        * 使用已拉取的菜单数据构建路由（与 getInfo 并行请求时使用）。
-       * @param {Array} menuData 后端 /getRouters 返回的菜单树
+       * @param {Array} menuData 后端 /api/menu/routes 返回的菜单树
        * @returns {Promise<Array>}
        */
       buildRoutesFromMenuData(menuData) {
@@ -93,10 +92,6 @@ const usePermissionStore = defineStore(
         const sidebarRoutes = filterAsyncRouter(sdata)
         const rewriteRoutes = filterAsyncRouter(rdata, false, true)
         const defaultRoutes = filterAsyncRouter(defaultData)
-        const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
-        asyncRoutes.forEach(route => {
-          router.addRoute(route)
-        })
         this.setRoutes(rewriteRoutes)
         this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
         this.setDefaultRoutes(sidebarRoutes)
@@ -232,26 +227,6 @@ function wrapRootInnerLinkRaw(route) {
       meta: { ...route.meta }
     }]
   }
-}
-
-/**
- * 过滤 router/index.js 中 dynamicRoutes：按 permissions 或 roles 校验本地权限。
- * 当前 dynamicRoutes 为空数组，逻辑保留供未来本地静态路由扩展。
- */
-export function filterDynamicRoutes(routes) {
-  const res = []
-  routes.forEach(route => {
-    if (route.permissions) {
-      if (auth.hasPermiOr(route.permissions)) {
-        res.push(route)
-      }
-    } else if (route.roles) {
-      if (auth.hasRoleOr(route.roles)) {
-        res.push(route)
-      }
-    }
-  })
-  return res
 }
 
 /**

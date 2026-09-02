@@ -49,47 +49,22 @@
 
 <script setup>
 /**
- * 发布记录：Jenkins 成功入库后的查询页。
+ * 发布记录：Jenkins 成功入库后的查询页（schema + useCrudListPage）。
  */
-import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { getDeployRecord, pageDeployRecord } from '@/api/monitor/deployRecord'
+import { useCrudListPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/deployRecord.schema'
 
 defineOptions({ name: 'MonitorDeployRecord' })
 
-const tableRef = ref(null)
-const detailVisible = ref(false)
-const detail = ref(null)
+const { tableRef, detailVisible, detail, openDetailFromApi } = useCrudListPage()
 
-const defaultSearch = { appName: '', env: '', operate: '' }
-const searchColumns = computed(() => [
-  { prop: 'appName', label: '应用', type: 'input', span: 8 },
-  { prop: 'env', label: '环境', type: 'input', span: 8 },
-  { prop: 'operate', label: '操作', type: 'input', span: 8 }
-])
+const defaultSearch = schema.defaultSearch
+const searchColumns = schema.searchColumns
+const tableColumns = schema.tableColumns
 
-const tableColumns = [
-  { prop: 'appName', label: '应用', minWidth: 100 },
-  { prop: 'env', label: '环境', width: 90 },
-  { prop: 'operate', label: '操作', width: 100 },
-  { prop: 'branch', label: '分支', minWidth: 120 },
-  { prop: 'hosts', label: '主机', minWidth: 140, showOverflowTooltip: true },
-  { prop: 'buildNumber', label: '构建号', width: 90 },
-  { prop: 'gitCommit', label: 'Commit', width: 100 },
-  { prop: 'status', label: '状态', width: 80, columnType: 'slot', slotName: 'status' },
-  { prop: 'createTime', label: '时间', width: 170 },
-  { prop: 'action', label: '操作', width: 90, fixed: 'right', columnType: 'slot', slotName: 'action' }
-]
-
-async function openDetail(row) {
-  const id = row?.recordId != null ? String(row.recordId) : ''
-  if (!id) {
-    ElMessage.warning('记录主键无效')
-    return
-  }
-  const res = await getDeployRecord(id)
-  detail.value = res.data
-  detailVisible.value = true
+function openDetail(row) {
+  openDetailFromApi(row, getDeployRecord, schema.rowKey)
 }
 </script>
 

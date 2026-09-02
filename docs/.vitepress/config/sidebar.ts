@@ -73,6 +73,10 @@ export default {
                 {
                     "text": "🤝 贡献指南",
                     "link": "/docs/guide/contributing"
+                },
+                {
+                    "text": "📐 全栈简化方案",
+                    "link": "/docs/guide/fullstack-simplify-plan"
                 }
             ]
         }

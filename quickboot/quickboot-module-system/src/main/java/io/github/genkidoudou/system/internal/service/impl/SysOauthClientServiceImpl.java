@@ -51,11 +51,18 @@ public class SysOauthClientServiceImpl extends BaseServiceImpl<SysOauthClientMap
 
   public static final int IMPORT_MAX_ROWS = 5000;
 
+  /**
+   * 按业务 clientId 查询并转为 Vo（含 secret，供登录鉴权）；结果缓存。
+   */
   @Cacheable(key = "#clientId")
   @Override
-  public SysOauthClient findByClientId(String clientId) {
-    return this.getOne(new LambdaQueryWrapper<SysOauthClient>()
-      .eq(SysOauthClient::getClientId, clientId));
+  public SysOauthClientVo findByClientId(String clientId) {
+    if (StrUtil.isBlank(clientId)) {
+      return null;
+    }
+    SysOauthClient entity = this.getOne(new LambdaQueryWrapper<SysOauthClient>()
+      .eq(SysOauthClient::getClientId, clientId.trim()), false);
+    return entity == null ? null : toVo(entity, SysOauthClientVo.class);
   }
 
   @Override
@@ -185,13 +192,13 @@ public class SysOauthClientServiceImpl extends BaseServiceImpl<SysOauthClientMap
       file.getInputStream(),
       SysOauthClientImportRow.class,
       (row, ctx) -> {
-        SysOauthClient existing = findByClientId(row.getClientId());
+        SysOauthClientVo existingVo = findByClientId(row.getClientId());
         SysOauthClient client = BeanUtil.copyProperties(row, SysOauthClient.class);
-        if (existing == null) {
+        if (existingVo == null) {
           lists.add(client);
         } else if (updateSupport) {
-          client.setId(existing.getId());
-          client.setClientSecret(existing.getClientSecret());
+          client.setId(existingVo.getId());
+          client.setClientSecret(existingVo.getClientSecret());
           lists.add(client);
         } else {
           throw new ExcelDataCheckException("已存在相同客户端id");

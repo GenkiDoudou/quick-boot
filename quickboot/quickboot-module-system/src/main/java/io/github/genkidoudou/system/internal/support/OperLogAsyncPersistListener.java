@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "qc.monitor.operlog", name = "async-enabled", havingValue = "true", matchIfMissing = true)
 public class OperLogAsyncPersistListener {
 
-  private final OperLogPersistSupport persistSupport;
+  private final OperLogRecorder operLogRecorder;
 
   /**
    * @param event 采集事件
@@ -23,6 +23,6 @@ public class OperLogAsyncPersistListener {
   @Async("operLogTaskExecutor")
   @EventListener
   public void onOperLogCaptured(OperLogCapturedEvent event) {
-    persistSupport.persist(event);
+    operLogRecorder.record(event);
   }
 }

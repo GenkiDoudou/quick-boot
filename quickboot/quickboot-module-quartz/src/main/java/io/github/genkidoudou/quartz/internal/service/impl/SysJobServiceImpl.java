@@ -17,18 +17,18 @@ import io.github.genkidoudou.quartz.internal.dto.SysJobSaveBo;
 import io.github.genkidoudou.quartz.internal.dto.SysJobVo;
 import io.github.genkidoudou.quartz.internal.mapper.SysJobMapper;
 import io.github.genkidoudou.quartz.internal.quartz.CronUtils;
-import io.github.genkidoudou.quartz.api.ITask;
 import io.github.genkidoudou.quartz.internal.quartz.JobExecutionLogger;
 import io.github.genkidoudou.quartz.internal.quartz.JobTaskInvoker;
 import io.github.genkidoudou.quartz.internal.quartz.JobTaskSnapshot;
 import io.github.genkidoudou.quartz.internal.quartz.ScheduleUtils;
 import io.github.genkidoudou.quartz.internal.service.SysJobService;
+import io.github.genkidoudou.quartz.internal.support.JobPayloadAssembler;
+import io.github.genkidoudou.quartz.internal.support.JobPayloadValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,25 +50,25 @@ public class SysJobServiceImpl implements SysJobService {
 
     private final SysJobMapper mapper;
     private final Scheduler scheduler;
-    private final ApplicationContext applicationContext;
     private final JobMonitorProperties properties;
     private final JobTaskInvoker jobTaskInvoker;
     private final JobExecutionLogger jobExecutionLogger;
+    private final JobPayloadValidator jobPayloadValidator;
 
     public SysJobServiceImpl(
         SysJobMapper mapper,
         Scheduler scheduler,
-        ApplicationContext applicationContext,
         JobMonitorProperties properties,
         JobTaskInvoker jobTaskInvoker,
-        JobExecutionLogger jobExecutionLogger
+        JobExecutionLogger jobExecutionLogger,
+        JobPayloadValidator jobPayloadValidator
     ) {
         this.mapper = mapper;
         this.scheduler = scheduler;
-        this.applicationContext = applicationContext;
         this.properties = properties;
         this.jobTaskInvoker = jobTaskInvoker;
         this.jobExecutionLogger = jobExecutionLogger;
+        this.jobPayloadValidator = jobPayloadValidator;
     }
 
     @Override
@@ -264,18 +264,7 @@ public class SysJobServiceImpl implements SysJobService {
         if (!CronUtils.isValid(bo.getCronExpression())) {
             throw WarningException.literal(ErrorCodes.Job.CRON_INVALID, "Cron 表达式不正确");
         }
-        Object bean;
-        try {
-            bean = applicationContext.getBean(bo.getInvokeTarget());
-        } catch (Exception e) {
-            bean = null;
-        }
-        if (bean == null) {
-            throw WarningException.literal(ErrorCodes.Job.INVOKE_TARGET_NOT_FOUND, "调用目标 Bean 不存在");
-        }
-        if (!(bean instanceof ITask)) {
-            throw WarningException.literal(ErrorCodes.Job.INVOKE_TARGET_NOT_TASK, "调用目标必须实现 ITask 接口");
-        }
+        jobPayloadValidator.validate(bo);
     }
 
     private SysJob fromBo(SysJobSaveBo bo) {
@@ -283,20 +272,20 @@ public class SysJobServiceImpl implements SysJobService {
         entity.setJobId(bo.getJobId());
         entity.setJobName(bo.getJobName());
         entity.setJobGroup(bo.getJobGroup());
-        entity.setInvokeTarget(bo.getInvokeTarget());
         entity.setCronExpression(StrUtil.trim(bo.getCronExpression()));
         entity.setMisfirePolicy(bo.getMisfirePolicy());
         entity.setConcurrent(bo.getConcurrent());
         if (StrUtil.isNotBlank(bo.getStatus())) {
             entity.setStatus(bo.getStatus());
         }
-        entity.setParams(bo.getParams());
         entity.setRemark(bo.getRemark());
+        JobPayloadAssembler.applyToEntity(bo, entity);
         return entity;
     }
 
     private SysJobVo toVo(SysJob row, boolean withNextTimes) {
         SysJobVo vo = BeanUtil.copyProperties(row, SysJobVo.class);
+        JobPayloadAssembler.enrichVo(row, vo);
         if (CronUtils.isValid(row.getCronExpression())) {
             vo.setCronDescription(CronUtils.describe(row.getCronExpression()));
         }

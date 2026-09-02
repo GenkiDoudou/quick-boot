@@ -1,12 +1,25 @@
-import request from '@/utils/request'
-
 /**
  * 系统菜单管理 API，与后端 `/system/menu` 契约一致（写操作为 POST）。
+ * <p>
+ * 树形列表：优先 {@link pageMenu}（POST page），{@link listMenu} 为兼容别名（unwrap records）。
  */
+import request from '@/utils/request'
+import { createCrudApi, toPageRequest } from '@/api/_factory/createCrudApi'
 
-/** 菜单树列表 */
+const crud = createCrudApi('/system/menu', { export: true })
+
+/** 菜单树形分页（POST page；records 为根节点树）。 */
+export const pageMenu = crud.page
+
+/**
+ * 菜单树列表（兼容层：内部走 POST page 并 unwrap records）。
+ * @param {Record<string, any>} [query] menuName、status
+ */
 export function listMenu(query) {
-  return request({ url: '/system/menu/list', method: 'get', params: query })
+  return crud.page(toPageRequest({ ...query, current: 1, size: 9999 })).then((res) => ({
+    ...res,
+    data: res.data?.records ?? []
+  }))
 }
 
 /**
@@ -24,19 +37,11 @@ export function roleMenuTreeselect(roleId) {
 }
 
 /** 菜单详情 */
-export function getMenu(menuId) {
-  return request({ url: '/system/menu/' + menuId, method: 'get' })
-}
-
+export const getMenu = crud.get
 /** 新增菜单 */
-export function addMenu(data) {
-  return request({ url: '/system/menu/add', method: 'post', data })
-}
-
+export const addMenu = crud.add
 /** 修改菜单 */
-export function updateMenu(data) {
-  return request({ url: '/system/menu/update', method: 'post', data })
-}
+export const updateMenu = crud.update
 
 /** 批量保存菜单排序 */
 export function updateMenuSort(data) {
@@ -51,35 +56,12 @@ export function delMenu(menuId) {
   return request({ url: '/system/menu/remove/' + menuId, method: 'get' })
 }
 
-/**
- * 批量删除。
- * @param {Array<string|number>} menuIds
- */
-export function removeMenu(menuIds) {
-  const list = (Array.isArray(menuIds) ? menuIds : [menuIds]).map((id) => String(id))
-  return request({
-    url: '/system/menu/remove',
-    method: 'post',
-    data: list
-  })
-}
+/** 批量删除。 */
+export const removeMenu = crud.remove
+/** 同步导出 xlsx。 */
+export const exportMenu = crud.export
 
-/**
- * 同步导出 xlsx。
- * @param {Record<string, unknown>} snapshot
- */
-export function exportMenu(snapshot) {
-  return request({
-    url: '/system/menu/export',
-    method: 'post',
-    data: snapshot || {},
-    responseType: 'blob',
-    returnBlobWithHeaders: true,
-    timeout: 120000
-  })
-}
-
-/** 下载导入模板 */
+/** 下载导入模板（菜单模块若后端未开放则调用方需自行处理 404） */
 export function downloadMenuImportTemplate() {
   return request({
     url: '/system/menu/import/template',

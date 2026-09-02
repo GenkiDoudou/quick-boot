@@ -3,7 +3,6 @@ package io.github.genkidoudou.system.internal.service;
 import io.github.genkidoudou.common.api.PageInfo;
 import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
-import io.github.genkidoudou.system.internal.entity.SysUser;
 import io.github.genkidoudou.system.internal.vo.SysUserAuthRoleVo;
 import io.github.genkidoudou.system.internal.vo.SysUserImportRow;
 import io.github.genkidoudou.system.internal.vo.SysUserVo;
@@ -14,25 +13,9 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * 用户管理。
+ * 用户管理（公开 API 仅 Vo；Entity 查询留在实现/Mapper 内部）。
  */
 public interface ISysUserService {
-
-  /**
-   * 按登录账号查询（认证、导入判重用）。
-   *
-   * @param username 用户账号
-   * @return 用户实体；不存在或参数为空则 {@code null}
-   */
-  SysUser findByUserName(String username);
-
-  /**
-   * 按主键查询。
-   *
-   * @param userId 用户主键
-   * @return 用户实体；不存在或参数为空则 {@code null}
-   */
-  SysUser findByUserId(Long userId);
 
   /**
    * 用户分页；结果不含密码，并填充部门名与角色信息。

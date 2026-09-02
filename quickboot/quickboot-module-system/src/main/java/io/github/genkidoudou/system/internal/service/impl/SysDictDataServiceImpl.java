@@ -10,7 +10,7 @@ import io.github.genkidoudou.common.excel.exception.ExcelDataCheckException;
 import io.github.genkidoudou.common.excel.listener.ExcelResult;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
-import io.github.genkidoudou.common.mybatisplus.BaseServiceImpl;
+import io.github.genkidoudou.common.mybatisplus.CrudServiceImpl;
 import io.github.genkidoudou.system.internal.entity.SysDictData;
 import io.github.genkidoudou.system.internal.mapper.SysDictDataMapper;
 import io.github.genkidoudou.system.internal.service.ISysDictDataService;
@@ -38,38 +38,41 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @CacheConfig(cacheNames = "sys-dict#3600")
-public class SysDictDataServiceImpl extends BaseServiceImpl<SysDictDataMapper, SysDictData>
+public class SysDictDataServiceImpl extends CrudServiceImpl<SysDictDataMapper, SysDictData, SysDictDataVo>
   implements ISysDictDataService {
 
   public static final int IMPORT_MAX_ROWS = 5000;
 
   @Override
+  protected Class<SysDictDataVo> voClass() {
+    return SysDictDataVo.class;
+  }
+
+  @Override
+  public void applyQuery(LambdaQueryWrapper<SysDictData> q, SysDictDataVo param) {
+    if (param == null) {
+      return;
+    }
+    if (StrUtil.isNotBlank(param.getDictType())) {
+      q.eq(SysDictData::getDictType, param.getDictType().trim());
+    }
+    if (StrUtil.isNotBlank(param.getDictLabel())) {
+      q.like(SysDictData::getDictLabel, param.getDictLabel().trim());
+    }
+    if (StrUtil.isNotBlank(param.getStatus())) {
+      q.eq(SysDictData::getStatus, param.getStatus().trim());
+    }
+    q.orderByAsc(SysDictData::getDictSort);
+  }
+
+  @Override
   public PageInfo<SysDictDataVo> page(PageRequest<SysDictDataVo> pageRequest) {
-    SysDictDataVo param = pageRequest != null ? pageRequest.getParam() : null;
-    return this.page(pageRequest, q -> {
-      if (param == null) {
-        return;
-      }
-      if (StrUtil.isNotBlank(param.getDictType())) {
-        q.eq(SysDictData::getDictType, param.getDictType().trim());
-      }
-      if (StrUtil.isNotBlank(param.getDictLabel())) {
-        q.like(SysDictData::getDictLabel, param.getDictLabel().trim());
-      }
-      if (StrUtil.isNotBlank(param.getStatus())) {
-        q.eq(SysDictData::getStatus, param.getStatus().trim());
-      }
-      q.orderByAsc(SysDictData::getDictSort);
-    }, SysDictDataVo.class);
+    return crudPage(pageRequest);
   }
 
   @Override
   public SysDictDataVo getDetail(Long dictCode) {
-    SysDictData row = this.getById(dictCode);
-    if (row == null) {
-      throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "字典项不存在");
-    }
-    return toVo(row, SysDictDataVo.class);
+    return crudGetDetail(dictCode, "字典项不存在");
   }
 
   /**
@@ -129,7 +132,7 @@ public class SysDictDataServiceImpl extends BaseServiceImpl<SysDictDataMapper, S
     if (list.size() > IMPORT_MAX_ROWS) {
       throw WarningException.literal(ErrorCodes.Common.INVALID_PARAM, "导出条数超过上限 " + IMPORT_MAX_ROWS);
     }
-    return list.stream().map(x -> toVo(x, SysDictDataVo.class)).collect(Collectors.toList());
+    return crudToVoList(list);
   }
 
   @CacheEvict(allEntries = true)
@@ -226,22 +229,6 @@ public class SysDictDataServiceImpl extends BaseServiceImpl<SysDictDataMapper, S
   }
 
   private List<SysDictData> listForExport(SysDictDataVo query) {
-    List<Long> ids = query.getIds() == null ? Collections.emptyList() : query.getIds().stream()
-      .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-    if (!ids.isEmpty()) {
-      return this.listByIds(ids);
-    }
-    LambdaQueryWrapper<SysDictData> q = new LambdaQueryWrapper<>();
-    if (StrUtil.isNotBlank(query.getDictType())) {
-      q.eq(SysDictData::getDictType, query.getDictType().trim());
-    }
-    if (StrUtil.isNotBlank(query.getDictLabel())) {
-      q.like(SysDictData::getDictLabel, query.getDictLabel().trim());
-    }
-    if (StrUtil.isNotBlank(query.getStatus())) {
-      q.eq(SysDictData::getStatus, query.getStatus().trim());
-    }
-    q.orderByAsc(SysDictData::getDictSort);
-    return this.list(q);
+    return crudListForQuery(query, SysDictDataVo::getIds);
   }
 }

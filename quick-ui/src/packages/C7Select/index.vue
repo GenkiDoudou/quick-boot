@@ -36,8 +36,7 @@
 
 <script setup>
 import {computed, onMounted, onUnmounted, ref, shallowRef, useAttrs, watch} from 'vue'
-import debounce from 'lodash/debounce'
-import get from 'lodash/get'
+import { debounce, get } from '@/utils/object'
 
 defineOptions({name: 'C7Select', inheritAttrs: false})
 

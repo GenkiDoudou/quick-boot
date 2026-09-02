@@ -3,10 +3,15 @@
  */
 import request from '@/utils/request'
 
-/** 获取当前用户可访问的路由树（后端根据权限过滤） */
-export const getRouters = () => {
+/** 获取当前用户可访问的路由树（正式路径） */
+export function getMenuRoutes() {
   return request({
-    url: '/getRouters',
+    url: '/api/menu/routes',
     method: 'get'
   })
 }
+
+/**
+ * @deprecated 请使用 getMenuRoutes
+ */
+export const getRouters = getMenuRoutes

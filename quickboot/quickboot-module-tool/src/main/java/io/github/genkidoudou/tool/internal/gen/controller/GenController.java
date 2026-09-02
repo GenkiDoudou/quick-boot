@@ -2,7 +2,10 @@ package io.github.genkidoudou.tool.internal.gen.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
+import io.github.genkidoudou.common.api.PageRequestMapping;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
@@ -51,8 +54,20 @@ public class GenController {
 
     @Operation(summary = "生成配置分页列表")
     @SaCheckPermission("tool:gen:list")
+    @PostMapping("/page")
+    public R<PageInfo<GenTableVo>> page(@RequestBody PageRequest<GenTableQueryBo> pageRequest) {
+        return R.ok(genTableService.page(toGenQuery(pageRequest)));
+    }
+
+    /**
+     * @deprecated 请改用 POST {@code /tool/gen/page}
+     */
+    @Deprecated
+    @Operation(summary = "生成配置分页列表（兼容）", deprecated = true)
+    @SaCheckPermission("tool:gen:list")
     @GetMapping("/list")
-    public R<PageInfo<GenTableVo>> list(@Validated GenTableQueryBo query) {
+    public R<PageInfo<GenTableVo>> list(HttpServletResponse response, @Validated GenTableQueryBo query) {
+        DeprecatedApiSupport.markDeprecated(response);
         return R.ok(genTableService.page(query));
     }
 
@@ -139,5 +154,14 @@ public class GenController {
     @PostMapping("/genCode/{tableName}")
     public R<String> genCode(@PathVariable @NotBlank String tableName) throws IOException {
         return R.ok(genTableService.genCodeToPath(tableName));
+    }
+
+    private static GenTableQueryBo toGenQuery(PageRequest<GenTableQueryBo> pageRequest) {
+        GenTableQueryBo param = pageRequest != null && pageRequest.getParam() != null
+            ? pageRequest.getParam()
+            : new GenTableQueryBo();
+        param.setPageNum(PageRequestMapping.pageNum(pageRequest));
+        param.setPageSize(PageRequestMapping.pageSize(pageRequest));
+        return param;
     }
 }

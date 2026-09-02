@@ -2,7 +2,10 @@ package io.github.genkidoudou.monitor.internal.slowsql.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
+import io.github.genkidoudou.common.api.PageRequestMapping;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.monitor.internal.slowsql.dto.SysSlowSqlQueryBo;
 import io.github.genkidoudou.monitor.internal.slowsql.dto.SysSlowSqlVo;
@@ -43,8 +46,20 @@ public class SysSlowSqlController {
      */
     @Operation(summary = "慢 SQL 分页列表")
     @SaCheckPermission("monitor:slowSql:query")
+    @PostMapping("/page")
+    public R<PageInfo<SysSlowSqlVo>> page(@RequestBody PageRequest<SysSlowSqlQueryBo> pageRequest) {
+        return R.ok(slowSqlService.page(toSlowSqlQuery(pageRequest)));
+    }
+
+    /**
+     * @deprecated 请改用 POST {@code /monitor/slowSql/page}
+     */
+    @Deprecated
+    @Operation(summary = "慢 SQL 分页列表（兼容）", deprecated = true)
+    @SaCheckPermission("monitor:slowSql:query")
     @GetMapping("/list")
-    public R<PageInfo<SysSlowSqlVo>> list(@Validated SysSlowSqlQueryBo query) {
+    public R<PageInfo<SysSlowSqlVo>> list(HttpServletResponse response, @Validated SysSlowSqlQueryBo query) {
+        DeprecatedApiSupport.markDeprecated(response);
         return R.ok(slowSqlService.page(query));
     }
 
@@ -99,5 +114,14 @@ public class SysSlowSqlController {
     public R<Void> clean() {
         slowSqlService.cleanAll();
         return R.ok();
+    }
+
+    private static SysSlowSqlQueryBo toSlowSqlQuery(PageRequest<SysSlowSqlQueryBo> pageRequest) {
+        SysSlowSqlQueryBo param = pageRequest != null && pageRequest.getParam() != null
+            ? pageRequest.getParam()
+            : new SysSlowSqlQueryBo();
+        param.setPageNum(PageRequestMapping.pageNum(pageRequest));
+        param.setPageSize(PageRequestMapping.pageSize(pageRequest));
+        return param;
     }
 }

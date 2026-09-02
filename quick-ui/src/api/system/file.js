@@ -3,17 +3,23 @@
  * 封装上传、预览、下载、删除；预览优先走 fileId 鉴权 Blob 接口。
  */
 import request from '@/utils/request'
+import { createCrudApi, toPageRequest } from '@/api/_factory/createCrudApi'
 import { listFileClassifies } from '@/api/common/file'
 
 export { listFileClassifies }
 
+const crud = createCrudApi('/system/file')
+
+/** 文件分页（POST page）。 */
+export const pageFile = crud.page
+
 /**
- * 文件管理分页列表。
+ * 文件管理分页列表（兼容 C7JsonTable）。
  * @param {Record<string, any>} params 查询参数（含 pageNum/pageSize）
  * @returns {Promise<any>}
  */
 export function listFile(params) {
-  return request({ url: '/system/file/list', method: 'get', params })
+  return crud.page(toPageRequest(params))
 }
 
 /**
@@ -55,7 +61,7 @@ function encodeViewRelativePath(relativePath) {
 
 /**
  * 构建按相对路径预览的 URL（裸链，无 Authorization；仅调试/外链场景）。
- * 管理端弹窗预览请用 {@link fetchFileViewBlob}。
+ * 管理端弹窗预览请用 {@link fetchFilePreviewBlob}。
  * @param {string} relativePath 列表返回的 relativePath
  * @returns {string}
  */
@@ -129,6 +135,5 @@ export function downloadFile(fileId) {
  * @returns {Promise<any>}
  */
 export function removeFile(fileIds) {
-  return request({ url: '/system/file/remove', method: 'post', data: fileIds })
+  return crud.remove(fileIds)
 }
-

@@ -218,8 +218,7 @@
 import {computed, onMounted, reactive, ref, useSlots, watch} from 'vue'
 import {ElLoading, ElMessage, ElMessageBox} from 'element-plus'
 import {Delete, Download, Edit, Plus, Refresh, Search, Setting, Upload} from '@element-plus/icons-vue'
-import cloneDeep from 'lodash/cloneDeep'
-import get from 'lodash/get'
+import { cloneDeep, get } from '@/utils/object'
 import C7Pagination from '../C7Pagination/index.vue'
 import C7JsonTableColumn from '../C7JsonTableColumn/index.vue'
 import C7Select from '../C7Select/index.vue'
@@ -228,6 +227,11 @@ import C7ExcelDownload from '../C7ExcelDownload/index.vue'
 import C7ExcelUpload from '../C7ExcelUpload/index.vue'
 import {checkPermission} from '@/directive/permission/permissionUtils'
 import useUserStore from '@/store/modules/user'
+import {
+  buildListRequest,
+  resolveEffectiveTableColumns,
+  sortSearchColumns,
+} from '../support/c7JsonTableSupport.js'
 
 defineOptions({name: 'C7JsonTable', inheritAttrs: false})
 
@@ -428,29 +432,7 @@ function initSearchParam() {
   Object.assign(searchParam, base)
 }
 
-const sortedSearchColumns = computed(() => {
-  const cols = [...(props.searchColumns || [])]
-  for (const col of cols) {
-    const t = col.type
-    if (t && !['input', 'select', 'date', 'daterange', 'slot', undefined, ''].includes(t)) {
-      warnDev(`Unknown searchColumns type "${t}" (prop=${col.prop}), skipped.`)
-    }
-  }
-  return cols
-      .filter((col) => {
-        const t = col.type
-        return !t || ['input', 'select', 'date', 'daterange', 'slot', '', undefined].includes(t)
-      })
-      .slice()
-      .sort((a, b) => {
-        const oa = a.order
-        const ob = b.order
-        if (oa == null && ob == null) return 0
-        if (oa == null) return 1
-        if (ob == null) return -1
-        return Number(oa) - Number(ob)
-      })
-})
+const sortedSearchColumns = computed(() => sortSearchColumns(props.searchColumns))
 
 function loadColumnVisibilityFromStorage() {
   if (!props.columnSettingKey) return {}
@@ -516,32 +498,18 @@ watch(columnCheck, () => {
   saveColumnVisibilityToStorage(map)
 }, {deep: true})
 
-const effectiveTableColumns = computed(() => {
-  const cols = props.tableColumns || []
-  return cols
-      .filter((col) => col && typeof col === 'object')
-      .map((col) => {
-        if (!col.prop) {
-          return col
-        }
-        const checked = columnCheck[col.prop]
-        const visible = checked === undefined ? (col.visible !== false && col._visible !== false) : checked
-        return {...col, visible}
-      })
-      .filter((col) => col.visible !== false)
-})
+const effectiveTableColumns = computed(() =>
+    resolveEffectiveTableColumns(props.tableColumns, columnCheck),
+)
 
 function buildListParams() {
-  const param = {...searchParam}
-  if (orderByColumn.value) {
-    param.orderByColumn = orderByColumn.value
-    param.isAsc = isAsc.value
-  }
-  return {
+  return buildListRequest({
     current: currentPage.value,
     size: currentPageSize.value,
-    param,
-  }
+    searchParam: {...searchParam},
+    orderByColumn: orderByColumn.value,
+    isAsc: isAsc.value,
+  })
 }
 
 async function fetchList() {

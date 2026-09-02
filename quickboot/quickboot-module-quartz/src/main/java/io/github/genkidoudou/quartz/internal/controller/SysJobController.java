@@ -2,7 +2,10 @@ package io.github.genkidoudou.quartz.internal.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.github.genkidoudou.common.api.PageInfo;
+import io.github.genkidoudou.common.api.PageRequest;
+import io.github.genkidoudou.common.api.PageRequestMapping;
 import io.github.genkidoudou.common.api.R;
+import io.github.genkidoudou.common.web.DeprecatedApiSupport;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.quartz.internal.dto.SysJobInvokeTargetVo;
 import io.github.genkidoudou.quartz.internal.dto.SysJobQueryBo;
@@ -42,8 +45,20 @@ public class SysJobController {
 
     @Operation(summary = "定时任务分页列表")
     @SaCheckPermission("monitor:job:list")
+    @PostMapping("/page")
+    public R<PageInfo<SysJobVo>> page(@RequestBody PageRequest<SysJobQueryBo> pageRequest) {
+        return R.ok(jobService.page(toJobQuery(pageRequest)));
+    }
+
+    /**
+     * @deprecated 请改用 POST {@code /monitor/job/page}
+     */
+    @Deprecated
+    @Operation(summary = "定时任务分页列表（兼容）", deprecated = true)
+    @SaCheckPermission("monitor:job:list")
     @GetMapping("/list")
-    public R<PageInfo<SysJobVo>> list(@Validated SysJobQueryBo query) {
+    public R<PageInfo<SysJobVo>> list(HttpServletResponse response, @Validated SysJobQueryBo query) {
+        DeprecatedApiSupport.markDeprecated(response);
         return R.ok(jobService.page(query));
     }
 
@@ -107,5 +122,14 @@ public class SysJobController {
     @PostMapping("/export")
     public void export(@Validated SysJobQueryBo query, HttpServletResponse response) {
         jobService.export(query, response);
+    }
+
+    private static SysJobQueryBo toJobQuery(PageRequest<SysJobQueryBo> pageRequest) {
+        SysJobQueryBo param = pageRequest != null && pageRequest.getParam() != null
+            ? pageRequest.getParam()
+            : new SysJobQueryBo();
+        param.setPageNum(PageRequestMapping.pageNum(pageRequest));
+        param.setPageSize(PageRequestMapping.pageSize(pageRequest));
+        return param;
     }
 }

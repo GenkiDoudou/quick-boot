@@ -31,7 +31,7 @@
     </C7JsonTable>
 
     <C7Dialog v-model="formVisible" :title="isAdd ? '新增字典项' : '修改字典项'" width="560px" :on-confirm="submitForm">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
         <el-form-item label="字典类型" prop="dictType"><el-input v-model="form.dictType" disabled /></el-form-item>
         <el-form-item label="数据标签" prop="dictLabel"><el-input v-model="form.dictLabel" /></el-form-item>
         <el-form-item label="数据键值" prop="dictValue"><el-input v-model="form.dictValue" /></el-form-item>
@@ -52,82 +52,53 @@
 /**
  * 字典数据项管理：路由 dictType 限定当前类型下的分页 CRUD 与导入导出。
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { useDict } from '@/utils/dict'
 import {
   pageDictData, addData, updateData, delData, getData,
   exportData, importData, downloadDataImportTemplate
 } from '@/api/system/dict/data'
+import { useCrudPage } from '@/composables/useCrudPage'
+import * as schema from '@/views/_schemas/tier-a/dictData.schema'
 
 defineOptions({ name: 'SysDictData' })
 
 const { sys_normal_disable } = useDict('sys_normal_disable')
-
 const route = useRoute()
 const dictType = computed(() => String(route.params.dictType || route.query.dictType || ''))
-const tableRef = ref(null)
-const formRef = ref(null)
-const formVisible = ref(false)
-const isAdd = ref(true)
-const form = reactive({
-  dictCode: null, dictType: '', dictLabel: '', dictValue: '', dictSort: 0, listClass: 'default', status: '0', remark: ''
-})
-const rules = {
-  dictLabel: [{ required: true, message: '必填', trigger: 'blur' }],
-  dictValue: [{ required: true, message: '必填', trigger: 'blur' }]
-}
-const defaultSearch = computed(() => ({ dictType: dictType.value, dictLabel: '', status: '' }))
-const searchColumns = computed(() => [
-  { prop: 'dictLabel', label: '字典标签', type: 'input', span: 8 },
-  { prop: 'status', label: '状态', type: 'select', span: 8, props: { options: sys_normal_disable.value || [] } }
-])
-const tableColumns = [
-  { prop: 'dictLabel', label: '标签', minWidth: 120 },
-  { prop: 'dictValue', label: '键值', minWidth: 120 },
-  { prop: 'dictSort', label: '排序', width: 80 },
-  { prop: 'status', label: '状态', width: 80, columnType: 'slot', slotName: 'status' },
-  { prop: 'remark', label: '备注', minWidth: 120 },
-  { prop: 'action', label: '操作', width: 100, fixed: 'right', columnType: 'slot', slotName: 'action' }
-]
 
-/** 分页请求强制注入当前路由 dictType */
+const {
+  tableRef, formRef, formVisible, isAdd, form, formRules,
+  openAdd: baseOpenAdd, openEdit, submitForm
+} = useCrudPage({
+  idField: schema.rowKey,
+  formInitial: () => schema.formInitial(dictType.value),
+  formRules: schema.formRules,
+  api: { add: addData, update: updateData, remove: delData },
+  loadDetail: async (row) => (await getData(row.dictCode)).data
+})
+
+watch(dictType, () => {
+  form.dictType = dictType.value
+})
+
+const defaultSearch = computed(() => ({ dictType: dictType.value, ...schema.defaultSearch }))
+const searchColumns = computed(() => schema.buildSearchColumns(sys_normal_disable))
+const tableColumns = schema.tableColumns
+
 function listFn(pageRequest) {
   const param = { ...(pageRequest?.param || {}), dictType: dictType.value }
   return pageDictData({ ...pageRequest, param })
 }
 
-/** 导出快照附带 dictType，与列表筛选一致 */
 function exportFn(snapshot) {
   return exportData({ ...(snapshot || {}), dictType: dictType.value })
 }
 
 function openAdd() {
-  isAdd.value = true
-  Object.assign(form, {
-    dictCode: null, dictType: dictType.value, dictLabel: '', dictValue: '', dictSort: 0, listClass: 'default', status: '0', remark: ''
-  })
-  formVisible.value = true
-}
-
-async function openEdit(row) {
-  isAdd.value = false
-  const res = await getData(row.dictCode)
-  Object.assign(form, res.data)
-  formVisible.value = true
-}
-
-async function submitForm() {
-  await formRef.value?.validate()
-  if (isAdd.value) {
-    const { dictCode, ...payload } = form
-    await addData(payload)
-  } else {
-    await updateData({ ...form })
-  }
-  ElMessage.success('保存成功')
-  formVisible.value = false
-  tableRef.value?.refreshData?.()
+  baseOpenAdd()
+  form.dictType = dictType.value
+  form.listClass = form.listClass || 'default'
 }
 </script>

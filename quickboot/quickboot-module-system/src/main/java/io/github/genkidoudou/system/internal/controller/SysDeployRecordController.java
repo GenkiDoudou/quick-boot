@@ -9,6 +9,8 @@ import io.github.genkidoudou.common.api.PageRequest;
 import io.github.genkidoudou.common.api.R;
 import io.github.genkidoudou.common.exception.ErrorCodes;
 import io.github.genkidoudou.common.exception.WarningException;
+import io.github.genkidoudou.common.idempotency.Idempotent;
+import io.github.genkidoudou.common.idempotency.IdempotencyScope;
 import io.github.genkidoudou.common.monitor.operlog.IgnoreLogger;
 import io.github.genkidoudou.system.internal.dto.DeployRecordCallbackBo;
 import io.github.genkidoudou.system.internal.service.ISysDeployRecordService;
@@ -52,6 +54,8 @@ public class SysDeployRecordController {
    */
   @SaIgnore
   @Operation(summary = "Jenkins 发布回调")
+  @Idempotent(ttlSeconds = 60, scope = IdempotencyScope.GLOBAL, includeUri = false,
+      key = "#body.appName + ':' + #body.env + ':' + #body.buildNumber", message = "请勿重复提交")
   @PostMapping("/callback")
   public R<Void> callback(
     @RequestHeader(value = "X-Deploy-Token", required = false) String token,

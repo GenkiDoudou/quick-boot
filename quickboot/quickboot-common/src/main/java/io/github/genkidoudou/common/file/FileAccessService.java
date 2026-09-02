@@ -36,27 +36,34 @@ public class FileAccessService {
   }
 
   /**
-   * 返回启用中的上传分类列表（供前端下拉）。
+   * 返回启用中的上传分类规则列表（供上层映射 Vo）。
    */
-  public List<FileClassifyVo> listClassifies() {
-    List<FileClassifyVo> list = new ArrayList<>();
+  public List<FileClassifyRule> listEnabledClassifyRules() {
+    List<FileClassifyRule> list = new ArrayList<>();
     for (FileClassifyRule rule : classifyResolver.listEnabled()) {
       if (rule == null || !StringUtils.hasText(rule.getClassify())) {
         continue;
       }
-      list.add(FileClassifyVo.from(rule, props.getCompress()));
+      list.add(rule);
     }
     return list;
   }
 
   /**
-   * 按分类名返回上传规则（须存在且启用）。
+   * 按分类名返回启用中的上传规则。
    *
    * @param classify 分类名
    */
-  public FileClassifyVo getClassify(String classify) {
+  public FileClassifyRule getEnabledClassifyRule(String classify) {
     String classifyKey = requireClassifyKey(classify);
-    return FileClassifyVo.from(requireEnabledRule(classifyKey), props.getCompress());
+    return requireEnabledRule(classifyKey);
+  }
+
+  /**
+   * 文件压缩全局默认配置（映射 Vo 时回退用）。
+   */
+  public QcFileProperties.CompressProperties compressDefaults() {
+    return props.getCompress();
   }
 
   /**

@@ -1,36 +1,29 @@
+/**
+ * 慢 SQL 监控 API（前缀 {@code /monitor/slowSql}）。
+ */
 import request, { downloadRequest } from '@/utils/request'
+import { createCrudApi, toPageRequest } from '@/api/_factory/createCrudApi'
+
+const crud = createCrudApi('/monitor/slowSql')
+
+/** 慢 SQL 分页（POST page）。 */
+export const pageSlowSql = crud.page
 
 /**
- * 慢 SQL 分页列表。
+ * 慢 SQL 分页列表（兼容 C7JsonTable）。
  * @param {Record<string, any>} query 查询参数
  * @returns {Promise<any>}
  */
 export function listSlowSql(query) {
-  return request({ url: '/monitor/slowSql/list', method: 'get', params: query })
+  return crud.page(toPageRequest(query))
 }
 
-/**
- * 慢 SQL 详情。
- * @param {number} slowId 主键
- * @returns {Promise<any>}
- */
-export function getSlowSql(slowId) {
-  return request({ url: '/monitor/slowSql/' + slowId, method: 'get' })
-}
+/** 慢 SQL 详情。 */
+export const getSlowSql = crud.get
+/** 批量删除慢 SQL。 */
+export const removeSlowSql = crud.remove
 
-/**
- * 批量删除慢 SQL。
- * @param {number[]} slowIds 主键数组
- * @returns {Promise<any>}
- */
-export function removeSlowSql(slowIds) {
-  return request({ url: '/monitor/slowSql/remove', method: 'post', data: slowIds })
-}
-
-/**
- * 清空慢 SQL。
- * @returns {Promise<any>}
- */
+/** 清空慢 SQL。 */
 export function cleanSlowSql() {
   return request({ url: '/monitor/slowSql/clean', method: 'post' })
 }

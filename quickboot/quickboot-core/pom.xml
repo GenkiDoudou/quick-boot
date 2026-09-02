@@ -36,5 +36,11 @@
       <groupId>cn.dev33</groupId>
       <artifactId>sa-token-spring-boot4-starter</artifactId>
     </dependency>
+
+    <!-- Modulith 模块元数据注解（@ApplicationModule） -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-api</artifactId>
+    </dependency>
   </dependencies>
 </project>
